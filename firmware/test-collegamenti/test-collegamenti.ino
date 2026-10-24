@@ -1,6 +1,9 @@
 // Test dei collegamenti del tag: bus I2C, BMI160, pin INT1 e livello batteria.
 // Collegamenti in hardware/schema.md. Uscita sulla seriale USB a 115200.
+// Sonno profondo dopo INATTIVITA_MS senza movimento (se nessuna pagina è collegata
+// via BLE e nessun PC via USB); risveglio dal BMI160 con l'interrupt any-motion su INT1.
 #include <Wire.h>
+#include <esp_sleep.h>
 #include <BLEDevice.h>
 #include <BLEServer.h>
 #include <BLEUtils.h>
@@ -16,6 +19,18 @@ const uint8_t REG_CHIP_ID = 0x00;   // atteso 0xD1
 const uint8_t REG_GYR_DATA = 0x0C;  // 6 byte giroscopio + 6 byte accelerometro
 const uint8_t REG_PMU_STATUS = 0x03;
 const uint8_t REG_CMD = 0x7E;
+const uint8_t REG_ACC_CONF = 0x40;
+const uint8_t REG_INT_EN_0 = 0x50;      // bit 0-2: any-motion sugli assi x, y, z
+const uint8_t REG_INT_OUT_CTRL = 0x53;  // configurazione elettrica dei pin INT
+const uint8_t REG_INT_LATCH = 0x54;
+const uint8_t REG_INT_MAP_0 = 0x55;     // bit 2: any-motion su INT1
+const uint8_t REG_INT_MOTION_0 = 0x5F;  // durata: campioni consecutivi oltre soglia - 1
+const uint8_t REG_INT_MOTION_1 = 0x60;  // soglia: 3,91 mg per unità a ±2 g
+
+const uint32_t INATTIVITA_MS = 120000;  // 2 minuti fermo: sonno profondo
+const float SOGLIA_MOVIMENTO_G = 0.10;  // come la "calma" del display
+const float SOGLIA_MOVIMENTO_DPS = 20;
+const uint8_t SOGLIA_RISVEGLIO = 20;    // circa 80 mg
 
 bool scrivi(uint8_t reg, uint8_t val) {
   Wire.beginTransmission(BMI160_ADDR);
@@ -34,6 +49,36 @@ bool leggi(uint8_t reg, uint8_t *buf, size_t n) {
 }
 
 bool sensoreOk = false;
+uint32_t ultimoMovimento = 0;
+
+// Prepara il BMI160 per il risveglio e mette l'ESP32 in sonno profondo
+void dormi() {
+  Serial.println("Nessun movimento: sonno profondo, risveglio dal BMI160 su INT1");
+  Serial.flush();
+  BLEDevice::deinit(false);
+  scrivi(REG_CMD, 0x14);           // giroscopio sospeso
+  delay(80);
+  scrivi(REG_ACC_CONF, 0x86);      // accelerometro a basso consumo: 25 Hz, senza media
+  scrivi(REG_CMD, 0x12);           // accelerometro in modalità low power
+  delay(10);
+  scrivi(REG_INT_MOTION_0, 0x00);  // basta un campione oltre soglia
+  scrivi(REG_INT_MOTION_1, SOGLIA_RISVEGLIO);
+  scrivi(REG_INT_OUT_CTRL, 0x0A);  // INT1 attivo, push-pull, attivo alto
+  scrivi(REG_INT_LATCH, 0x0F);     // resta alto finché non viene azzerato
+  scrivi(REG_INT_MAP_0, 0x04);     // any-motion su INT1
+  scrivi(REG_INT_EN_0, 0x07);      // any-motion su x, y, z
+  scrivi(REG_CMD, 0xB1);           // azzera eventuali interrupt già memorizzati
+  delay(50);
+  esp_sleep_enable_ext0_wakeup((gpio_num_t)PIN_INT1, 1);
+  esp_deep_sleep_start();
+}
+
+// Al risveglio: interrupt spenti e sensori di nuovo in modalità normale (vedi setup)
+void preparaSensoriNormali() {
+  scrivi(REG_INT_EN_0, 0x00);
+  scrivi(REG_CMD, 0xB1);
+  scrivi(REG_ACC_CONF, 0x28);  // valore di fabbrica: 100 Hz, filtro normale
+}
 
 // Servizio GATT per la pagina Web Bluetooth (contratto fisso, la pagina lo usa già)
 #define UUID_SERVIZIO "7a1e0001-5b1d-4c8e-9f3a-1d2c3b4a5e60"
@@ -82,6 +127,8 @@ void setup() {
   // Senza PC collegato (batteria, caricatore) la seriale non deve rallentare il programma
   Serial.setTxTimeoutMs(0);
   delay(2000);
+  esp_sleep_wakeup_cause_t causa = esp_sleep_get_wakeup_cause();
+  Serial.printf("Avvio: %s\n", causa == ESP_SLEEP_WAKEUP_EXT0 ? "risveglio dal BMI160 (movimento)" : "accensione o reset");
   Serial.println("\n=== SwimTimer: test collegamenti ===");
 
   // Server GATT: servizio con una caratteristica READ+NOTIFY da 16 byte
@@ -147,6 +194,7 @@ void setup() {
   if (id != 0xD1) return;
 
   // Accende accelerometro e giroscopio in modalità normale
+  preparaSensoriNormali();
   scrivi(REG_CMD, 0x11);
   delay(10);
   scrivi(REG_CMD, 0x15);
@@ -155,6 +203,7 @@ void setup() {
   leggi(REG_PMU_STATUS, &pmu, 1);
   Serial.printf("Stato alimentazione sensori: 0x%02X %s\n", pmu, pmu == 0x14 ? "(OK)" : "(atteso 0x14)");
   sensoreOk = true;
+  ultimoMovimento = millis();
 }
 
 // Righe dati per tools/assi.html: D,millis,ax,ay,az (g),gx,gy,gz (°/s) a 50 Hz.
@@ -186,6 +235,11 @@ void loop() {
         caratteristicaDati->setValue(pacchetto, sizeof(pacchetto));
         caratteristicaDati->notify();
       }
+      float ax = v[3] / 16384.0, ay = v[4] / 16384.0, az = v[5] / 16384.0;
+      float gx = v[0] / 16.4, gy = v[1] / 16.4, gz = v[2] / 16.4;
+      float dinamica = fabsf(sqrtf(ax * ax + ay * ay + az * az) - 1.0f);
+      if (dinamica > SOGLIA_MOVIMENTO_G || sqrtf(gx * gx + gy * gy + gz * gz) > SOGLIA_MOVIMENTO_DPS)
+        ultimoMovimento = millis();
       Serial.printf("D,%lu,%.3f,%.3f,%.3f,%.1f,%.1f,%.1f\n", millis(),
                     v[3] / 16384.0, v[4] / 16384.0, v[5] / 16384.0,
                     v[0] / 16.4, v[1] / 16.4, v[2] / 16.4);
@@ -199,5 +253,7 @@ void loop() {
     Serial.printf("%s | INT1=%d | batteria(GPIO1x2)=%.2f V\n",
                   sensoreOk ? "BMI160 OK" : "BMI160 assente", digitalRead(PIN_INT1), vbat);
   }
+  // Sonno profondo solo se fermo da tempo, senza pagina collegata e senza PC sulla USB
+  if (sensoreOk && millis() - ultimoMovimento > INATTIVITA_MS && !clienteConnesso && !Serial) dormi();
   delay(20);
 }

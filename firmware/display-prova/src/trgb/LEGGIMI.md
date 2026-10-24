@@ -1,6 +1,4 @@
 # Driver LilyGO T-RGB
 
-Copiato da LilyGo-T-RGB 1.0.5 (licenza MIT, vedi LICENSE) senza `LV_Helper` (richiede LVGL 8.4).
-Adattato a SensorLib 0.3.x: `extension.begin(...)` al posto di `init(...)` e callback GPIO del touch con parametri `uint8_t`.
-
-Per SwimTimer: `framebuffer()` per disegnare direttamente solo le parti che cambiano.
+Copia senza modifiche di LilyGo-T-RGB 1.0.5 (licenza MIT, vedi LICENSE), senza `LV_Helper` (richiede LVGL).
+Va compilato con il core Arduino ESP32 2.0.x e SensorLib 0.2.3, come indicato da LilyGO: vedi `../../platformio.ini`.

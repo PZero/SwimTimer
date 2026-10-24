@@ -7,7 +7,7 @@
 // segni (pallino verde alla partenza, rosso all'arrivo, tempo in grande per 3 s).
 // Ogni volta si compone il risultato in memoria e lo si copia sullo schermo in un colpo.
 // Un tocco sullo schermo toglie i segni; le lancette continuano a girare.
-// Driver del display: src/trgb (da LilyGo-T-RGB, adattato).
+// Driver del display: src/trgb (LilyGo-T-RGB). Si compila con PlatformIO (platformio.ini).
 #include <Wire.h>
 #include <Adafruit_GFX.h>  // disegno in memoria (GFXcanvas16) e font
 #include <Fonts/FreeSansBold24pt7b.h>
@@ -15,7 +15,6 @@
 #include <Fonts/FreeSans9pt7b.h>
 #include <BLEDevice.h>
 #include <BLEScan.h>
-#include <esp_cache.h>
 #include "src/trgb/LilyGo_RGBPanel.h"
 
 const char *NOME_TAG = "SwimTag";
@@ -54,7 +53,7 @@ class Ascolto : public BLEAdvertisedDeviceCallbacks {
     rssiUltimo = d.getRSSI();
     visto = millis();
     if (!d.haveManufacturerData()) return;
-    String md = d.getManufacturerData();
+    std::string md = d.getManufacturerData();
     if (md.length() != 15 || (uint8_t)md[0] != 0xFF || (uint8_t)md[1] != 0xFF) return;
     Campione c;
     c.numero = md[2];
@@ -182,7 +181,6 @@ void segno(GFXcanvas16 &t, float secondi, uint16_t colore) {
   t.fillCircle(x, y, 9, colore);
 }
 
-esp_err_t esitoSync = ESP_OK;
 uint32_t durataComposizione = 0;
 
 void componi(uint32_t ora) {
@@ -283,9 +281,8 @@ void loop() {
     if (presente) rssiMedio = rssiMedio < -120 ? rssiUltimo : rssiMedio * 0.7 + rssiUltimo * 0.3;
     else rssiMedio = -127;
     componi(ora);
-    Serial.printf("R,%lu,rssi=%d,inCorsa=%d,tempo=%lu,componi_ms=%lu,vsync=%lu,sync=%s\n",
-                  ora, presente ? (int)rssiUltimo : -127, inCorsa, tempoMs, durataComposizione,
-                  panel.fotogrammi(false), esp_err_to_name(esitoSync));
+    Serial.printf("R,%lu,rssi=%d,inCorsa=%d,tempo=%lu,componi_ms=%lu\n",
+                  ora, presente ? (int)rssiUltimo : -127, inCorsa, tempoMs, durataComposizione);
   }
   delay(5);
 }

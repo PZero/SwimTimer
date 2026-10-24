@@ -23,9 +23,9 @@
 #define ADC_ATTEN_DB               ADC_ATTEN_DB_11
 #endif
 
-static void TouchDrvDigitalWrite(uint8_t gpio, uint8_t level);
-static uint8_t TouchDrvDigitalRead(uint8_t gpio);
-static void TouchDrvPinMode(uint8_t gpio, uint8_t mode);
+static void TouchDrvDigitalWrite(uint32_t gpio, uint8_t level);
+static int TouchDrvDigitalRead(uint32_t gpio);
+static void TouchDrvPinMode(uint32_t gpio, uint8_t mode);
 static ExtensionIOXL9555 extension;
 static const lcd_init_cmd_t *_init_cmd = NULL;
 
@@ -58,7 +58,7 @@ void LilyGo_RGBPanel::initDevice()
     digitalWrite(BOARD_TFT_BL, LOW);
 
     // Initialize the XL9555 expansion chip
-    if (!extension.begin(Wire, 0x20, BOARD_I2C_SDA, BOARD_I2C_SCL)) {
+    if (!extension.init(Wire, BOARD_I2C_SDA, BOARD_I2C_SCL)) {
         Serial.println("External GPIO expansion chip does not exist.");
         assert(false);
     }
@@ -643,38 +643,6 @@ void LilyGo_RGBPanel::writeData(const uint8_t *data, int len)
     }
 }
 
-// SwimTimer: accesso diretto al framebuffer (letto attraverso i bounce buffer).
-static volatile uint32_t contaVsync = 0, contaBounce = 0;
-static bool IRAM_ATTR suVsync(esp_lcd_panel_handle_t, const esp_lcd_rgb_panel_event_data_t *, void *)
-{
-    contaVsync++;
-    return false;
-}
-static bool IRAM_ATTR suFineBounce(esp_lcd_panel_handle_t, const esp_lcd_rgb_panel_event_data_t *, void *)
-{
-    contaBounce++;
-    return false;
-}
-
-uint16_t *LilyGo_RGBPanel::framebuffer()
-{
-    assert(_panelDrv);
-    if (!_fb) {
-        esp_lcd_rgb_panel_get_frame_buffer(_panelDrv, 1, (void **)&_fb);
-        esp_lcd_rgb_panel_event_callbacks_t cb = {};
-        cb.on_vsync = suVsync;
-        cb.on_bounce_frame_finish = suFineBounce;
-        esp_lcd_rgb_panel_register_event_callbacks(_panelDrv, &cb, nullptr);
-    }
-    return _fb;
-}
-
-// Diagnostica: fotogrammi inviati al display dall'avvio (vsync, fine giro dei bounce buffer)
-uint32_t LilyGo_RGBPanel::fotogrammi(bool bounce)
-{
-    return bounce ? contaBounce : contaVsync;
-}
-
 void LilyGo_RGBPanel::pushColors(uint16_t x, uint16_t y, uint16_t width, uint16_t hight, uint16_t *data)
 {
     assert(_panelDrv);
@@ -682,7 +650,7 @@ void LilyGo_RGBPanel::pushColors(uint16_t x, uint16_t y, uint16_t width, uint16_
 }
 
 
-static void TouchDrvDigitalWrite(uint8_t gpio, uint8_t level)
+static void TouchDrvDigitalWrite(uint32_t gpio, uint8_t level)
 {
     if (gpio & 0x80) {
         extension.digitalWrite(gpio & 0x7F, level);
@@ -691,7 +659,7 @@ static void TouchDrvDigitalWrite(uint8_t gpio, uint8_t level)
     }
 }
 
-static uint8_t TouchDrvDigitalRead(uint8_t gpio)
+static int TouchDrvDigitalRead(uint32_t gpio)
 {
     if (gpio & 0x80) {
         return extension.digitalRead(gpio & 0x7F);
@@ -700,7 +668,7 @@ static uint8_t TouchDrvDigitalRead(uint8_t gpio)
     }
 }
 
-static void TouchDrvPinMode(uint8_t gpio, uint8_t mode)
+static void TouchDrvPinMode(uint32_t gpio, uint8_t mode)
 {
     if (gpio & 0x80) {
         extension.pinMode(gpio & 0x7F, mode);
