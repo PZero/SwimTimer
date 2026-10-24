@@ -216,6 +216,19 @@ void componi(uint32_t ora) {
   else snprintf(stato, sizeof(stato), "tag non trovato");
   testoCentrato(t, stato, CY + 110, &FreeSans9pt7b, 1, inCorsa ? AZZURRO : GRIGIO);
 
+  // Batteria del display: partitore interno della T-RGB (metà tensione su GPIO 4).
+  // La lettura richiede circa 40 ms, quindi solo ogni 10 s.
+  static uint32_t ultimaBatteria = 0;
+  static uint16_t batteriaMv = 0;
+  if (!batteriaMv || ora - ultimaBatteria >= 10000) {
+    ultimaBatteria = ora;
+    batteriaMv = panel.getBattVoltage();
+  }
+  int percento = constrain((int)((batteriaMv - 3000) * 100L / 1200), 0, 100);
+  char batteria[32];
+  snprintf(batteria, sizeof(batteria), "batteria %.2f V  %d%%", batteriaMv / 1000.0, percento);
+  testoCentrato(t, batteria, CY + 135, &FreeSans9pt7b, 1, percento < 20 ? ROSSO : GRIGIO);
+
   // Sullo schermo in un colpo (il driver copia nel framebuffer e gestisce la cache)
   panel.pushColors(0, 0, 480, 480, t.getBuffer());
   durataComposizione = millis() - t0;
