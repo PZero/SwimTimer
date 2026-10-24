@@ -7,4 +7,3 @@
 5. Cosa deve mostrare il display: ultimo tempo, riposo in corso, conteggio vasche? Da che distanza va letto?
 6. Ti serve uno storico sul telefono (app) o basta il display?
 7. Budget indicativo e possibilità di stampare in 3D gli involucri?
-8. Repository GitHub pubblico o privato?
