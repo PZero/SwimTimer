@@ -70,7 +70,13 @@ float angoloPartenza = 0, angoloArrivo = 0;  // posizione della lancetta verde, 
 uint32_t avvio = 0, tempoMs = 0, ultimoMovimento = 0, scrittaFino = 0;
 bool daRidisegnare = true;
 
-float secondiQuadrante(uint32_t ms) { return (ms / 1000) % 60; }
+// Lancette continue (prova) oppure a scatti di un secondo, come i pace clock classici
+const bool LANCETTE_CONTINUE = true;
+const uint32_t PASSO_MS = LANCETTE_CONTINUE ? 66 : 1000;  // circa 15 immagini al secondo
+
+float secondiQuadrante(uint32_t ms) {
+  return LANCETTE_CONTINUE ? (ms % 60000) / 1000.0f : (ms / 1000) % 60;
+}
 
 void punto(float secondi, float r, int16_t &x, int16_t &y) {
   float t = 2 * PI * secondi / 60;  // da mezzogiorno, in senso orario
@@ -217,7 +223,6 @@ void componi(uint32_t ora) {
 
 void setup() {
   Serial.begin(115200);
-  Serial.setTxTimeoutMs(0);  // senza PC collegato la seriale non deve rallentare il programma
   // Il driver riconosce da solo il modello dal chip del touch
   if (!panel.begin()) {
     Serial.println("Display non riconosciuto");
@@ -269,10 +274,10 @@ void loop() {
     if (k == 'r') azzera();
   }
 
-  // Si ricompone a ogni nuovo secondo, a ogni evento e quando scade la scritta
+  // Si ricompone a ogni passo delle lancette, a ogni evento e quando scade la scritta
   static uint32_t ultimoSecondo = UINT32_MAX;
   static bool scrittaVisibile = false;
-  uint32_t secondo = ora / 1000;
+  uint32_t secondo = ora / PASSO_MS;
   bool scritta = ora < scrittaFino;
   if (secondo != ultimoSecondo || scritta != scrittaVisibile || daRidisegnare) {
     ultimoSecondo = secondo;
@@ -281,7 +286,10 @@ void loop() {
     if (presente) rssiMedio = rssiMedio < -120 ? rssiUltimo : rssiMedio * 0.7 + rssiUltimo * 0.3;
     else rssiMedio = -127;
     componi(ora);
-    Serial.printf("R,%lu,rssi=%d,inCorsa=%d,tempo=%lu,componi_ms=%lu\n",
+    // Solo se c'è spazio: con il core 2.x la seriale USB blocca il programma
+    // quando il PC è collegato ma nessuno legge
+    if (Serial.availableForWrite() > 120)
+      Serial.printf("R,%lu,rssi=%d,inCorsa=%d,tempo=%lu,componi_ms=%lu\n",
                   ora, presente ? (int)rssiUltimo : -127, inCorsa, tempoMs, durataComposizione);
   }
   delay(5);
