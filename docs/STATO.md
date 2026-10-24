@@ -1,20 +1,21 @@
 # Stato del progetto
 
-**Ultimo aggiornamento:** 2026-10-24 — Fase 1: prototipo del tag funzionante
+**Ultimo aggiornamento:** 2026-10-24 — Fase 1: tag e display funzionanti sul tavolo
 
 ## Fatto
-- Repository pubblico `PZero/SwimTimer` con template, agenti e comandi.
-- Idea analizzata in `docs/IDEA.md`: tag BLE con sensori + display a bordo vasca; logica START/STOP/virata e logiche aggiuntive.
-- Tag di prova saldato (ESP32-S3 SuperMini + BMI160, batteria sui pad BAT) e verificato: accelerometro e giroscopio rispondono su tutti gli assi.
-- `firmware/test-collegamenti`: test del bus I2C e invio dati a 50 Hz; `tools/assi.html`: pagina con valori e grafici dei 3 assi (Chrome/Edge, Web Serial).
+- Repository pubblico `PZero/SwimTimer`; template, agenti, comandi; analisi in `docs/IDEA.md`.
+- **Tag** (ESP32-S3 SuperMini + BMI160, batteria sui pad BAT): `firmware/test-collegamenti` invia i dati via USB (50 Hz), via servizio GATT (25 Hz) e dentro l'annuncio BLE (20 Hz, per il display).
+- **Pagina** `tools/assi.html`: 3 assi con grafici, collegamento USB o Bluetooth (Chrome/Edge).
+- **Display** LilyGO T-RGB 2,8" (GT911): `firmware/display-prova` con doppio buffer senza tremolio, corona con le 3 linee in senso orario, cronometro (colpo secco = parte; tag vicino e fermo 3 s = stop all'ultimo movimento), tocco per azzerare. Driver in `src/trgb` (adattato a SensorLib 0.3 e doppio buffer).
+- Core esp32 3.3.12: NimBLE-Arduino va in crash, si usa il BLE del core; LVGL 9 e Arduino_GFX 1.6.4 non compilano con la T-RGB.
 
 ## Prossimi passi
-1. Firmware di registrazione: salva accelerazioni, rotazioni e segnale BLE in memoria per le prove in vasca (sacchetto stagno).
-2. Prova in vasca e analisi dei dati: spinta dal muro, virata, arrivo, soglie di calma.
-3. Display LilyGO T-RGB: verificare versione e touch, primo firmware con tempo grande e ricerca BLE del tag (RSSI vicino/lontano).
+1. Caricare sul tag l'ultimo firmware (annuncio con i dati) e provare corona e cronometro sul tavolo.
+2. Montare il partitore 2×100 kΩ (BAT+ → GPIO 1 → GND), poi percentuale batteria e stato di carica su tag, display e pagina.
+3. Tarare la soglia RSSI "vicino" e la calma; firmware di registrazione in memoria per la prova in vasca.
 
 ## Problemi aperti
-- Il BLE non attraversa l'acqua: la logica si basa sull'accelerometro, il BLE serve per vicinanza e invio dati.
-- Verificare con il tag fermo: un asse ≈ ±1 g, gli altri ≈ 0; giroscopio ≈ 0.
-- Protezione della batteria sul tag e metodo di spegnimento da definire (vedi `hardware/schema.md`).
-- Nessun test automatico ancora (`pio test` non impostato).
+- Il BLE non attraversa l'acqua: la logica usa l'accelerometro, il BLE serve per vicinanza e invio.
+- Batteria 1000 mAh sulla T-RGB: controllare la polarità prima di collegarla; capacità e protezione dell'altra LiPo da definire.
+- Compilazione lenta (librerie in OneDrive): valutare di spostarle fuori.
+- Nessun test automatico; custodia stagna e metodo di spegnimento da definire.
