@@ -1,0 +1,31 @@
+# Segreti: mai nel repository
+.env
+.env.*
+!.env.example
+*.pem
+*service-account*.json
+firebase-adminsdk*.json
+
+# Dati personali reali (sessioni di nuoto, dati di salute): mai nel repository
+dati/
+
+# Build e dipendenze
+node_modules/
+dist/
+.firebase/
+.pio/
+build/
+*.bin
+*.elf
+*.log
+*.stackdump
+
+# Sistema
+.DS_Store
+Thumbs.db
+desktop.ini
+*.tmp
+~$*
+
+# Impostazioni locali di Claude Code
+.claude/settings.local.json
