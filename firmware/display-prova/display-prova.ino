@@ -4,7 +4,8 @@
 // - centro: cronometro. Parte con un colpo secco, si ferma quando il tag è vicino
 //   e fermo da 3 s, con l'ora dell'ultimo movimento. Un tocco sullo schermo azzera.
 // Niente tremolio: lo schermo non viene mai cancellato. La corona si aggiorna un tratto
-// alla volta; i testi si preparano in un riquadro in memoria e si copiano in un colpo.
+// alla volta; i testi si preparano in piccoli riquadri in RAM interna e si copiano in un
+// colpo, solo quando cambiano. Poche scritture in PSRAM: il display la legge in DMA.
 // Driver del display: src/trgb (da LilyGo-T-RGB, adattato).
 #include <Wire.h>
 #include <Adafruit_GFX.h>  // disegno in memoria (GFXcanvas16) e font
@@ -29,8 +30,6 @@ const int CX = 240, CY = 240;
 const int R_DENTRO = 214, R_FUORI = 238;
 const int CAMPIONI_GIRO = 300;       // 20 campioni/s: un giro ogni 15 s
 const int VUOTO = 8;                 // campioni non disegnati davanti alla lancetta
-// Riquadro dei testi: il rettangolo più largo che sta dentro la corona
-const int RQ_X = 70, RQ_Y = 117, RQ_L = 340, RQ_A = 246;
 
 // Colori RGB565, come la pagina tools/assi.html in tema scuro
 const uint16_t NERO = 0x0000, BIANCO = 0xFFFF, GRIGIO = 0x8410, GRIGIO_SCURO = 0x2945;
@@ -42,10 +41,20 @@ LilyGo_RGBPanel panel;
 // Tela che disegna direttamente nel framebuffer (per la corona)
 class Tela : public GFXcanvas16 {
  public:
-  Tela() : GFXcanvas16(480, 480, false) {}
+  Tela(int l = 480, int a = 480) : GFXcanvas16(l, a, false) {}
   void usa(uint16_t *b) { buffer = b; }
 } schermo;
-GFXcanvas16 *riquadro;  // testi centrali, copiati nel framebuffer quando sono pronti
+// Zona di testo preparata in RAM interna e copiata sullo schermo in un colpo
+struct Riquadro {
+  int x, y, l, a;
+  Tela tela;
+  Riquadro(int x, int y, int l, int a) : x(x), y(y), l(l), a(a), tela(l, a) {}
+  void prepara() {
+    tela.usa((uint16_t *)heap_caps_malloc(l * a * 2, MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT));
+  }
+};
+Riquadro zonaTempo(70, 200, 340, 88);   // cifre del cronometro (fino a y 287)
+Riquadro zonaStato(70, 300, 340, 62);   // stato e segnale (fino a y 361)
 
 struct Campione {
   uint8_t numero;
@@ -99,12 +108,13 @@ void punto(float pos, int r, int16_t &x, int16_t &y) {
 
 // Scrive in PSRAM le righe da y0 a y1 rimaste nella cache della CPU,
 // altrimenti il display le vede solo quando la cache si svuota da sola
+esp_err_t esitoSync = ESP_OK;
 void sincronizza(int y0, int y1) {
   if (y0 < 0) y0 = 0;
   if (y1 > 479) y1 = 479;
   if (y1 < y0) return;
-  esp_cache_msync(panel.framebuffer() + y0 * 480, (y1 - y0 + 1) * 480 * 2,
-                  ESP_CACHE_MSYNC_FLAG_DIR_C2M | ESP_CACHE_MSYNC_FLAG_UNALIGNED);
+  esitoSync = esp_cache_msync(panel.framebuffer() + y0 * 480, (y1 - y0 + 1) * 480 * 2,
+                              ESP_CACHE_MSYNC_FLAG_DIR_C2M | ESP_CACHE_MSYNC_FLAG_UNALIGNED);
 }
 
 // Disegna il tratto appena arrivato e cancella lo spicchio davanti alla lancetta
@@ -189,27 +199,40 @@ void testoCentrato(GFXcanvas16 &tela, int ox, int oy, const char *s, int y, cons
   tela.print(s);
 }
 
-void copiaRiquadro() {
-  uint16_t *fb = panel.framebuffer();
-  for (int r = 0; r < RQ_A; r++)
-    memcpy(fb + (RQ_Y + r) * 480 + RQ_X, riquadro->getBuffer() + r * RQ_L, RQ_L * 2);
-  sincronizza(RQ_Y, RQ_Y + RQ_A - 1);
+// Copia il riquadro nel framebuffer in un colpo; il driver gestisce la cache
+void copia(Riquadro &r) {
+  panel.pushColors(r.x, r.y, r.x + r.l, r.y + r.a, r.tela.getBuffer());
 }
 
-void disegnaTesti(bool presente) {
-  GFXcanvas16 &t = *riquadro;
-  t.fillScreen(NERO);
-  testoCentrato(t, RQ_X, RQ_Y, "SwimTimer", 150, &FreeSans12pt7b, 1, GRIGIO);
-  char buf[40];
+void disegnaTempo() {
+  static char ultimo[16] = "";
+  static bool ultimoInCorsa = false;
+  char buf[16];
   uint32_t dec = tempoMs / 100;
   snprintf(buf, sizeof(buf), "%lu:%02lu.%lu", dec / 600, (dec / 10) % 60, dec % 10);
-  testoCentrato(t, RQ_X, RQ_Y, buf, 275, &FreeSansBold24pt7b, 2, inCorsa ? ARANCIO : BIANCO);
+  if (!strcmp(buf, ultimo) && ultimoInCorsa == inCorsa) return;
+  strcpy(ultimo, buf);
+  ultimoInCorsa = inCorsa;
+  Tela &t = zonaTempo.tela;
+  t.fillScreen(NERO);
+  testoCentrato(t, zonaTempo.x, zonaTempo.y, buf, 275, &FreeSansBold24pt7b, 2, inCorsa ? ARANCIO : BIANCO);
+  copia(zonaTempo);
+}
+
+void disegnaStato(bool presente) {
+  static char ultimo[64] = "";
   const char *stato = inCorsa ? "in corsa" : tempoMs ? "arrivato" : "colpo secco per partire";
-  testoCentrato(t, RQ_X, RQ_Y, stato, 320, &FreeSans9pt7b, 1, inCorsa ? ARANCIO : tempoMs ? VERDE : GRIGIO);
-  if (presente) snprintf(buf, sizeof(buf), "%s  %d dBm", rssiMedio > SOGLIA_VICINO ? "vicino" : "lontano", (int)rssiMedio);
-  else snprintf(buf, sizeof(buf), "tag non trovato");
-  testoCentrato(t, RQ_X, RQ_Y, buf, 352, &FreeSans9pt7b, 1, AZZURRO);
-  copiaRiquadro();
+  char segnale[32], chiave[64];
+  if (presente) snprintf(segnale, sizeof(segnale), "%s  %d dBm", rssiMedio > SOGLIA_VICINO ? "vicino" : "lontano", (int)rssiMedio);
+  else snprintf(segnale, sizeof(segnale), "tag non trovato");
+  snprintf(chiave, sizeof(chiave), "%s|%s", stato, segnale);
+  if (!strcmp(chiave, ultimo)) return;
+  strcpy(ultimo, chiave);
+  Tela &t = zonaStato.tela;
+  t.fillScreen(NERO);
+  testoCentrato(t, zonaStato.x, zonaStato.y, stato, 320, &FreeSans9pt7b, 1, inCorsa ? ARANCIO : tempoMs ? VERDE : GRIGIO);
+  testoCentrato(t, zonaStato.x, zonaStato.y, segnale, 352, &FreeSans9pt7b, 1, AZZURRO);
+  copia(zonaStato);
 }
 
 void setup() {
@@ -233,9 +256,15 @@ void setup() {
   schermo.usa(panel.framebuffer());
   schermo.fillScreen(NERO);
   schermo.drawCircle(CX, CY, R_DENTRO - 3, GRIGIO_SCURO);
+  testoCentrato(schermo, 0, 0, "SwimTimer", 150, &FreeSans12pt7b, 1, GRIGIO);
   testoCentrato(schermo, 0, 0, "tocca per azzerare", 385, &FreeSans9pt7b, 1, GRIGIO_SCURO);
   sincronizza(0, 479);
-  riquadro = new GFXcanvas16(RQ_L, RQ_A);
+  zonaTempo.prepara();
+  zonaStato.prepara();
+  if (!zonaTempo.tela.getBuffer() || !zonaStato.tela.getBuffer()) {
+    Serial.println("RAM interna insufficiente per i riquadri");
+    while (true) delay(1000);
+  }
 
   coda = xQueueCreate(64, sizeof(Campione));
   BLEDevice::init("");
@@ -248,20 +277,34 @@ void setup() {
   Serial.println("BLE: ricerca di SwimTag avviata");
 }
 
+// Diagnostica: tempo massimo (ms) di ogni parte del loop nell'ultimo secondo
+uint32_t maxCampioni = 0, maxTocco = 0, maxTesti = 0, disegni = 0;
+
 void loop() {
   uint32_t ora = millis();
   bool presente = visto && ora - visto < TAG_PERSO_MS;
 
   Campione c;
+  uint32_t t0 = millis();
   while (xQueueReceive(coda, &c, 0) == pdTRUE) elabora(c);
+  maxCampioni = max(maxCampioni, millis() - t0);
 
   // Tocco: azzera il cronometro
   int16_t tx, ty;
   static uint32_t ultimoTocco = 0;
+  t0 = millis();
   if (ora - ultimoTocco > 300 && panel.getPoint(&tx, &ty, 1)) {
     ultimoTocco = ora;
     inCorsa = false;
     tempoMs = 0;
+  }
+  maxTocco = max(maxTocco, millis() - t0);
+
+  // Comandi di prova dalla seriale: s = parte, r = azzera
+  while (Serial.available()) {
+    char k = Serial.read();
+    if (k == 's') { inCorsa = true; avvio = ora; }
+    if (k == 'r') { inCorsa = false; tempoMs = 0; }
   }
   if (inCorsa) tempoMs = ora - avvio;
 
@@ -271,14 +314,18 @@ void loop() {
     ultimiTesti = ora;
     if (presente) rssiMedio = rssiMedio < -120 ? rssiUltimo : rssiMedio * 0.8 + rssiUltimo * 0.2;
     else rssiMedio = -127;
-    uint32_t t0 = micros();
-    disegnaTesti(presente);
+    t0 = millis();
+    disegnaTempo();
+    disegnaStato(presente);
+    maxTesti = max(maxTesti, millis() - t0);
+    disegni++;
     static uint32_t ultimoLog = 0;
     if (ora - ultimoLog >= 1000) {
       ultimoLog = ora;
-      Serial.printf("R,%lu,rssi=%d,media=%d,campioni=%lu,inCorsa=%d,tempo=%lu,testi_us=%lu\n",
-                    ora, presente ? (int)rssiUltimo : -127, (int)rssiMedio, scritti, inCorsa, tempoMs,
-                    micros() - t0);
+      Serial.printf("R,%lu,rssi=%d,campioni=%lu,inCorsa=%d,tempo=%lu,disegni=%lu,max_ms campioni=%lu tocco=%lu testi=%lu\n",
+                    ora, presente ? (int)rssiUltimo : -127, scritti, inCorsa, tempoMs,
+                    disegni, maxCampioni, maxTocco, maxTesti, esp_err_to_name(esitoSync), panel.framebuffer());
+      disegni = maxCampioni = maxTocco = maxTesti = 0;
     }
   }
   delay(5);

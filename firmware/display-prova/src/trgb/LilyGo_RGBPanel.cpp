@@ -472,9 +472,6 @@ void LilyGo_RGBPanel::initBUS()
             },
         },
         .data_width = 16, // RGB565 in parallel mode, thus 16bit in width
-        // SwimTimer: il display legge da buffer in RAM interna riempiti dalla PSRAM,
-        // così le scritture nel framebuffer non lo lasciano senza dati (immagine che balla)
-        .bounce_buffer_size_px = BOARD_TFT_WIDTH * 10,
         .psram_trans_align = 64,
         .hsync_gpio_num = BOARD_TFT_HSYNC,
         .vsync_gpio_num = BOARD_TFT_VSYNC,
@@ -646,8 +643,8 @@ void LilyGo_RGBPanel::writeData(const uint8_t *data, int len)
     }
 }
 
-// SwimTimer: accesso diretto al framebuffer. Con il bounce buffer il display lo
-// legge attraverso la cache, quindi le scritture della CPU sono subito visibili.
+// SwimTimer: accesso diretto al framebuffer. Il display lo legge in DMA dalla PSRAM:
+// dopo una scrittura diretta va svuotata la cache (esp_cache_msync).
 uint16_t *LilyGo_RGBPanel::framebuffer()
 {
     assert(_panelDrv);
