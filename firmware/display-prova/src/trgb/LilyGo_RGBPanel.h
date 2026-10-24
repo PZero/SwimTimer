@@ -99,9 +99,8 @@ public:
 
     uint16_t getBattVoltage(void) ;
 
-    // SwimTimer: doppio buffer (vedi LilyGo_RGBPanel.cpp)
-    uint16_t *bufferNascosto();
-    void mostra();
+    // SwimTimer: framebuffer per disegnare solo le parti che cambiano
+    uint16_t *framebuffer();
 
     void pushColors(uint16_t x, uint16_t y, uint16_t width, uint16_t hight, uint16_t *data);
 
@@ -120,8 +119,7 @@ private:
     uint8_t _brightness;
 
     esp_lcd_panel_handle_t _panelDrv;
-    uint16_t *_fb[2] = {nullptr, nullptr};
-    int _visibile = 0;
+    uint16_t *_fb = nullptr;
 
 
     TouchDrvInterface *_touchDrv;

@@ -537,7 +537,6 @@ void LilyGo_RGBPanel::initBUS()
         .flags =
         {
             .fb_in_psram = 1, // allocate frame buffer in PSRAM
-            .double_fb = 1,   // SwimTimer: due framebuffer, si disegna in quello nascosto
         },
     };
 
@@ -647,39 +646,13 @@ void LilyGo_RGBPanel::writeData(const uint8_t *data, int len)
     }
 }
 
-// SwimTimer: doppio buffer senza tremolio.
-// Si disegna nel buffer nascosto, poi mostra() lo rende visibile e attende il
-// vsync successivo, quando l'altro buffer non è più letto dal display.
-static SemaphoreHandle_t semaforoVsync = nullptr;
-
-static bool IRAM_ATTR suVsync(esp_lcd_panel_handle_t, const esp_lcd_rgb_panel_event_data_t *, void *)
-{
-    BaseType_t svegliato = pdFALSE;
-    xSemaphoreGiveFromISR(semaforoVsync, &svegliato);
-    return svegliato == pdTRUE;
-}
-
-uint16_t *LilyGo_RGBPanel::bufferNascosto()
+// SwimTimer: accesso diretto al framebuffer. Con il bounce buffer il display lo
+// legge attraverso la cache, quindi le scritture della CPU sono subito visibili.
+uint16_t *LilyGo_RGBPanel::framebuffer()
 {
     assert(_panelDrv);
-    if (!semaforoVsync) {
-        semaforoVsync = xSemaphoreCreateBinary();
-        esp_lcd_rgb_panel_event_callbacks_t cb = {};
-        cb.on_vsync = suVsync;
-        esp_lcd_rgb_panel_register_event_callbacks(_panelDrv, &cb, nullptr);
-        esp_lcd_rgb_panel_get_frame_buffer(_panelDrv, 2, (void **)&_fb[0], (void **)&_fb[1]);
-        _visibile = 0;
-    }
-    return _fb[1 - _visibile];
-}
-
-void LilyGo_RGBPanel::mostra()
-{
-    uint16_t *fb = bufferNascosto();
-    xSemaphoreTake(semaforoVsync, 0);
-    esp_lcd_panel_draw_bitmap(_panelDrv, 0, 0, BOARD_TFT_WIDTH, BOARD_TFT_HEIGHT, fb);
-    _visibile = 1 - _visibile;
-    xSemaphoreTake(semaforoVsync, pdMS_TO_TICKS(100));
+    if (!_fb) esp_lcd_rgb_panel_get_frame_buffer(_panelDrv, 1, (void **)&_fb);
+    return _fb;
 }
 
 void LilyGo_RGBPanel::pushColors(uint16_t x, uint16_t y, uint16_t width, uint16_t hight, uint16_t *data)

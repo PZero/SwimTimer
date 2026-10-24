@@ -3,10 +3,11 @@
 // - corona esterna: le 3 linee dell'accelerazione, in senso orario (un giro = 15 s)
 // - centro: cronometro. Parte con un colpo secco, si ferma quando il tag è vicino
 //   e fermo da 3 s, con l'ora dell'ultimo movimento. Un tocco sullo schermo azzera.
-// Doppio buffer: si disegna nel buffer nascosto e lo si mostra al vsync (niente tremolio).
+// Niente tremolio: lo schermo non viene mai cancellato. La corona si aggiorna un tratto
+// alla volta; i testi si preparano in un riquadro in memoria e si copiano in un colpo.
 // Driver del display: src/trgb (da LilyGo-T-RGB, adattato).
 #include <Wire.h>
-#include <Adafruit_GFX.h>  // disegno nel framebuffer (GFXcanvas16) e font
+#include <Adafruit_GFX.h>  // disegno in memoria (GFXcanvas16) e font
 #include <Fonts/FreeSansBold24pt7b.h>
 #include <Fonts/FreeSans12pt7b.h>
 #include <Fonts/FreeSans9pt7b.h>
@@ -27,6 +28,8 @@ const int CX = 240, CY = 240;
 const int R_DENTRO = 214, R_FUORI = 238;
 const int CAMPIONI_GIRO = 300;       // 20 campioni/s: un giro ogni 15 s
 const int VUOTO = 8;                 // campioni non disegnati davanti alla lancetta
+// Riquadro dei testi: il rettangolo più largo che sta dentro la corona
+const int RQ_X = 70, RQ_Y = 117, RQ_L = 340, RQ_A = 246;
 
 // Colori RGB565, come la pagina tools/assi.html in tema scuro
 const uint16_t NERO = 0x0000, BIANCO = 0xFFFF, GRIGIO = 0x8410, GRIGIO_SCURO = 0x2945;
@@ -35,12 +38,13 @@ const uint16_t COLORE_ASSE[3] = {0xFB4B, 0x4E11, 0x6D1F};  // X rosso, Y verde, 
 
 LilyGo_RGBPanel panel;
 
-// Tela che disegna direttamente nel framebuffer nascosto
+// Tela che disegna direttamente nel framebuffer (per la corona)
 class Tela : public GFXcanvas16 {
  public:
   Tela() : GFXcanvas16(480, 480, false) {}
   void usa(uint16_t *b) { buffer = b; }
-} tela;
+} schermo;
+GFXcanvas16 *riquadro;  // testi centrali, copiati nel framebuffer quando sono pronti
 
 struct Campione {
   uint8_t numero;
@@ -79,12 +83,50 @@ float rssiMedio = -127;
 bool inCorsa = false;
 uint32_t avvio = 0, tempoMs = 0, ultimoMovimento = 0;
 
+int raggio(float v) {
+  if (v < -2) v = -2;
+  if (v > 2) v = 2;
+  return R_DENTRO + (int)((v + 2) / 4 * (R_FUORI - R_DENTRO));
+}
+
+// Punto della corona alla posizione (anche frazionaria) del campione, da mezzogiorno in senso orario
+void punto(float pos, int r, int16_t &x, int16_t &y) {
+  float t = 2 * PI * pos / CAMPIONI_GIRO;
+  x = CX + r * sinf(t);
+  y = CY - r * cosf(t);
+}
+
+// Disegna il tratto appena arrivato e cancella lo spicchio davanti alla lancetta
+void disegnaUltimo() {
+  uint32_t j = scritti - 1;
+  float e = (j + VUOTO) % CAMPIONI_GIRO;
+  int16_t x0, y0, x1, y1, x2, y2, x3, y3;
+  punto(e - 0.5, R_DENTRO - 1, x0, y0);
+  punto(e - 0.5, R_FUORI + 2, x1, y1);
+  punto(e + 1.5, R_FUORI + 2, x2, y2);
+  punto(e + 1.5, R_DENTRO - 1, x3, y3);
+  schermo.fillTriangle(x0, y0, x1, y1, x2, y2, NERO);
+  schermo.fillTriangle(x0, y0, x2, y2, x3, y3, NERO);
+  if (j == 0) return;
+  int i0 = (j - 1) % CAMPIONI_GIRO, i1 = j % CAMPIONI_GIRO;
+  for (int asse = 0; asse < 3; asse++) {
+    float v0 = storico[asse][i0], v1 = storico[asse][i1];
+    if (isnan(v0) || isnan(v1)) continue;
+    int r0 = raggio(v0), r1 = raggio(v1);
+    for (int d = 0; d < 2; d++) {  // spessore di 2 pixel
+      schermo.drawLine(CX + (r0 + d) * sinT[i0], CY - (r0 + d) * cosT[i0],
+                       CX + (r1 + d) * sinT[i1], CY - (r1 + d) * cosT[i1], COLORE_ASSE[asse]);
+    }
+  }
+}
+
 void aggiungi(float ax, float ay, float az) {
   int i = scritti % CAMPIONI_GIRO;
   storico[0][i] = ax;
   storico[1][i] = ay;
   storico[2][i] = az;
   scritti++;
+  disegnaUltimo();
 }
 
 void elabora(const Campione &c) {
@@ -118,45 +160,39 @@ void elabora(const Campione &c) {
   }
 }
 
-void testoCentrato(const char *s, int y, const GFXfont *font, uint8_t scala, uint16_t colore) {
+// Testo centrato orizzontalmente sullo schermo, disegnato su una tela con origine (ox, oy)
+void testoCentrato(GFXcanvas16 &tela, int ox, int oy, const char *s, int y, const GFXfont *font,
+                   uint8_t scala, uint16_t colore) {
   tela.setFont(font);
   tela.setTextSize(scala);
   int16_t x1, y1;
   uint16_t w, h;
   tela.getTextBounds(s, 0, 0, &x1, &y1, &w, &h);
   tela.setTextColor(colore);
-  tela.setCursor(CX - w / 2 - x1, y);
+  tela.setCursor(CX - ox - w / 2 - x1, y - oy);
   tela.print(s);
 }
 
-int raggio(float v) {
-  if (v < -2) v = -2;
-  if (v > 2) v = 2;
-  return R_DENTRO + (int)((v + 2) / 4 * (R_FUORI - R_DENTRO));
+void copiaRiquadro() {
+  uint16_t *fb = panel.framebuffer();
+  for (int r = 0; r < RQ_A; r++)
+    memcpy(fb + (RQ_Y + r) * 480 + RQ_X, riquadro->getBuffer() + r * RQ_L, RQ_L * 2);
 }
 
-void disegnaCorona() {
-  tela.drawCircle(CX, CY, R_DENTRO - 2, GRIGIO_SCURO);
-  tela.drawCircle(CX, CY, (R_DENTRO + R_FUORI) / 2, GRIGIO_SCURO);  // 0 g
-  if (scritti < 2) return;
-  uint32_t primo = scritti > CAMPIONI_GIRO ? scritti - CAMPIONI_GIRO + VUOTO : 0;
-  for (int asse = 0; asse < 3; asse++) {
-    for (uint32_t j = primo + 1; j < scritti; j++) {
-      int i0 = (j - 1) % CAMPIONI_GIRO, i1 = j % CAMPIONI_GIRO;
-      float v0 = storico[asse][i0], v1 = storico[asse][i1];
-      if (isnan(v0) || isnan(v1)) continue;
-      int r0 = raggio(v0), r1 = raggio(v1);
-      // Due linee affiancate per uno spessore di 2 pixel
-      for (int d = 0; d < 2; d++) {
-        tela.drawLine(CX + (r0 + d) * sinT[i0], CY - (r0 + d) * cosT[i0],
-                      CX + (r1 + d) * sinT[i1], CY - (r1 + d) * cosT[i1], COLORE_ASSE[asse]);
-      }
-    }
-  }
-  // Lancetta sulla posizione attuale
-  int i = (scritti - 1) % CAMPIONI_GIRO;
-  tela.drawLine(CX + (R_DENTRO - 4) * sinT[i], CY - (R_DENTRO - 4) * cosT[i],
-                CX + (R_FUORI + 1) * sinT[i], CY - (R_FUORI + 1) * cosT[i], GRIGIO);
+void disegnaTesti(bool presente) {
+  GFXcanvas16 &t = *riquadro;
+  t.fillScreen(NERO);
+  testoCentrato(t, RQ_X, RQ_Y, "SwimTimer", 150, &FreeSans12pt7b, 1, GRIGIO);
+  char buf[40];
+  uint32_t dec = tempoMs / 100;
+  snprintf(buf, sizeof(buf), "%lu:%02lu.%lu", dec / 600, (dec / 10) % 60, dec % 10);
+  testoCentrato(t, RQ_X, RQ_Y, buf, 275, &FreeSansBold24pt7b, 2, inCorsa ? ARANCIO : BIANCO);
+  const char *stato = inCorsa ? "in corsa" : tempoMs ? "arrivato" : "colpo secco per partire";
+  testoCentrato(t, RQ_X, RQ_Y, stato, 320, &FreeSans9pt7b, 1, inCorsa ? ARANCIO : tempoMs ? VERDE : GRIGIO);
+  if (presente) snprintf(buf, sizeof(buf), "%s  %d dBm", rssiMedio > SOGLIA_VICINO ? "vicino" : "lontano", (int)rssiMedio);
+  else snprintf(buf, sizeof(buf), "tag non trovato");
+  testoCentrato(t, RQ_X, RQ_Y, buf, 352, &FreeSans9pt7b, 1, AZZURRO);
+  copiaRiquadro();
 }
 
 void setup() {
@@ -176,6 +212,13 @@ void setup() {
     cosT[i] = cosf(t);
   }
 
+  // Sfondo disegnato una volta sola
+  schermo.usa(panel.framebuffer());
+  schermo.fillScreen(NERO);
+  schermo.drawCircle(CX, CY, R_DENTRO - 3, GRIGIO_SCURO);
+  testoCentrato(schermo, 0, 0, "tocca per azzerare", 385, &FreeSans9pt7b, 1, GRIGIO_SCURO);
+  riquadro = new GFXcanvas16(RQ_L, RQ_A);
+
   coda = xQueueCreate(64, sizeof(Campione));
   BLEDevice::init("");
   BLEScan *scan = BLEDevice::getScan();
@@ -190,8 +233,6 @@ void setup() {
 void loop() {
   uint32_t ora = millis();
   bool presente = visto && ora - visto < TAG_PERSO_MS;
-  if (presente) rssiMedio = rssiMedio < -120 ? rssiUltimo : rssiMedio * 0.9 + rssiUltimo * 0.1;
-  else rssiMedio = -127;
 
   Campione c;
   while (xQueueReceive(coda, &c, 0) == pdTRUE) elabora(c);
@@ -199,37 +240,28 @@ void loop() {
   // Tocco: azzera il cronometro
   int16_t tx, ty;
   static uint32_t ultimoTocco = 0;
-  if (panel.getPoint(&tx, &ty, 1) && ora - ultimoTocco > 500) {
+  if (ora - ultimoTocco > 300 && panel.getPoint(&tx, &ty, 1)) {
     ultimoTocco = ora;
     inCorsa = false;
     tempoMs = 0;
   }
   if (inCorsa) tempoMs = ora - avvio;
 
-  tela.usa(panel.bufferNascosto());
-  tela.fillScreen(NERO);
-  disegnaCorona();
-
-  testoCentrato("SwimTimer", 150, &FreeSans12pt7b, 1, GRIGIO);
-  char buf[40];
-  uint32_t dec = tempoMs / 100;
-  snprintf(buf, sizeof(buf), "%lu:%02lu.%lu", dec / 600, (dec / 10) % 60, dec % 10);
-  testoCentrato(buf, 275, &FreeSansBold24pt7b, 2, inCorsa ? ARANCIO : BIANCO);
-
-  const char *stato = inCorsa ? "in corsa" : tempoMs ? "arrivato" : "pronto: colpo secco per partire";
-  testoCentrato(stato, 320, &FreeSans9pt7b, 1, inCorsa ? ARANCIO : tempoMs ? VERDE : GRIGIO);
-
-  if (presente) snprintf(buf, sizeof(buf), "%s  %d dBm", rssiMedio > SOGLIA_VICINO ? "vicino" : "lontano", (int)rssiMedio);
-  else snprintf(buf, sizeof(buf), "tag non trovato");
-  testoCentrato(buf, 355, &FreeSans9pt7b, 1, AZZURRO);
-  testoCentrato("tocca per azzerare", 385, &FreeSans9pt7b, 1, GRIGIO_SCURO);
-
-  panel.mostra();
-
-  static uint32_t ultimoLog = 0;
-  if (ora - ultimoLog >= 1000) {
-    ultimoLog = ora;
-    Serial.printf("R,%lu,rssi=%d,media=%d,campioni=%lu,inCorsa=%d,tempo=%lu\n",
-                  ora, presente ? (int)rssiUltimo : -127, (int)rssiMedio, scritti, inCorsa, tempoMs);
+  // Testi 10 volte al secondo
+  static uint32_t ultimiTesti = 0;
+  if (ora - ultimiTesti >= 100) {
+    ultimiTesti = ora;
+    if (presente) rssiMedio = rssiMedio < -120 ? rssiUltimo : rssiMedio * 0.8 + rssiUltimo * 0.2;
+    else rssiMedio = -127;
+    uint32_t t0 = micros();
+    disegnaTesti(presente);
+    static uint32_t ultimoLog = 0;
+    if (ora - ultimoLog >= 1000) {
+      ultimoLog = ora;
+      Serial.printf("R,%lu,rssi=%d,media=%d,campioni=%lu,inCorsa=%d,tempo=%lu,testi_us=%lu\n",
+                    ora, presente ? (int)rssiUltimo : -127, (int)rssiMedio, scritti, inCorsa, tempoMs,
+                    micros() - t0);
+    }
   }
+  delay(5);
 }
