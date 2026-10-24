@@ -25,6 +25,7 @@ const float SOGLIA_CALMA_G = 0.10;   // sotto questa e sotto SOGLIA_CALMA_DPS il
 const float SOGLIA_CALMA_DPS = 20;
 const uint32_t CALMA_MS = 3000;
 const uint32_t SCRITTA_MS = 3000;    // durata della scritta con il tempo
+const uint32_t SOSPENSIONE_MS = 300000;  // 5 minuti senza tag né tocchi: sonno profondo
 
 // Geometria del quadrante
 const int CX = 240, CY = 240;
@@ -304,6 +305,21 @@ void loop() {
     if (Serial.availableForWrite() > 120)
       Serial.printf("R,%lu,rssi=%d,inCorsa=%d,tempo=%lu,componi_ms=%lu\n",
                   ora, presente ? (int)rssiUltimo : -127, inCorsa, tempoMs, durataComposizione);
+  }
+
+  // Sonno profondo dopo SOSPENSIONE_MS senza tag, tocchi o cronometro in corsa;
+  // un tocco sullo schermo lo risveglia (il firmware riparte da capo)
+  uint32_t ultimaAttivita = max((uint32_t)visto, ultimoTocco);
+  if (!inCorsa && ora - ultimaAttivita > SOSPENSIONE_MS) {
+    GFXcanvas16 &t = *composto;
+    t.fillScreen(NERO);
+    testoCentrato(t, "in sospensione", CY - 10, &FreeSansBold18pt7b, 1, BIANCO);
+    testoCentrato(t, "tocca per riattivare", CY + 30, &FreeSans9pt7b, 1, GRIGIO);
+    panel.pushColors(0, 0, 480, 480, t.getBuffer());
+    delay(1500);
+    BLEDevice::deinit(false);
+    panel.enableTouchWakeup();
+    panel.sleep();
   }
   delay(5);
 }
