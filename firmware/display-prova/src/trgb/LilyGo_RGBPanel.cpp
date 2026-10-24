@@ -472,6 +472,9 @@ void LilyGo_RGBPanel::initBUS()
             },
         },
         .data_width = 16, // RGB565 in parallel mode, thus 16bit in width
+        // SwimTimer: il display legge da buffer in RAM interna riempiti dalla PSRAM,
+        // così le scritture nel framebuffer non lo lasciano senza dati (immagine che balla)
+        .bounce_buffer_size_px = BOARD_TFT_WIDTH * 10,
         .psram_trans_align = 64,
         .hsync_gpio_num = BOARD_TFT_HSYNC,
         .vsync_gpio_num = BOARD_TFT_VSYNC,
