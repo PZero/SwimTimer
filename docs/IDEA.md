@@ -23,6 +23,28 @@ Il tag ha un sensore inerziale (accelerometro + giroscopio) e decide da solo i m
 
 Il tag memorizza gli eventi con l'ora e li invia al display ogni volta che emerge (bastano pochi millisecondi di contatto). L'RSSI resta utile come conferma "sono al muro della mia corsia" e per abbinare il tag al display.
 
+## Logica partenza/arrivo (ipotesi del 2026-10-24)
+Ipotesi: display solo sul lato di partenza, distanze multiple di 100 m (in vasca da 25 m si finisce sempre sul lato del display).
+
+- **START**: picco di spinta dal muro (accelerometro), confermato dalla sparizione del segnale BLE.
+- **STOP**: tag vicino al display (RSSI alto) **e** calma per almeno ~3 s. L'ora di STOP non è quella in cui si conferma la calma, ma quella della **decelerazione all'arrivo** (il tag la memorizza e la usa a posteriori).
+- **Virata (rischio di STOP falso)**: dura meno di 1–2 s ed è seguita subito da una nuova spinta, quindi non supera mai i ~3 s di calma → il cronometro non si ferma. La virata viene registrata come **parziale**.
+- **Fermata a metà vasca o sul lato opposto** (occhialini, crampo): calma ma tag lontano dal display → nessuno STOP.
+- **Conteggio vasche**: ogni virata riconosciuta = una vasca; a fine prova vasche × lunghezza vasca = distanza, utile come controllo (es. 200 m = 8 vasche da 25 m).
+- **Riposo**: da STOP alla spinta successiva.
+
+## Logiche aggiuntive possibili (da valutare)
+| Logica | Sensore | Cosa dà | Note |
+|---|---|---|---|
+| Inversione di direzione | magnetometro (bussola) | ogni vasca la direzione ruota di 180° → conteggio vasche robusto | conta la variazione relativa, non il nord esatto |
+| Profondità | sensore di pressione impermeabile (es. MS5837) | testa sott'acqua / fuori; scivolata dopo la spinta; capriola | conferma START e virata in modo indipendente dal BLE |
+| Bracciate | giroscopio | conteggio bracciate, frequenza, riconoscimento dello stile | utile per statistiche, non per i tempi |
+| Gesto manuale | accelerometro | doppio colpetto sul tag = START/STOP forzato o annulla | rimedio per i casi sbagliati |
+| Partenza comandata | display | il display dà il via (luce/beep) secondo una serie impostata (es. 4×100 rec. 20 s) | START certo; diventa anche un "pace clock" |
+| Arrivo al muro | sensore sul display (distanza a infrarossi/ToF, o piastra a tocco) | STOP preciso come nelle gare | più ingombrante; il display va fissato al bordo |
+
+Combinazione consigliata: accelerometro + giroscopio + magnetometro (+ pressione) nel tag, BLE solo per prossimità e invio dei dati.
+
 ## Dove mettere il tag
 - **Cuffia/elastico degli occhialini, dietro la testa**: è la parte che emerge più spesso (respirazione) ed è la più vicina al muro all'arrivo. Candidato preferito.
 - Polso: emerge a ogni bracciata, ma all'arrivo può essere lontano dal display.
