@@ -129,7 +129,8 @@ Lo schema dettagliato è in [`hardware/schema.md`](hardware/schema.md).
 - La LiPo del tag va sui pad BAT+ e BAT- dell'ESP32-S3. La scheda gestisce la carica dalla USB-C.
 - Usare una LiPo con protezione propria: il caricatore integrato non protegge dalla scarica eccessiva.
 - Con la batteria scarica il regolatore dà meno di 3,3 V: il firmware deve spegnersi sotto circa 3,3 V.
-- Il display usa una batteria da 1000 mAh sul connettore della T-RGB. Controllare la polarità prima di collegarla.
+- Il display usa una LiPo da 1000 mAh sul connettore della T-RGB (caricatore TP4065). Controllare la polarità prima di collegarla.
+- Il display va in sonno profondo dopo 5 minuti senza tag.
 - Capacità della batteria del tag, autonomia e metodo di spegnimento: da definire.
 
 ### Impermeabilità
@@ -163,6 +164,11 @@ Sketch per la LilyGO T-RGB 2,8″. Riceve gli annunci `SwimTag` senza collegarsi
 - **Cronometro di prova:** parte con un colpo secco. Si ferma quando il tag è vicino e fermo per 3 s, con l'ora dell'ultimo movimento. Un tocco azzera.
 - **Doppio framebuffer:** il disegno avviene nel buffer nascosto, che viene mostrato al vsync. Niente tremolio.
 - **Diagnostica USB** a 115200 baud, una riga `R,` al secondo: RSSI, media, campioni ricevuti, stato del cronometro, tempo.
+
+- **Sonno profondo:** dopo 5 minuti senza tag il display si spegne. Si risveglia con il tocco (GPIO 1, INT del touch, con pull-up RTC durante il sonno) o con il pulsante BOOT (GPIO 0, ext0). I confronti dei tempi sono con segno: corretto il bug che lo rimandava subito in sonno dopo il risveglio.
+- **Motivo dell'avvio:** per 2 s all'accensione il display mostra la causa (accensione, tocco, BOOT, errore, tensione bassa, watchdog). Sonno e risveglio al tocco verificati sulla scheda.
+- **Batteria:** tensione e percentuale sul display, dal partitore interno della T-RGB.
+- **Da collegare:** accelerometro I2C (SDA 8, SCL 48).
 
 Parametri principali, in testa allo sketch: soglia di vicinanza −72 dBm, tag perso dopo 3 s, spinta 0,8 g, calma sotto 0,10 g e 20 °/s per 3 s. Da tarare in vasca.
 
@@ -275,6 +281,7 @@ Prossimi passi:
 
 Problemi aperti (dettagli in [`docs/STATO.md`](docs/STATO.md)):
 - il BLE non attraversa l'acqua: la logica usa l'accelerometro, il BLE serve per vicinanza e invio;
+- il display a batteria, senza USB, non si accende: da verificare polarità e tensione;
 - protezione della batteria e metodo di spegnimento del tag da definire;
 - capacità della LiPo del tag e autonomia da definire;
 - la compilazione è lenta perché le librerie sono in OneDrive: valutare lo spostamento;

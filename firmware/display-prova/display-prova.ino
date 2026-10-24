@@ -15,6 +15,7 @@
 #include <Fonts/FreeSans9pt7b.h>
 #include <BLEDevice.h>
 #include <BLEScan.h>
+#include <driver/rtc_io.h>
 #include "src/trgb/LilyGo_RGBPanel.h"
 
 const char *NOME_TAG = "SwimTag";
@@ -211,7 +212,7 @@ void componi(uint32_t ora) {
   }
 
   // Indicatore del tag: piccolo testo sotto il centro
-  bool presente = visto && ora - visto < TAG_PERSO_MS;
+  bool presente = visto && (int32_t)(ora - visto) < (int32_t)TAG_PERSO_MS;  // con segno: visto può essere appena dopo ora (task BLE)
   char stato[32];
   if (presente) snprintf(stato, sizeof(stato), "tag %s %d dBm", rssiMedio > SOGLIA_VICINO ? "vicino" : "lontano", (int)rssiMedio);
   else snprintf(stato, sizeof(stato), "tag non trovato");
@@ -254,6 +255,22 @@ void setup() {
   }
   disegnaSfondo();
 
+  // Diagnosi: perché la scheda è partita (per capire risvegli spontanei o errori)
+  esp_reset_reason_t motivo = esp_reset_reason();
+  const char *avvio = "accensione";
+  if (motivo == ESP_RST_DEEPSLEEP) {
+    esp_sleep_wakeup_cause_t causa = esp_sleep_get_wakeup_cause();
+    avvio = causa == ESP_SLEEP_WAKEUP_EXT1 ? "risveglio: tocco"
+          : causa == ESP_SLEEP_WAKEUP_EXT0 ? "risveglio: tasto BOOT" : "risveglio: altro";
+  } else if (motivo == ESP_RST_PANIC) avvio = "riavvio per errore";
+  else if (motivo == ESP_RST_BROWNOUT) avvio = "riavvio: tensione bassa";
+  else if (motivo == ESP_RST_INT_WDT || motivo == ESP_RST_TASK_WDT || motivo == ESP_RST_WDT) avvio = "riavvio: watchdog";
+  Serial.printf("Avvio: %s (reset %d)\n", avvio, (int)motivo);
+  composto->fillScreen(NERO);
+  testoCentrato(*composto, avvio, CY, &FreeSans9pt7b, 1, BIANCO);
+  panel.pushColors(0, 0, 480, 480, composto->getBuffer());
+  delay(2000);
+
   coda = xQueueCreate(64, sizeof(Campione));
   BLEDevice::init("");
   BLEScan *scan = BLEDevice::getScan();
@@ -267,7 +284,7 @@ void setup() {
 
 void loop() {
   uint32_t ora = millis();
-  bool presente = visto && ora - visto < TAG_PERSO_MS;
+  bool presente = visto && (int32_t)(ora - visto) < (int32_t)TAG_PERSO_MS;  // con segno: visto può essere appena dopo ora (task BLE)
 
   Campione c;
   while (xQueueReceive(coda, &c, 0) == pdTRUE) elabora(c);
@@ -310,7 +327,7 @@ void loop() {
   // Sonno profondo dopo SOSPENSIONE_MS senza tag, tocchi o cronometro in corsa;
   // un tocco sullo schermo lo risveglia (il firmware riparte da capo)
   uint32_t ultimaAttivita = max((uint32_t)visto, ultimoTocco);
-  if (!inCorsa && ora - ultimaAttivita > SOSPENSIONE_MS) {
+  if (!inCorsa && (int32_t)(ora - ultimaAttivita) > (int32_t)SOSPENSIONE_MS) {
     GFXcanvas16 &t = *composto;
     t.fillScreen(NERO);
     testoCentrato(t, "in sospensione", CY - 10, &FreeSansBold18pt7b, 1, BIANCO);
@@ -318,6 +335,11 @@ void loop() {
     panel.pushColors(0, 0, 480, 480, t.getBuffer());
     delay(1500);
     BLEDevice::deinit(false);
+    // Nel sonno GPIO1 (interrupt del touch) resterebbe senza pull-up e potrebbe
+    // risvegliare la scheda da solo; il tasto BOOT (GPIO0) è il risveglio di riserva
+    rtc_gpio_pullup_en(GPIO_NUM_1);
+    rtc_gpio_pulldown_dis(GPIO_NUM_1);
+    esp_sleep_enable_ext0_wakeup(GPIO_NUM_0, 0);
     panel.enableTouchWakeup();
     panel.sleep();
   }

@@ -19,3 +19,12 @@
 | 2026-10-24 | Doppio framebuffer con attesa del vsync sul display | Niente tremolio negli aggiornamenti |
 | 2026-10-24 | Corona del display: 3 assi di accelerazione, un giro ogni 15 s in senso orario | Stessa lettura della pagina HTML, a colpo d'occhio |
 | 2026-10-24 | Cronometro di prova: parte con colpo secco, si ferma con tag vicino e fermo 3 s (ora dell'ultimo movimento) | Provabile fuori dall'acqua, dove il BLE non cade |
+| 2026-10-24 | Display compilato con PlatformIO, espressif32 6.9.0 (core Arduino 2.0.17), driver LilyGO originale | Con il core 3.x il display RGB scorre e balla (contesa sulla PSRAM); LilyGO supporta solo 2.0.x |
+| 2026-10-24 | Il tag resta su arduino-cli con core 3.3.12 | Funziona bene; un solo ambiente per il display |
+| 2026-10-24 | Interfaccia del display: pace clock con 4 lancette (sfondo, lancette, segni), al posto del grafico degli assi | Si legge a colpo d'occhio dall'acqua; meno aggiornamenti dello schermo |
+| 2026-10-24 | Lancette continue (circa 15 immagini/s), costante per tornare agli scatti di un secondo | Provato: fluido |
+| 2026-10-24 | Sonno profondo: tag dopo 2 min fermo (risveglio dal BMI160 su INT1), display dopo 5 min senza tag (risveglio al tocco) | Autonomia della batteria |
+| 2026-10-24 | Seriale non bloccante sul tag (`setTxTimeoutMs(0)`) | Senza PC la seriale rallentava il programma e il BLE |
+| 2026-10-24 | Quadrante sempre dritto con un accelerometro sul connettore I2C del display | Il display può essere appoggiato in qualsiasi orientamento |
+| 2026-10-24 | Display: risveglio anche dal tasto BOOT, pull-up su GPIO1 nel sonno, motivo dell'avvio a schermo | Riserva se il touch non risveglia; diagnosi senza seriale |
+| 2026-10-24 | Confronti dei tempi con segno quando un valore arriva da un altro task (`visto` dal BLE) | La sottrazione senza segno traboccava e mandava subito il display in sonno |
