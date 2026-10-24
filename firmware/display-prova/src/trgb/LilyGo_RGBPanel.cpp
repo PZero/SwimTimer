@@ -472,9 +472,6 @@ void LilyGo_RGBPanel::initBUS()
             },
         },
         .data_width = 16, // RGB565 in parallel mode, thus 16bit in width
-        // SwimTimer: il display legge da buffer in RAM interna riempiti dalla PSRAM;
-        // senza, l'immagine scorre ("balla") quando la PSRAM è occupata
-        .bounce_buffer_size_px = BOARD_TFT_WIDTH * 20,
         .psram_trans_align = 64,
         .hsync_gpio_num = BOARD_TFT_HSYNC,
         .vsync_gpio_num = BOARD_TFT_VSYNC,
@@ -647,11 +644,35 @@ void LilyGo_RGBPanel::writeData(const uint8_t *data, int len)
 }
 
 // SwimTimer: accesso diretto al framebuffer (letto attraverso i bounce buffer).
+static volatile uint32_t contaVsync = 0, contaBounce = 0;
+static bool IRAM_ATTR suVsync(esp_lcd_panel_handle_t, const esp_lcd_rgb_panel_event_data_t *, void *)
+{
+    contaVsync++;
+    return false;
+}
+static bool IRAM_ATTR suFineBounce(esp_lcd_panel_handle_t, const esp_lcd_rgb_panel_event_data_t *, void *)
+{
+    contaBounce++;
+    return false;
+}
+
 uint16_t *LilyGo_RGBPanel::framebuffer()
 {
     assert(_panelDrv);
-    if (!_fb) esp_lcd_rgb_panel_get_frame_buffer(_panelDrv, 1, (void **)&_fb);
+    if (!_fb) {
+        esp_lcd_rgb_panel_get_frame_buffer(_panelDrv, 1, (void **)&_fb);
+        esp_lcd_rgb_panel_event_callbacks_t cb = {};
+        cb.on_vsync = suVsync;
+        cb.on_bounce_frame_finish = suFineBounce;
+        esp_lcd_rgb_panel_register_event_callbacks(_panelDrv, &cb, nullptr);
+    }
     return _fb;
+}
+
+// Diagnostica: fotogrammi inviati al display dall'avvio (vsync, fine giro dei bounce buffer)
+uint32_t LilyGo_RGBPanel::fotogrammi(bool bounce)
+{
+    return bounce ? contaBounce : contaVsync;
 }
 
 void LilyGo_RGBPanel::pushColors(uint16_t x, uint16_t y, uint16_t width, uint16_t hight, uint16_t *data)

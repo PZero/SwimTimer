@@ -59,6 +59,13 @@ void aggiornaAnnuncio(uint8_t contatore, const int16_t *assi) {
 }
 
 class CallbackServer : public BLEServerCallbacks {
+#if defined(CONFIG_NIMBLE_ENABLED)
+  // Chiede al client un intervallo di collegamento breve (15-30 ms) per le notifiche a 25 Hz
+  void onConnect(BLEServer *server, ble_gap_conn_desc *desc) override {
+    server->updateConnParams(desc->conn_handle, 12, 24, 0, 400);  // unità 1,25 ms; timeout 4 s
+    onConnect(server);
+  }
+#endif
   void onConnect(BLEServer *server) override {
     clienteConnesso = true;
     // Riprende l'annuncio anche con un client collegato: il display fa scansione per RSSI
@@ -72,6 +79,8 @@ class CallbackServer : public BLEServerCallbacks {
 
 void setup() {
   Serial.begin(115200);
+  // Senza PC collegato (batteria, caricatore) la seriale non deve rallentare il programma
+  Serial.setTxTimeoutMs(0);
   delay(2000);
   Serial.println("\n=== SwimTimer: test collegamenti ===");
 

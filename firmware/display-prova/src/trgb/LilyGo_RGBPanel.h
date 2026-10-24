@@ -101,6 +101,7 @@ public:
 
     // SwimTimer: framebuffer per disegnare solo le parti che cambiano
     uint16_t *framebuffer();
+    uint32_t fotogrammi(bool bounce);
 
     void pushColors(uint16_t x, uint16_t y, uint16_t width, uint16_t hight, uint16_t *data);
 
