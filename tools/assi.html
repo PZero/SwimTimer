@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SwimTimer assi</title>
+<style>
+  :root {
+    --bg: #f6f7f9; --card: #ffffff; --testo: #1b1f24; --tenue: #5b6470; --bordo: #d9dde3;
+    --x: #d1453b; --y: #2e8b57; --z: #2f6fd6; --griglia: #e7eaee;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #111418; --card: #1a1f25; --testo: #e8ebef; --tenue: #9aa4b1; --bordo: #2b323b;
+      --x: #ff6b5e; --y: #4cc38a; --z: #6aa0ff; --griglia: #252c34;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--testo); font: 15px/1.4 system-ui, sans-serif; }
+  main { max-width: 960px; margin: 0 auto; padding: 16px; }
+  header { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; }
+  h1 { font-size: 20px; margin: 0; }
+  button { font: inherit; padding: 8px 16px; border-radius: 8px; border: 1px solid var(--bordo); background: var(--card); color: var(--testo); cursor: pointer; }
+  button.primario { background: var(--z); border-color: var(--z); color: #fff; }
+  #stato { color: var(--tenue); }
+  .card { background: var(--card); border: 1px solid var(--bordo); border-radius: 12px; padding: 12px; margin-top: 16px; }
+  .valori { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .valore { text-align: center; }
+  .valore .nome { font-weight: 600; }
+  .valore .num { font: 600 28px/1.2 ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+  .x { color: var(--x); } .y { color: var(--y); } .z { color: var(--z); }
+  canvas { width: 100%; height: 220px; display: block; }
+  h2 { font-size: 15px; margin: 0 0 8px; color: var(--tenue); font-weight: 600; }
+  #log { font: 12px/1.4 ui-monospace, monospace; color: var(--tenue); height: 90px; overflow: auto; white-space: pre-wrap; }
+  .avviso { color: var(--x); }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>SwimTimer · assi del BMI160</h1>
+    <div>
+      <button id="collega" class="primario">Collega il tag</button>
+      <span id="stato">Non collegato</span>
+    </div>
+  </header>
+  <p id="supporto" class="avviso" hidden>Questo browser non supporta Web Serial: apri la pagina con Chrome o Edge.</p>
+
+  <section class="card">
+    <h2>Accelerazione (g)</h2>
+    <div class="valori">
+      <div class="valore"><div class="nome x">X</div><div class="num x" id="ax">–</div></div>
+      <div class="valore"><div class="nome y">Y</div><div class="num y" id="ay">–</div></div>
+      <div class="valore"><div class="nome z">Z</div><div class="num z" id="az">–</div></div>
+    </div>
+    <canvas id="graficoAcc"></canvas>
+  </section>
+
+  <section class="card">
+    <h2>Rotazione (°/s)</h2>
+    <div class="valori">
+      <div class="valore"><div class="nome x">X</div><div class="num x" id="gx">–</div></div>
+      <div class="valore"><div class="nome y">Y</div><div class="num y" id="gy">–</div></div>
+      <div class="valore"><div class="nome z">Z</div><div class="num z" id="gz">–</div></div>
+    </div>
+    <canvas id="graficoGyro"></canvas>
+  </section>
+
+  <section class="card">
+    <h2>Messaggi del tag</h2>
+    <div id="log"></div>
+  </section>
+</main>
+<script>
+const CAMPIONI = 250; // 5 s a 50 Hz
+const acc = [[], [], []], gyro = [[], [], []];
+const $ = id => document.getElementById(id);
+
+if (!('serial' in navigator)) { $('supporto').hidden = false; $('collega').disabled = true; }
+
+function colore(nome) { return getComputedStyle(document.documentElement).getPropertyValue(nome).trim(); }
+
+function disegna(canvas, serie, minimo, massimo) {
+  const dpr = window.devicePixelRatio || 1;
+  const w = canvas.clientWidth, h = canvas.clientHeight;
+  if (canvas.width !== w * dpr) { canvas.width = w * dpr; canvas.height = h * dpr; }
+  const ctx = canvas.getContext('2d');
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, w, h);
+  // Scala automatica, mai più stretta di [minimo, massimo]
+  let lo = minimo, hi = massimo;
+  for (const s of serie) for (const v of s) { if (v < lo) lo = v; if (v > hi) hi = v; }
+  const y = v => h - 8 - (v - lo) / (hi - lo) * (h - 16);
+  ctx.strokeStyle = colore('--griglia'); ctx.fillStyle = colore('--tenue');
+  ctx.font = '11px system-ui'; ctx.lineWidth = 1;
+  for (let i = 0; i <= 4; i++) {
+    const v = lo + (hi - lo) * i / 4, yy = y(v);
+    ctx.beginPath(); ctx.moveTo(40, yy); ctx.lineTo(w, yy); ctx.stroke();
+    ctx.fillText(v.toFixed(Math.abs(hi - lo) < 10 ? 1 : 0), 0, yy + 4);
+  }
+  ['--x', '--y', '--z'].forEach((c, i) => {
+    const s = serie[i]; if (!s.length) return;
+    ctx.strokeStyle = colore(c); ctx.lineWidth = 2; ctx.beginPath();
+    s.forEach((v, j) => {
+      const xx = 40 + (w - 40) * j / (CAMPIONI - 1);
+      j ? ctx.lineTo(xx, y(v)) : ctx.moveTo(xx, y(v));
+    });
+    ctx.stroke();
+  });
+}
+
+function ridisegna() {
+  disegna($('graficoAcc'), acc, -1.5, 1.5);
+  disegna($('graficoGyro'), gyro, -100, 100);
+  requestAnimationFrame(ridisegna);
+}
+requestAnimationFrame(ridisegna);
+
+function aggiungiLog(riga) {
+  const log = $('log');
+  log.textContent = (log.textContent + riga + '\n').split('\n').slice(-30).join('\n');
+  log.scrollTop = log.scrollHeight;
+}
+
+function gestisciRiga(riga) {
+  if (!riga.startsWith('D,')) { if (riga.trim()) aggiungiLog(riga); return; }
+  const v = riga.split(',').slice(2).map(Number);
+  if (v.length !== 6 || v.some(isNaN)) return;
+  ['ax', 'ay', 'az'].forEach((id, i) => { $(id).textContent = v[i].toFixed(2); acc[i].push(v[i]); if (acc[i].length > CAMPIONI) acc[i].shift(); });
+  ['gx', 'gy', 'gz'].forEach((id, i) => { $(id).textContent = v[i + 3].toFixed(0); gyro[i].push(v[i + 3]); if (gyro[i].length > CAMPIONI) gyro[i].shift(); });
+}
+
+$('collega').addEventListener('click', async () => {
+  try {
+    const porta = await navigator.serial.requestPort({ filters: [{ usbVendorId: 0x303a }] });
+    await porta.open({ baudRate: 115200 });
+    $('stato').textContent = 'Collegato';
+    const lettore = porta.readable.pipeThrough(new TextDecoderStream()).getReader();
+    let resto = '';
+    while (true) {
+      const { value, done } = await lettore.read();
+      if (done) break;
+      const righe = (resto + value).split('\n');
+      resto = righe.pop();
+      righe.forEach(r => gestisciRiga(r.replace('\r', '')));
+    }
+  } catch (e) {
+    $('stato').textContent = 'Scollegato: ' + e.message;
+  }
+});
+</script>
+</body>
+</html>
