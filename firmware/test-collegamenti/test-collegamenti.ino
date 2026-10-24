@@ -1,6 +1,10 @@
 // Test dei collegamenti del tag: bus I2C, BMI160, pin INT1 e livello batteria.
 // Collegamenti in hardware/schema.md. Uscita sulla seriale USB a 115200.
 #include <Wire.h>
+#include <BLEDevice.h>
+#include <BLEServer.h>
+#include <BLEUtils.h>
+#include <BLE2902.h>
 
 const int PIN_SDA = 8;
 const int PIN_SCL = 9;
@@ -31,10 +35,67 @@ bool leggi(uint8_t reg, uint8_t *buf, size_t n) {
 
 bool sensoreOk = false;
 
+// Servizio GATT per la pagina Web Bluetooth (contratto fisso, la pagina lo usa già)
+#define UUID_SERVIZIO "7a1e0001-5b1d-4c8e-9f3a-1d2c3b4a5e60"
+#define UUID_DATI "7a1e0002-5b1d-4c8e-9f3a-1d2c3b4a5e60"
+BLECharacteristic *caratteristicaDati = nullptr;
+volatile bool clienteConnesso = false;
+BLEAdvertising *annuncio = nullptr;
+
+// Annuncio per il display (firmware/display-prova), che lo riceve senza collegarsi:
+// flag + nome "SwimTag" + dati produttore (0xFFFF = sperimentale):
+// 1 byte contatore, poi int16 little-endian grezzi ax, ay, az, gx, gy, gz.
+// L'UUID del servizio va nella risposta alla scansione per lasciare spazio ai dati.
+void aggiornaAnnuncio(uint8_t contatore, const int16_t *assi) {
+  uint8_t produttore[15] = {0xFF, 0xFF, contatore};
+  memcpy(produttore + 3, assi, 12);
+  String md;
+  md.concat((const char *)produttore, sizeof(produttore));
+  BLEAdvertisementData dati;
+  dati.setFlags(0x06);  // general discoverable, solo BLE
+  dati.setName("SwimTag");
+  dati.setManufacturerData(md);
+  annuncio->setAdvertisementData(dati);
+}
+
+class CallbackServer : public BLEServerCallbacks {
+  void onConnect(BLEServer *server) override {
+    clienteConnesso = true;
+    // Riprende l'annuncio anche con un client collegato: il display fa scansione per RSSI
+    BLEDevice::startAdvertising();
+  }
+  void onDisconnect(BLEServer *server) override {
+    clienteConnesso = false;
+    BLEDevice::startAdvertising();
+  }
+};
+
 void setup() {
   Serial.begin(115200);
   delay(2000);
   Serial.println("\n=== SwimTimer: test collegamenti ===");
+
+  // Server GATT: servizio con una caratteristica READ+NOTIFY da 16 byte
+  BLEDevice::init("SwimTag");
+  BLEServer *server = BLEDevice::createServer();
+  server->setCallbacks(new CallbackServer());
+  BLEService *servizio = server->createService(UUID_SERVIZIO);
+  caratteristicaDati = servizio->createCharacteristic(
+      UUID_DATI, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_NOTIFY);
+  caratteristicaDati->addDescriptor(new BLE2902());
+  servizio->start();
+
+  // Annuncio BLE ogni 50 ms: nome e ultimo campione (vedi aggiornaAnnuncio)
+  annuncio = BLEDevice::getAdvertising();
+  int16_t zero[6] = {0};
+  aggiornaAnnuncio(0, zero);
+  BLEAdvertisementData risposta;
+  risposta.setCompleteServices(BLEUUID(UUID_SERVIZIO));
+  annuncio->setScanResponseData(risposta);
+  annuncio->setMinInterval(80);  // unità da 0,625 ms
+  annuncio->setMaxInterval(80);
+  BLEDevice::startAdvertising();
+  Serial.println("BLE: annuncio come SwimTag con servizio dati");
 
   pinMode(PIN_INT1, INPUT);
 
@@ -97,6 +158,25 @@ void loop() {
       int16_t v[6];
       for (int i = 0; i < 6; i++) v[i] = (int16_t)(b[2 * i] | (b[2 * i + 1] << 8));
       // Fondo scala predefinito: ±2 g (16384 LSB/g), ±2000 °/s (16,4 LSB/°/s)
+      // Notifica BLE a 25 Hz (un campione ogni 2): 16 byte little-endian,
+      // uint32 millis, poi i sei int16 grezzi ax, ay, az, gx, gy, gz
+      // Dati per l'annuncio a 20 Hz, nello stesso ordine della notifica
+      int16_t assi[6] = {v[3], v[4], v[5], v[0], v[1], v[2]};
+      static uint32_t ultimoAnnuncio = 0;
+      static uint8_t numeroAnnuncio = 0;
+      if (millis() - ultimoAnnuncio >= 50) {
+        ultimoAnnuncio = millis();
+        aggiornaAnnuncio(++numeroAnnuncio, assi);
+      }
+      static uint8_t contatore = 0;
+      if (clienteConnesso && caratteristicaDati && (contatore++ & 1) == 0) {
+        uint8_t pacchetto[16];
+        uint32_t t = millis();
+        memcpy(pacchetto, &t, 4);
+        memcpy(pacchetto + 4, assi, 12);
+        caratteristicaDati->setValue(pacchetto, sizeof(pacchetto));
+        caratteristicaDati->notify();
+      }
       Serial.printf("D,%lu,%.3f,%.3f,%.3f,%.1f,%.1f,%.1f\n", millis(),
                     v[3] / 16384.0, v[4] / 16384.0, v[5] / 16384.0,
                     v[0] / 16.4, v[1] / 16.4, v[2] / 16.4);
