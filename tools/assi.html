@@ -22,6 +22,8 @@
   h1 { font-size: 20px; margin: 0; }
   button { font: inherit; padding: 8px 16px; border-radius: 8px; border: 1px solid var(--bordo); background: var(--card); color: var(--testo); cursor: pointer; }
   button.primario { background: var(--z); border-color: var(--z); color: #fff; }
+  .comandi { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  button:disabled { opacity: .5; cursor: not-allowed; }
   #stato { color: var(--tenue); }
   .card { background: var(--card); border: 1px solid var(--bordo); border-radius: 12px; padding: 12px; margin-top: 16px; }
   .valori { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
@@ -39,12 +41,13 @@
 <main>
   <header>
     <h1>SwimTimer · assi del BMI160</h1>
-    <div>
+    <div class="comandi">
       <button id="collega" class="primario">Collega il tag</button>
+      <button id="collegaBt" class="primario">Collega via Bluetooth</button>
       <span id="stato">Non collegato</span>
     </div>
   </header>
-  <p id="supporto" class="avviso" hidden>Questo browser non supporta Web Serial: apri la pagina con Chrome o Edge.</p>
+  <p id="supporto" class="avviso" hidden></p>
 
   <section class="card">
     <h2>Accelerazione (g)</h2>
@@ -72,11 +75,36 @@
   </section>
 </main>
 <script>
-const CAMPIONI = 250; // 5 s a 50 Hz
+const SECONDI = 5;          // durata della finestra del grafico
+let CAMPIONI = 250;         // campioni mostrati: dipende dalla sorgente (USB 50 Hz, Bluetooth 25 Hz)
+const HZ_USB = 50, HZ_BT = 25;
 const acc = [[], [], []], gyro = [[], [], []];
 const $ = id => document.getElementById(id);
 
-if (!('serial' in navigator)) { $('supporto').hidden = false; $('collega').disabled = true; }
+// Avvisi specifici per ciascuna API: si disabilita solo il pulsante che non può funzionare
+const avvisi = [];
+if (!('serial' in navigator)) { $('collega').disabled = true; avvisi.push('USB non disponibile: questo browser non supporta Web Serial (usa Chrome o Edge).'); }
+if (!('bluetooth' in navigator)) { $('collegaBt').disabled = true; avvisi.push('Bluetooth non disponibile: questo browser non supporta Web Bluetooth (usa Chrome o Edge).'); }
+if (avvisi.length) { $('supporto').hidden = false; $('supporto').textContent = avvisi.join(' '); }
+
+// Abilita i pulsanti solo se l'API esiste e nessuna sorgente è attiva
+function aggiornaPulsanti(attiva) {
+  $('collega').disabled = attiva || !('serial' in navigator);
+  $('collegaBt').disabled = attiva || !('bluetooth' in navigator);
+}
+
+// Prepara la finestra del grafico (circa 5 s) per la sorgente scelta
+function iniziaSorgente(nome, hz) {
+  CAMPIONI = SECONDI * hz;
+  acc.forEach(s => s.length = 0);
+  gyro.forEach(s => s.length = 0);
+  $('stato').textContent = 'Collegato · ' + nome;
+  aggiornaPulsanti(true);
+}
+function finisceSorgente(motivo) {
+  $('stato').textContent = 'Scollegato' + (motivo ? ': ' + motivo : '');
+  aggiornaPulsanti(false);
+}
 
 function colore(nome) { return getComputedStyle(document.documentElement).getPropertyValue(nome).trim(); }
 
@@ -126,15 +154,21 @@ function gestisciRiga(riga) {
   if (!riga.startsWith('D,')) { if (riga.trim()) aggiungiLog(riga); return; }
   const v = riga.split(',').slice(2).map(Number);
   if (v.length !== 6 || v.some(isNaN)) return;
-  ['ax', 'ay', 'az'].forEach((id, i) => { $(id).textContent = v[i].toFixed(2); acc[i].push(v[i]); if (acc[i].length > CAMPIONI) acc[i].shift(); });
-  ['gx', 'gy', 'gz'].forEach((id, i) => { $(id).textContent = v[i + 3].toFixed(0); gyro[i].push(v[i + 3]); if (gyro[i].length > CAMPIONI) gyro[i].shift(); });
+  aggiungiCampione(...v);
+}
+
+// Aggiorna valori e serie dei grafici (ax, ay, az in g; gx, gy, gz in °/s)
+function aggiungiCampione(ax, ay, az, gx, gy, gz) {
+  const a = [ax, ay, az], g = [gx, gy, gz];
+  ['ax', 'ay', 'az'].forEach((id, i) => { $(id).textContent = a[i].toFixed(2); acc[i].push(a[i]); while (acc[i].length > CAMPIONI) acc[i].shift(); });
+  ['gx', 'gy', 'gz'].forEach((id, i) => { $(id).textContent = g[i].toFixed(0); gyro[i].push(g[i]); while (gyro[i].length > CAMPIONI) gyro[i].shift(); });
 }
 
 $('collega').addEventListener('click', async () => {
   try {
     const porta = await navigator.serial.requestPort({ filters: [{ usbVendorId: 0x303a }] });
     await porta.open({ baudRate: 115200 });
-    $('stato').textContent = 'Collegato';
+    iniziaSorgente('USB', HZ_USB);
     const lettore = porta.readable.pipeThrough(new TextDecoderStream()).getReader();
     let resto = '';
     while (true) {
@@ -145,7 +179,45 @@ $('collega').addEventListener('click', async () => {
       righe.forEach(r => gestisciRiga(r.replace('\r', '')));
     }
   } catch (e) {
-    $('stato').textContent = 'Scollegato: ' + e.message;
+    finisceSorgente(e.message);
+    return;
+  }
+  finisceSorgente();
+});
+
+// Bluetooth (Web Bluetooth): il tag "SwimTag" invia notifiche da 16 byte a 25 Hz
+const BLE_SERVIZIO = '7a1e0001-5b1d-4c8e-9f3a-1d2c3b4a5e60';
+const BLE_CARATTERISTICA = '7a1e0002-5b1d-4c8e-9f3a-1d2c3b4a5e60';
+
+function gestisciNotifica(evento) {
+  const d = evento.target.value; // DataView
+  if (!d || d.byteLength !== 16) return; // formato diverso dal contratto: ignora
+  // byte 0-3 millis (non usato nei grafici), poi 3 assi di accelerazione e 3 di giroscopio, little-endian
+  aggiungiCampione(
+    d.getInt16(4, true) / 16384, d.getInt16(6, true) / 16384, d.getInt16(8, true) / 16384,
+    d.getInt16(10, true) / 16.4, d.getInt16(12, true) / 16.4, d.getInt16(14, true) / 16.4);
+}
+
+$('collegaBt').addEventListener('click', async () => {
+  let dispositivo;
+  try {
+    dispositivo = await navigator.bluetooth.requestDevice({
+      filters: [{ name: 'SwimTag' }],
+      optionalServices: [BLE_SERVIZIO],
+    });
+    // Nessuna riconnessione automatica: a disconnessione avvenuta si torna allo stato iniziale
+    dispositivo.addEventListener('gattserverdisconnected', () => finisceSorgente());
+    $('stato').textContent = 'Connessione…';
+    $('collega').disabled = $('collegaBt').disabled = true;
+    const server = await dispositivo.gatt.connect();
+    const servizio = await server.getPrimaryService(BLE_SERVIZIO);
+    const car = await servizio.getCharacteristic(BLE_CARATTERISTICA);
+    car.addEventListener('characteristicvaluechanged', gestisciNotifica);
+    await car.startNotifications();
+    iniziaSorgente('Bluetooth', HZ_BT);
+  } catch (e) {
+    if (dispositivo && dispositivo.gatt.connected) dispositivo.gatt.disconnect();
+    finisceSorgente(e.message);
   }
 });
 </script>
