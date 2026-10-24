@@ -14,6 +14,7 @@
 #include <BLEDevice.h>
 #include <BLEScan.h>
 #include "src/trgb/LilyGo_RGBPanel.h"
+#include <esp_cache.h>
 
 const char *NOME_TAG = "SwimTag";
 const int SOGLIA_VICINO = -72;       // dBm: sopra = vicino (da tarare in vasca)
@@ -96,6 +97,16 @@ void punto(float pos, int r, int16_t &x, int16_t &y) {
   y = CY - r * cosf(t);
 }
 
+// Scrive in PSRAM le righe da y0 a y1 rimaste nella cache della CPU,
+// altrimenti il display le vede solo quando la cache si svuota da sola
+void sincronizza(int y0, int y1) {
+  if (y0 < 0) y0 = 0;
+  if (y1 > 479) y1 = 479;
+  if (y1 < y0) return;
+  esp_cache_msync(panel.framebuffer() + y0 * 480, (y1 - y0 + 1) * 480 * 2,
+                  ESP_CACHE_MSYNC_FLAG_DIR_C2M | ESP_CACHE_MSYNC_FLAG_UNALIGNED);
+}
+
 // Disegna il tratto appena arrivato e cancella lo spicchio davanti alla lancetta
 void disegnaUltimo() {
   uint32_t j = scritti - 1;
@@ -107,6 +118,8 @@ void disegnaUltimo() {
   punto(e + 1.5, R_DENTRO - 1, x3, y3);
   schermo.fillTriangle(x0, y0, x1, y1, x2, y2, NERO);
   schermo.fillTriangle(x0, y0, x2, y2, x3, y3, NERO);
+  int ymin = min(min(y0, y1), min(y2, y3)), ymax = max(max(y0, y1), max(y2, y3));
+  sincronizza(ymin, ymax);
   if (j == 0) return;
   int i0 = (j - 1) % CAMPIONI_GIRO, i1 = j % CAMPIONI_GIRO;
   for (int asse = 0; asse < 3; asse++) {
@@ -118,6 +131,9 @@ void disegnaUltimo() {
                        CX + (r1 + d) * sinT[i1], CY - (r1 + d) * cosT[i1], COLORE_ASSE[asse]);
     }
   }
+  int ya = CY - (R_FUORI + 2) * cosT[i0], yb = CY - (R_FUORI + 2) * cosT[i1];
+  int yc = CY - (R_DENTRO - 1) * cosT[i0], yd = CY - (R_DENTRO - 1) * cosT[i1];
+  sincronizza(min(min(ya, yb), min(yc, yd)) - 1, max(max(ya, yb), max(yc, yd)) + 1);
 }
 
 void aggiungi(float ax, float ay, float az) {
@@ -177,6 +193,7 @@ void copiaRiquadro() {
   uint16_t *fb = panel.framebuffer();
   for (int r = 0; r < RQ_A; r++)
     memcpy(fb + (RQ_Y + r) * 480 + RQ_X, riquadro->getBuffer() + r * RQ_L, RQ_L * 2);
+  sincronizza(RQ_Y, RQ_Y + RQ_A - 1);
 }
 
 void disegnaTesti(bool presente) {
@@ -217,6 +234,7 @@ void setup() {
   schermo.fillScreen(NERO);
   schermo.drawCircle(CX, CY, R_DENTRO - 3, GRIGIO_SCURO);
   testoCentrato(schermo, 0, 0, "tocca per azzerare", 385, &FreeSans9pt7b, 1, GRIGIO_SCURO);
+  sincronizza(0, 479);
   riquadro = new GFXcanvas16(RQ_L, RQ_A);
 
   coda = xQueueCreate(64, sizeof(Campione));
