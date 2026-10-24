@@ -11,7 +11,7 @@
 ## Prossimi passi
 1. Firmware di registrazione: salva accelerazioni, rotazioni e segnale BLE in memoria per le prove in vasca (sacchetto stagno).
 2. Prova in vasca e analisi dei dati: spinta dal muro, virata, arrivo, soglie di calma.
-3. Display a bordo vasca: scelta componenti e firmware di ricezione BLE.
+3. Display LilyGO T-RGB: verificare versione e touch, primo firmware con tempo grande e ricerca BLE del tag (RSSI vicino/lontano).
 
 ## Problemi aperti
 - Il BLE non attraversa l'acqua: la logica si basa sull'accelerometro, il BLE serve per vicinanza e invio dati.

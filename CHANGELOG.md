@@ -9,3 +9,4 @@
 - `firmware/test-collegamenti`: test del bus I2C del BMI160 e invio delle righe dati a circa 50 Hz.
 - `tools/assi.html`: pagina Web Serial (Chrome/Edge) con valori e grafici dei 3 assi.
 - README completato con architettura, hardware, firmware, uso e roadmap.
+- Display scelto: LilyGO T-RGB. Schema del tag riscritto con la batteria sui pad BAT (TP4056 come alternativa scartata).

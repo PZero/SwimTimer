@@ -57,7 +57,7 @@ flowchart LR
     S[BMI160<br/>accelerometro + giroscopio] -- I2C --> M[ESP32-S3<br/>logica di rilevamento]
     B[LiPo 3,7 V] -- pad BAT+/BAT- --> M
   end
-  M -- BLE, quando emerge --> D[Display a bordo vasca<br/>da definire]
+  M -- BLE, quando emerge --> D[Display a bordo vasca<br/>LilyGO T-RGB]
   M -. BLE, facoltativo .-> A[App sul telefono<br/>da definire]
 ```
 
@@ -68,7 +68,7 @@ flowchart LR
 - **Contenitore:** da definire.
 
 ### Display
-Da definire. Requisiti attesi: cifre leggibili a bordo vasca e ricezione BLE dal tag.
+LilyGO T-RGB: ESP32-S3 con display rotondo IPS 480×480, touch, microSD e connettore batteria. Riceve gli eventi dal tag via BLE e mostra l'ultimo tempo in grande. Va protetto con una custodia trasparente; firmware da scrivere.
 
 ### Flusso dei dati, dal sensore al tempo
 1. Il BMI160 misura accelerazione e rotazione.
@@ -90,7 +90,7 @@ Distinta completa: [`hardware/bom.md`](hardware/bom.md). Schema e collegamenti: 
 | Sensore inerziale | GY-BMI160 | accelerazione e rotazione |
 | Batteria | LiPo 3,7 V, una cella (capacità da scegliere, indicativamente 300–500 mAh) | alimentazione |
 | Partitore (facoltativo) | 2 resistenze da 100 kΩ | lettura del livello batteria |
-| Display | da definire | tempi a bordo vasca |
+| Display | LilyGO T-RGB (ESP32-S3, rotondo 480×480) | tempi a bordo vasca |
 
 ### Collegamenti del tag (prototipo)
 
