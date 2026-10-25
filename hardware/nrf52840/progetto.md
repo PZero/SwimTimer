@@ -22,7 +22,7 @@
                                     ├─ MS5837-02BA (I2C, profondità)
                                     └─ LED RGB 1010 (GPIO in assorbimento)
                          VDDH ──[2×47 µF]── vibratore Ø 6 mm ── N-MOSFET ← GPIO (PWM)
-                         SWD: piazzole di programmazione
+                         SWD: piazzole interne per il primo avvio (sotto la resina)
 ```
 
 Note di progetto:
@@ -95,6 +95,7 @@ Confronto: il prototipo attuale (SuperMini 18 × 22 mm + modulo BMI160 + LiPo da
 - **Restano fuori dalla resina**: le piazzole di ricarica (a filo della superficie) e la porta del sensore di pressione (il gel del MS5837 deve toccare l'acqua: guarnizione o O-ring intorno al cappuccio, mai resina sopra).
 - LED visibile attraverso una resina trasparente o una finestrella.
 - Vibratore incollato rigido al guscio prima della colata (la resina rigida trasmette bene la vibrazione; una morbida la smorza).
+- **Contatti esterni: solo i 2 poli di ricarica** (più l'eventuale terzo). Le piazzole SWD servono una volta sola, prima della colata (MCUboot + firmware + prova), e poi restano annegate nella resina.
 - Niente pulsanti: accensione/spegnimento dalla custodia e dai gesti (doppio/triplo tocco già usati nella pagina).
 - La resina sopra l'antenna sposta un po' la frequenza: provare la portata **dopo** la colata.
 
@@ -108,7 +109,7 @@ Confronto: il prototipo attuale (SuperMini 18 × 22 mm + modulo BMI160 + LiPo da
 | **Carica a corrente bassa** (15 mA) | bassa/media | BQ25100 è fatto apposta (da 10 mA); attenzione al **timer di sicurezza fisso di 10 h** e alla soglia di terminazione (PRETERM); niente caricatori tipo TP4056 (minimo pratico ~50 mA) |
 | **Picchi di corrente** su cella da 20 mAh (max 1–2 C = 20–40 mA), soprattutto il **vibratore** (50–80 mA) | alta | vibratore in PWM ~50 % a impulsi brevi, 2 × 47 µF su VDDH, niente radio/flash durante l'impulso, cella ≥ 2 C; soglia di spegnimento del vibratore sotto ~3,6 V; provarlo sulla XIAO prima del PCB |
 | **Disponibilità componenti** (modulo e IMU *extended*, stock variabile) | media | verificare stock il giorno dell'ordine; riserva E73 per il modulo e ICM-45686 per l'IMU già nel progetto |
-| **Primo flash e recupero** senza USB | media | piazzole SWD raggiungibili prima della resina; MCUboot con immagine di riserva; programmatore J-Link EDU Mini o Raspberry Pi Pico come *debugprobe* |
+| **Primo flash e recupero**: dopo la resina l'SWD non è più raggiungibile | alta | programmare e collaudare (radio, IMU, flash, carica) **prima** della colata; da lì solo aggiornamenti via BLE con MCUboot: bootloader non aggiornabile, immagine nuova provata e confermata solo se il BLE funziona (altrimenti torna alla precedente), immagine di riserva nella flash esterna; programmatore J-Link EDU Mini o Raspberry Pi Pico come *debugprobe* con pinza pogo |
 | **Porting del firmware** da Arduino/ESP32 a Zephyr | media | passo intermedio con la XIAO (sotto); algoritmi già indipendenti dall'hardware |
 | **Sensore di pressione** con porta esposta | media | O-ring, prova di tenuta in vasca prima di resinare le altre schede |
 
@@ -147,4 +148,5 @@ nRF52840 + LSM6DS3TR-C + 2 MB QSPI + caricatore BQ25101, 21 × 17,5 mm, già sup
 | Sensore di pressione **MS5837-02BA** (**deciso dall'utente** il 2026-10-25) | fase subacquea, uscita dall'acqua, BLE spento sott'acqua |
 | **Vibratore** Ø 6 mm in PWM (**deciso dall'utente** il 2026-10-25) | avviso tattile in acqua; picchi gestiti con PWM e condensatori |
 | Firmware su **Zephyr / nRF Connect SDK** con MCUboot e DFU via BLE | driver pronti, stesso stack di SlimeVR, aggiornamento senza aprire il tag |
+| Piazzole SWD interne, sotto la resina (**deciso dall'utente** il 2026-10-25) | si programmano una volta prima della colata; all'esterno solo i contatti di ricarica |
 | Prima la **XIAO nRF52840 Sense** | porting del firmware e misure dei consumi prima di spendere per il PCB |

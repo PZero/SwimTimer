@@ -17,7 +17,7 @@ Prezzi indicativi in USD per pezzo a piccoli lotti (5–10 schede); codici LCSC/
 | D1 | LED di stato | LED RGB 1010 a anodo comune (codice da scegliere tra i *basic* JLC) | — | 1,0 × 1,0 mm | 1–2 mA per colore, a impulsi | 0,1 $ |
 | BT1 | Batteria | LiPo 3,7 V **~20 mAh con PCM** (es. 401012 ≈ 4 × 10 × 12 mm o 301015 ≈ 3 × 10 × 15 mm; misure da verificare col fornitore) | fuori JLC (AliExpress/fornitori celle) | saldata a filo o linguette | autoscarica ~2–3 %/mese | 2–4 $ |
 | J1–J3 | Ricarica a contatto | 2 piazzole dorate (VIN, GND) + 1 facoltativa; nella custodia molle pogo e magneti | piazzole sulla scheda; pogo nella custodia | Ø 2–2,5 mm ciascuna | — | — |
-| J4 | Programmazione | piazzole SWD (VDD, SWDIO, SWCLK, RESET, GND) tipo Tag-Connect TC2030-NL o 5 test point | — | ~6 × 3 mm | — | — |
+| J4 | Programmazione del primo avvio | 5 piazzole SWD (VDD, SWDIO, SWCLK, RESET, GND) a passo 1,27 mm (o impronta Tag-Connect TC2030-NL), lette con una pinza a molle pogo: nessun connettore saldato. **Interne: si usano prima della resina e restano annegate** (decisione dell'utente 2026-10-25) | — | ~6 × 3 mm | — | — |
 
 ## Passivi e protezioni
 
