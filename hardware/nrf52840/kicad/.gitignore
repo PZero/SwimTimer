@@ -3,8 +3,7 @@
 *.kicad_prl
 fp-info-cache
 *.lck
-# Gerber: si rigenerano con esporta_jlc.py (si versionano solo quando la scheda è sbrogliata)
+# Gerber sciolti: si rigenerano con esporta_jlc.py (si versiona solo lo zip per JLC)
 jlc/gerber/
-jlc/*.zip
 __pycache__/
 sbroglio/
