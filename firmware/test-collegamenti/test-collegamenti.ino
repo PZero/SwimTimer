@@ -16,7 +16,7 @@
 // finché non è confermata (vedi confermaAggiornamento).
 // Versione numerica MAJOR.MINOR.PATCH (anche 4 numeri), gestita a mano: AUMENTARLA A OGNI RILASCIO.
 // Serve ai controlli dell'OTA (niente aggiornamento alla stessa versione o a una precedente).
-#define FIRMWARE_VERSIONE "0.4.2"
+#define FIRMWARE_VERSIONE "0.4.3"
 #if __has_include("versione.h")
 #include "versione.h"  // facoltativo, scritto dalla CI: #define FIRMWARE_BUILD "2026-10-25.abc1234"
 #endif
@@ -137,14 +137,32 @@ void dormi() {
   esp_deep_sleep_start();
 }
 
-// Al risveglio: interrupt spenti e sensori di nuovo in modalità normale (vedi setup)
+// Al risveglio: interrupt spenti (i sensori si accendono e si configurano in avviaSensore)
 void preparaSensoriNormali() {
   scrivi(REG_INT_EN_0, 0x00);
   scrivi(REG_CMD, 0xB1);
   scrivi(REG_INT_MAP_0, 0x00);
-  scrivi(REG_ACC_RANGE, 0x0C); // ±16 g (2048 LSB/g)
-  scrivi(REG_GYR_CONF, 0x29);  // giroscopio 200 Hz, filtro normale (±2000 °/s resta il predefinito)
-  scrivi(REG_ACC_CONF, 0x29);  // 200 Hz, filtro normale (serve al motore tap; si legge a 100 Hz)
+}
+
+// Fondo scala e frequenze, a sensori ACCESI: da sospeso il BMI160 perde le scritture ravvicinate
+// (succedeva: restava a ±2 g e la pagina leggeva 8 g da fermo). Riletto e riscritto se non torna.
+bool configuraFondoScala() {
+  for (int tentativo = 0; tentativo < 5; tentativo++) {
+    scrivi(REG_ACC_RANGE, 0x0C);  // ±16 g (2048 LSB/g)
+    delayMicroseconds(500);
+    scrivi(REG_GYR_CONF, 0x29);   // giroscopio 200 Hz, filtro normale (±2000 °/s resta il predefinito)
+    delayMicroseconds(500);
+    scrivi(REG_ACC_CONF, 0x29);   // 200 Hz, filtro normale (si legge a 100 Hz)
+    delayMicroseconds(500);
+    uint8_t range = 0, conf = 0;
+    if (leggi(REG_ACC_RANGE, &range, 1) && leggi(REG_ACC_CONF, &conf, 1) && range == 0x0C && conf == 0x29) {
+      Serial.println("BMI160: fondo scala ±16 g verificato");
+      return true;
+    }
+    delay(5);
+  }
+  Serial.println("BMI160: fondo scala ±16 g NON impostato");
+  return false;
 }
 
 // Motore tap: single tap, memorizzato (latch) finché non si azzera con il comando 0xB1
@@ -214,6 +232,7 @@ bool avviaSensore() {
   delay(10);
   scrivi(REG_CMD, 0x15);
   delay(100);
+  if (!configuraFondoScala()) return false;
   configuraTap();
   uint8_t pmu = 0;
   leggi(REG_PMU_STATUS, &pmu, 1);
