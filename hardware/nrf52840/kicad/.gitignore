@@ -1,0 +1,9 @@
+# file di lavoro di KiCad
+*-backups/
+*.kicad_prl
+fp-info-cache
+*.lck
+# Gerber: si rigenerano con esporta_jlc.py (si versionano solo quando la scheda è sbrogliata)
+jlc/gerber/
+jlc/*.zip
+__pycache__/
