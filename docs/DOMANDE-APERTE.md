@@ -14,12 +14,12 @@
 13. Quale accelerometro colleghi al connettore I2C del display per il quadrante sempre dritto (un altro BMI160)?
 
 ### Scheda su misura nRF52840 (`hardware/nrf52840/`)
-14. Confermi il passo intermedio con la **Seeed XIAO nRF52840 Sense** (~15 $) prima di disegnare la scheda?
-15. Modulo: **Raytac MDBT50Q-1MV2** (10,5 × 15,5 mm, certificato, ~10 $) o Ebyte E73 (13 × 18 mm, ~6 $)? L'ISP1807 (8 × 8 mm) lo terrei per la seconda versione.
-16. IMU: va bene il **LSM6DSV16X** impostato a **±4 g**? Ha un terzo del rumore del BMI160; il fondo scala si cambia via firmware (anche ±2 g), ma il BMI160 a ±2 g oggi satura in spinta e virata.
-17. ~~Sensore di pressione~~: deciso, MS5837-02BA (porta esposta con O-ring).
-18. ~~Vibratore~~: deciso. Resta: per cosa vibrare (fine vasca, ritmo, tempo di ripetuta)? E accetti una cella da 30–40 mAh se lo spessore lo permette, per reggere meglio i picchi?
-19. Ingombro massimo accettabile sotto la cuffia? Stima attuale ~18 × 26 × 9 mm, ~6 g. Con 1–2 mm in più di spessore si può salire a una cella da 40 mAh.
-20. Quanti prototipi e che budget (proposta: 5 pezzi, ~150–250 $ tutto compreso)?
-21. Custodia di ricarica: stampa 3D tua, solo USB-C o anche con batteria interna?
-22. Hai un programmatore SWD (J-Link, ST-Link, Raspberry Pi Pico) per il primo caricamento?
+14. Con 50 € facciamo la tappa XIAO nRF52840 Sense (anche resinata, da usare in vasca)? La scheda su misura con 2 tag costa ~130–150 € tutto compreso.
+15. ~~Modulo~~: MDBT50Q-1MV2. Se l'ingombro non basta: ISP1807 (8 × 8 mm, tag ~12 × 14 × 7 mm, ~+3 $ a pezzo)?
+16. ~~IMU~~: LSM6DSV16X a ±4 g.
+17. ~~Sensore di pressione~~: MS5837-02BA.
+18. Avviso in acqua: proviamo sulla XIAO vibratore e cicalino (tipo FINIS Tempo Trainer) e scegliamo quello che si sente meglio? Per cosa deve avvisare (fine ripetuta, ritmo, tempo)?
+19. Cella da 15–20 mAh invece di 40 (bastano per 3 h)? Memoria da 32 MB o 16 MB (più piccola, un allenamento e mezzo)?
+20. Misure massime accettabili per il tag (stima con MDBT50Q: ~14 × 19 × 8 mm)?
+21. Hai una stampante 3D (custodia, attrezzo di programmazione, stampo per la resina)? Resina o filamento?
+22. Hai un programmatore SWD? Altrimenti un Raspberry Pi Pico (~5 €) col firmware debugprobe.

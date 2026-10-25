@@ -138,18 +138,46 @@ nRF52840 + LSM6DS3TR-C + 2 MB QSPI + caricatore BQ25101, 21 × 17,5 mm, già sup
 - Stampa 3D, molle pogo dorate, magneti per allineamento e polarità, alimentazione USB-C (eventuale batteria nella custodia in una seconda fase).
 - LED di carica sulla custodia (o lettura dello stato dal tag via BLE).
 
+## Risposte dell'utente (2026-10-25) e conseguenze
+
+- **Modulo Raytac MDBT50Q-1MV2** e **IMU a ±4 g**: confermati.
+- **Autonomia richiesta: 3 ore.** Al nuoto servono ~4–5 mAh (3 h × ~1,4 mA) più qualche giorno di attesa (~2 mAh a settimana). Basta una cella da **15–20 mAh**: la 40 mAh non serve e aumenta l'ingombro, che è il vincolo principale. Si tiene la 20 mAh solo se il vibratore la richiede (picchi: 20 mAh × 2 C = 40 mA).
+- **Memoria:** 3 h a 50 Hz sono ~8,4 MB. 32 MB = 3–4 allenamenti senza scaricare; **16 MB (W25Q128JV, WSON 6 × 5 mm invece di 8 × 6)** = un allenamento e mezzo, con meno ingombro. Da decidere.
+- **Ingombro:** il modulo da solo occupa 10,5 × 15,5 mm, quindi la scheda non scende sotto ~12 × 17 mm (componenti sui due lati). Con cella da 15 mAh il tag finito è ~14 × 19 × 8 mm. Per scendere davvero serve l'**ISP1807 (8 × 8 mm)**: scheda ~10 × 12 mm, tag ~12 × 14 × 7 mm, ~+3 $ a pezzo e fornitura tramite il *Global Sourcing* di JLC (non è su LCSC).
+- **Feedback in acqua:** il vibratore è l'unico avviso mentre si nuota, ma va provato: sotto la cuffia il tag è premuto sul cranio, che trasmette bene le vibrazioni. Alternativa da provare insieme: un **cicalino** piezo o magnetico (come il FINIS Tempo Trainer, un metronomo che si mette sotto la cuffia e si sente bene in acqua). Prova su XIAO con entrambi prima di fissare lo schema; sulla scheda si può lasciare l'impronta e montarlo o no.
+- **Budget: 50 € comprensivi di tutto per 1–2 prototipi.** Con la scheda su misura non ci si sta:
+
+| Voce (2 tag montati da JLC, stima) | Costo |
+|---|---|
+| PCB 4 strati, 5 pezzi | ~8 $ |
+| Spese fisse del montaggio (impianto, stencil, ~7 componenti *extended* a ~3 $) | ~30 $ |
+| Componenti per 2 tag (modulo 10, IMU 3, flash 3, caricatore 2, pressione 6, vibratore e passivi 2) | ~52 $ |
+| Spedizione + IVA 22 % | ~35 $ |
+| Celle, molle pogo, resina, Raspberry Pi Pico come programmatore | ~20–30 € |
+| **Totale** | **~130–150 €** (senza sensore di pressione ~110 €) |
+
+  **Con 50 € ci sta la tappa (a):** XIAO nRF52840 Sense (~16 €), cella 20 mAh (~3 €), modulo MS5837 (~10 €), vibratore e cicalino (~3 €), spedizioni. La XIAO può già andare **in vasca**: si programma via USB, si resina con 2 contatti sul pin 5V (che alimenta il suo caricatore) e poi si aggiorna via BLE. Il primo ordine JLC, con un solo progetto e 2 tag, va fatto **senza pannello** (il pannello conviene dal lotto successivo).
+- **Da progettare (elettronica + oggetto 3D):** custodia di ricarica, attrezzo di programmazione, stampo per la resina:
+
+| Oggetto | Elettronica | Parte 3D |
+|---|---|---|
+| Custodia di ricarica | USB-C con resistenze CC da 5,1 kΩ, fusibile ripristinabile, LED; 2 molle pogo e 2 magneti. Basta una schedina da USB-C già pronta: il caricatore sta nel tag | guscio con sede del tag, coperchio, magneti a polarità fissa (il tag non entra al contrario) |
+| Attrezzo di programmazione | 5 molle pogo sulle piazzole SWD + Raspberry Pi Pico con firmware *debugprobe*; contatti di ricarica per il collaudo | culla che allinea la scheda (o il pannello) sopra le molle |
+| Stampo per la resina | — | guscio stampato che resta come involucro, oppure stampo in silicone ricavato da un modello stampato; sedi per contatti, porta del sensore di pressione con O-ring, finestrella del LED |
+
 ## Decisioni proposte (non ancora prese)
 
 | Proposta | Motivo |
 |---|---|
-| Flash **32 MB W25Q256JV** (indicata dall'utente il 2026-10-25) | ~11 h a 50 Hz, pari all'autonomia della cella da 20 mAh |
-| Modulo **Raytac MDBT50Q-1MV2**; E73 di riserva; ISP1807 per la v2 | certificato, 10,5 × 15,5 mm, montabile da JLC |
-| IMU **LSM6DSV16X** a **±4 g**, ICM-45686 di riserva | rumore 3 volte inferiore al BMI160, fondo scala cambiabile via firmware |
+| Flash **32 MB W25Q256JV** (indicata dall'utente) o 16 MB W25Q128JV più piccola | 3 h di nuoto = ~8,4 MB |
+| Modulo **Raytac MDBT50Q-1MV2** (**confermato dall'utente**); ISP1807 se l'ingombro non basta | certificato, montabile da JLC |
+| IMU **LSM6DSV16X** a **±4 g** (**confermato dall'utente**), ICM-45686 di riserva | rumore 3 volte inferiore al BMI160, fondo scala cambiabile via firmware |
 | VDDH dalla LiPo, VDD a 3,0 V da UICR, batteria con VDDHDIV5 | meno componenti, zero perdite di partitori |
 | Caricatore **BQ25100** a 15 mA | fatto per celle piccole, protetto fino a 28 V sull'ingresso |
 | Sensore di pressione **MS5837-02BA** (**deciso dall'utente** il 2026-10-25) | fase subacquea, uscita dall'acqua, BLE spento sott'acqua |
-| **Vibratore** Ø 6 mm in PWM (**deciso dall'utente** il 2026-10-25) | avviso tattile in acqua; picchi gestiti con PWM e condensatori |
+| **Vibratore** Ø 6 mm in PWM oppure cicalino, dopo la prova sulla XIAO | unico avviso in acqua; va sentito sotto la cuffia |
+| Cella **15–20 mAh** (non 40) | 3 h di autonomia richieste; l'ingombro è il vincolo principale |
 | Firmware su **Zephyr / nRF Connect SDK** con MCUboot e DFU via BLE | driver pronti, stesso stack di SlimeVR, aggiornamento senza aprire il tag |
 | Piazzole SWD interne, sotto la resina (**deciso dall'utente** il 2026-10-25) | si programmano una volta prima della colata; all'esterno solo i contatti di ricarica |
-| Tag in **pannello 2 × 3 con mouse bites** (KiKit), 2 pannelli montati su 5 | PCB e spese fisse divise su 12 tag |
+| Primo ordine: 2 tag senza pannello; **pannello con mouse bites** (KiKit) dal lotto successivo | budget; il pannello conviene solo con molti tag |
 | Prima la **XIAO nRF52840 Sense** | porting del firmware e misure dei consumi prima di spendere per il PCB |

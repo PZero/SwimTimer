@@ -28,3 +28,5 @@
 | 2026-10-24 | Quadrante sempre dritto con un accelerometro sul connettore I2C del display | Il display può essere appoggiato in qualsiasi orientamento |
 | 2026-10-24 | Display: risveglio anche dal tasto BOOT, pull-up su GPIO1 nel sonno, motivo dell'avvio a schermo | Riserva se il touch non risveglia; diagnosi senza seriale |
 | 2026-10-24 | Confronti dei tempi con segno quando un valore arriva da un altro task (`visto` dal BLE) | La sottrazione senza segno traboccava e mandava subito il display in sonno |
+| 2026-10-25 | Tag su misura: modulo Raytac MDBT50Q-1MV2, IMU LSM6DSV16X a ±4 g, sensore di pressione MS5837, piazzole SWD sotto la resina | Certificato e montabile da JLC; meno rumore del BMI160 senza saturare; programmazione una volta prima della colata |
+| 2026-10-25 | Autonomia del tag: 3 ore di nuoto | Requisito dell'utente: cella piccola, l'ingombro conta più della durata |
