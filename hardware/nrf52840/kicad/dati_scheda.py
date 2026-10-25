@@ -35,7 +35,7 @@ COMPONENTI = [
     ("U2", "swimtag:LSM6DSV16XTR", "LSM6DSV16X", "swimtag:LGA-14_L3.0-W2.5-P0.50-BR", "C5267406",
      {1: "IMU_MISO", 2: "GND", 3: "GND", 4: "IMU_INT1", 5: "VDD", 6: "GND", 7: "GND", 8: "VDD",
       9: "IMU_INT2", 12: "IMU_CS", 13: "IMU_SCK", 14: "IMU_MOSI"},
-     (12.44, 14.65, 0, "F")),
+     (12.44, 14.65, 180, "F")),
     ("U3", "swimtag:W25Q256JVEIQTR", "W25Q256JVEIQ", "swimtag:WSON-8_L8.0-W6.10-P1.27-BL-EP", "C97522",
      {1: "QSPI_CS", 2: "QSPI_IO1", 3: "QSPI_IO2", 4: "GND", 5: "QSPI_IO0", 6: "QSPI_SCK",
       7: "QSPI_IO3", 8: "VDD", 9: "GND"},
@@ -50,18 +50,20 @@ COMPONENTI = [
      {1: "MOT_PWM", 2: "GND", 3: "MOT_N"}, (5.7, 18.75, 0, "F")),
     ("D1", "Device:D", "1N4148WS", "Diode_SMD:D_SOD-323", "C2128",
      {1: "VBAT", 2: "MOT_N"}, (8.75, 18.9, 90, "F")),
-    ("D2", "Device:LED", "rosso", LED0603, "C2286", {1: "LED_K", 2: "VBAT"}, (14.5, 18.35, 0, "F")),
+    ("D2", "Device:LED", "rosso", LED0603, "C2286", {1: "LED_K", 2: "VBAT"}, (14.5, 18.3, 0, "F")),
     ("R1", "Device:R", "10k", R0402, "C25744", {1: "ISET", 2: "GND"}, (14.6, 14.35, 90, "F")),
     ("R2", "Device:R", "10k", R0402, "C25744", {1: "TS", 2: "GND"}, (16.9, 14.35, 90, "F")),
     ("R3", "Device:R", "100k", R0402, "C25741", {1: "MOT_PWM", 2: "GND"}, (5.7, 16.2, 0, "F")),
-    ("R4", "Device:R", "1k", R0402, "C11702", {1: "LED_K", 2: "LED"}, (14.78, 19.9, 0, "F")),
-    ("C1", "Device:C", "10u", C0402, "C15525", {1: "VDD", 2: "GND"}, (10.8, 19.9, 0, "F")),
-    ("C2", "Device:C", "100n", C0402, "C1525", {1: "VDD", 2: "GND"}, (12.8, 19.9, 0, "F")),
-    ("C3", "Device:C", "100n", C0402, "C1525", {1: "VDD", 2: "GND"}, (14.5, 16.3, 90, "F")),
+    ("R4", "Device:R", "1k", R0402, "C11702", {1: "LED_K", 2: "LED"}, (16.4, 19.9, 0, "F")),
+    ("R5", "Device:R", "10k", R0402, "C25744", {1: "I2C_SDA", 2: "VDD"}, (11.4, 18.3, 0, "F")),  # pull-up I2C (TE)
+    ("R6", "Device:R", "10k", R0402, "C25744", {1: "I2C_SCL", 2: "VDD"}, (11.3, 19.9, 0, "F")),
+    ("C1", "Device:C", "10u", C0402, "C15525", {1: "VDD", 2: "GND"}, (7.67, 16.2, 0, "F")),  # VDD del modulo (pin 28)
+    ("C2", "Device:C", "100n", C0402, "C1525", {1: "VDD", 2: "GND"}, (11.9, 16.55, 0, "F")),  # IMU Vdd_IO (pin 5)
+    ("C3", "Device:C", "100n", C0402, "C1525", {1: "VDD", 2: "GND"}, (15.32, 16.3, 90, "F")),  # flash VCC
     ("C4", "Device:C", "100n", C0402, "C1525", {1: "VDD", 2: "GND"}, (1.95, 16.2, 0, "F")),
-    ("C5", "Device:C", "10u", C0402, "C15525", {1: "VIN", 2: "GND"}, (16.0, 16.0, 0, "F")),
-    ("C6", "Device:C", "22u", C0603, "C59461", {1: "VBAT", 2: "GND"}, (12.45, 16.75, 0, "F")),
-    ("C7", "Device:C", "22u", C0603, "C59461", {1: "VBAT", 2: "GND"}, (11.4, 18.35, 0, "F")),
+    ("C5", "Device:C", "10u", C0402, "C15525", {1: "VIN", 2: "GND"}, (16.37, 16.3, 90, "F")),  # ingresso caricatore e VBUS
+    ("C6", "Device:C", "100n", C0402, "C1525", {1: "VDD", 2: "GND"}, (13.83, 16.55, 0, "F")),  # IMU Vdd (pin 8)
+    ("C7", "Device:C", "10u", C0402, "C15525", {1: "VBAT", 2: "GND"}, (9.6, 16.2, 0, "F")),  # VDDH (pin 30) e uscita caricatore (1-10 uF)
     # Piazzole tutte sul lato sotto: ricarica (a filo della resina), SWD (annegate),
     # batteria e vibratore (fili saldati a mano che girano intorno al bordo)
     ("TP1", "Connector:TestPoint", "VIN", "TestPoint:TestPoint_Pad_D2.5mm", "", {1: "VIN"}, (3.5, 10.0, 0, "B")),

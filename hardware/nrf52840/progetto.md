@@ -150,13 +150,13 @@ File in [`kicad/`](kicad/), generati da script a partire da un'unica tabella di 
 - Sopra tutti i componenti (montaggio JLC su un lato); sotto solo piazzole: 2 contatti di ricarica Ø 2,5 mm, 5 piazzole SWD a passo 2 mm (VDD, SWDIO, SWDCLK, RESET, GND, per molle pogo), BAT+/BAT− sul bordo sinistro, MOT+/MOT− sul bordo destro (fili saldati a mano).
 - Antenna sul bordo alto, striscia di 3,8 mm senza rame su tutti gli strati; massa su In1 (piano) e riempimenti di massa sugli altri strati.
 - Regole: piste 0,127 mm (minimo 0,1), distanze 0,1 mm, via 0,5/0,3 mm (nessun sovrapprezzo), foro-rame 0,2 mm; via coperti dal solder mask (anche quelli sotto il modulo).
-- **DRC: 0 errori**, 392 piste, 52 via. Restano avvisi di sola serigrafia (contorni delle impronte LCSC) e i pin liberi del modulo, che nello schema hanno la crocetta.
+- **DRC: 0 errori**, 363 piste, 47 via (dopo le correzioni delle verifiche, vedi [verifiche.md](verifiche.md)). Restano avvisi di sola serigrafia (contorni delle impronte LCSC) e i pin liberi del modulo, che nello schema hanno la crocetta.
 
-**Pin dell'nRF52840:** QSPI flash P0.17 CS, P0.19 SCK, P0.20/21/22/23 IO0–3 (pin consigliati da Raytac); IMU in SPI P0.15 SCK, P0.13 MOSI, P0.14 MISO, P0.16 CS, INT1 P0.11, INT2 P0.12; pressione I2C P0.26 SDA, P0.27 SCL (pull-up interni); vibratore P0.08 (MOSFET, pull-down 100 kΩ); LED P0.06; stato di carica P0.04; VBUS del modulo collegato ai contatti di ricarica (evento USB = "nella custodia"); VDDH alla batteria, VDD 3,3 V da impostare in `UICR.REGOUT0`.
+**Pin dell'nRF52840:** QSPI flash P0.17 CS, P0.19 SCK, P0.20/21/22/23 IO0–3 (pin consigliati da Raytac); IMU in SPI P0.15 SCK, P0.13 MOSI, P0.14 MISO, P0.16 CS, INT1 P0.11, INT2 P0.12; pressione I2C P0.26 SDA, P0.27 SCL (pull-up 10 kΩ R5/R6, come da TE); vibratore P0.08 (MOSFET, pull-down 100 kΩ); LED P0.06; stato di carica P0.04; VBUS del modulo collegato ai contatti di ricarica (evento USB = "nella custodia"); VDDH alla batteria, VDD 3,3 V da impostare in `UICR.REGOUT0`.
 
 **Per l'ordine JLC** (non ancora fatto): `jlc/swimtag_gerber.zip`, `jlc/bom_jlc.csv`, `jlc/cpl_jlc.csv`. Opzioni: 4 strati, 0,8 mm, **ENIG** (contatti dorati), montaggio *Economic* lato sopra, raggi X per modulo e BGA. Controllare nell'anteprima JLC la rotazione dei componenti (alcune impronte risultano ruotate di 90/180° rispetto alla libreria JLC).
 
-**Da verificare prima dell'ordine:** datasheet ST del LSM6DSV16X per i pin OCS_Aux e SDO_Aux (lasciati liberi; il sito ST non era raggiungibile) e SDx/SCx (a massa); stock dei 5 componenti *extended*; il modulo Raytac non ha modello 3D (nei render si vedono solo le piazzole).
+**Verifiche sui datasheet:** fatte il 2026-10-25, registro in [verifiche.md](verifiche.md) (4 correzioni: due 100 nF sull'IMU, pull-up I2C, 10 µF sull'uscita del caricatore, condensatori del modulo avvicinati). Restano: anteprima JLC (rotazioni e stock) e la protezione dei contatti. Il modulo Raytac non ha modello 3D (nei render si vedono solo le piazzole).
 
 ## Piano a tappe
 

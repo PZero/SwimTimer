@@ -1,7 +1,7 @@
 # Distinta componenti — tag su misura nRF52840 (proposta)
 
 **Stato:** proposta del 2026-10-25, **niente acquistato**. Da confermare con l'utente (vedi `docs/DOMANDE-APERTE.md`).
-> **Aggiornamento 2026-10-25 — PCB v0.1 disegnato** (`kicad/`): la distinta effettiva per JLC è [`kicad/jlc/bom_jlc.csv`](kicad/jlc/bom_jlc.csv). Rispetto a questa proposta: caricatore **BQ25101YFPR** (C478468, carica a 13,5 mA con ISET 10 kΩ, TS a massa con 10 kΩ); niente TVS né Schottky su VIN; un solo LED rosso 0603 (C2286) invece dell'RGB; MOSFET AO3400A (C20917) con diodo 1N4148WS (C2128) per il vibratore; pull-up I2C interni dell'nRF; niente cicalino. Solo 5 componenti *extended* (modulo, IMU, flash, caricatore, pressione), tutti gli altri sono *basic*.
+> **Aggiornamento 2026-10-25 — PCB v0.1 disegnato** (`kicad/`): la distinta effettiva per JLC è [`kicad/jlc/bom_jlc.csv`](kicad/jlc/bom_jlc.csv). Rispetto a questa proposta: caricatore **BQ25101YFPR** (C478468, carica a 13,5 mA con ISET 10 kΩ, TS a massa con 10 kΩ); niente TVS né Schottky su VIN; un solo LED rosso 0603 (C2286) invece dell'RGB; MOSFET AO3400A (C20917) con diodo 1N4148WS (C2128) per il vibratore; pull-up I2C 10 kΩ (R5/R6); 10 µF sulla batteria invece di 2 × 22 µF (limite del BQ25101); niente cicalino. Verifiche in [verifiche.md](verifiche.md). Solo 5 componenti *extended* (modulo, IMU, flash, caricatore, pressione), tutti gli altri sono *basic*.
 
 Prezzi indicativi in USD per pezzo a piccoli lotti (5–10 schede); codici LCSC/JLCPCB da riverificare al momento dell'ordine (stock e prezzi cambiano ogni settimana). Progetto e motivazioni in `progetto.md`.
 
