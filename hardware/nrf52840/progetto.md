@@ -129,6 +129,8 @@ nRF52840 + LSM6DS3TR-C + 2 MB QSPI + caricatore BQ25101, 21 × 17,5 mm, già sup
 - Revisione dello schema prima dell'ordine (consumi a riposo, piazzole SWD, zona antenna).
 
 **(c) Ordine prototipi** — 5 pezzi montati da JLC (~150–250 $ con spedizione e IVA)
+- **Pannello**: più tag sulla stessa scheda (proposta 2 × 3 = 6 tag, ~70 × 80 mm con i bordi), staccati con **mouse bites** (fori di rottura su linguette da 2–3 mm, dove non c'è la zona dell'antenna); il V-cut no, perché taglia da bordo a bordo e su schede così piccole è poco preciso. Bordi di servizio da 5 mm con fiducial e fori di riferimento (servono comunque a JLC per montare schede sotto i 20 mm). Pannello generato con **KiKit** (plugin di KiCad). Prezzo: JLC fa pagare il pannello per le sue misure (fascia fino a 100 × 100 mm) e lo stesso progetto ripetuto è ammesso; più progetti *diversi* sullo stesso pannello pagano un supplemento.
+- Il risparmio vale per PCB e spese fisse, **non per i componenti**, che restano a tag. Proposta: 5 pannelli prodotti, **2 montati** = 12 tag (~12 × 25 $ di componenti + spese fisse), i 3 pannelli nudi di scorta.
 - Collaudo a banco: carica a 15 mA, consumi, portata BLE, scrittura flash.
 - Resinare 1–2 pezzi, prova in vasca; gli altri restano aperti per le modifiche.
 
@@ -149,4 +151,5 @@ nRF52840 + LSM6DS3TR-C + 2 MB QSPI + caricatore BQ25101, 21 × 17,5 mm, già sup
 | **Vibratore** Ø 6 mm in PWM (**deciso dall'utente** il 2026-10-25) | avviso tattile in acqua; picchi gestiti con PWM e condensatori |
 | Firmware su **Zephyr / nRF Connect SDK** con MCUboot e DFU via BLE | driver pronti, stesso stack di SlimeVR, aggiornamento senza aprire il tag |
 | Piazzole SWD interne, sotto la resina (**deciso dall'utente** il 2026-10-25) | si programmano una volta prima della colata; all'esterno solo i contatti di ricarica |
+| Tag in **pannello 2 × 3 con mouse bites** (KiKit), 2 pannelli montati su 5 | PCB e spese fisse divise su 12 tag |
 | Prima la **XIAO nRF52840 Sense** | porting del firmware e misure dei consumi prima di spendere per il PCB |
