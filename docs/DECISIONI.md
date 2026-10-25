@@ -33,3 +33,5 @@
 | 2026-10-25 | Tag su misura: disposizione B compatta (scheda 17,5 × 19,5 mm, componenti su un lato, cella sopra il modulo), tag finito ~19 × 21 × 7,2 mm | Più raccolta della versione lunga; montaggio su un solo lato più economico |
 | 2026-10-25 | Tag su misura: cella LiPo 15–20 mAh con protezione | Bastano per le 3 ore richieste; l'ingombro conta più dell'autonomia |
 | 2026-10-25 | Programmatore e custodia di ricarica costruiti da noi (elettronica + stampa 3D su Bambu Lab A1 mini) | Scelta dell'utente: tutto l'hardware è da progettare |
+| 2026-10-25 | PCB del tag v0.1: 17,5 × 20,5 mm, 4 strati 0,8 mm, generato da script KiCad e sbrogliato con Freerouting; avviso solo con vibratore | Schema e PCB coerenti da un'unica tabella; 1 mm in più per le piazzole reali della flash |
+| 2026-10-25 | Caricatore BQ25101 (disponibile su LCSC) al posto del BQ25100; niente TVS né diodo su VIN, un LED rosso | Spazio sulla scheda; polarità garantita dai magneti della custodia |

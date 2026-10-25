@@ -7,3 +7,4 @@ fp-info-cache
 jlc/gerber/
 jlc/*.zip
 __pycache__/
+sbroglio/

@@ -46,26 +46,30 @@ def zona(board, nome_rete, layer, x0, y0, x1, y1, reti):
         z.AppendCorner(punto(x, y), -1)
     z.SetMinThickness(mm(0.15))
     z.SetLocalClearance(mm(0.15))
-    z.SetPadConnection(pcbnew.ZONE_CONNECTION_THERMAL)
+    z.SetPadConnection(pcbnew.ZONE_CONNECTION_FULL)  # massa piena: niente raggi termici "affamati" sui pad piccoli
     board.Add(z)
 
 
-def main():
+def main(solo_piano_interno=False):
+    """solo_piano_interno=True: solo il piano di massa In1 (per lo sbroglio con Freerouting)."""
     board = pcbnew.NewBoard(str(QUI / "swimtag.kicad_pcb"))
     board.SetCopperLayerCount(4)
     ds = board.GetDesignSettings()
     # regole JLCPCB 4 strati (capacità standard, senza sovrapprezzo)
     ds.m_TrackMinWidth = mm(0.1)
     ds.m_MinClearance = mm(0.1)
-    ds.m_ViasMinSize = mm(0.45)
-    ds.m_MinThroughDrill = mm(0.2)
+    ds.m_ViasMinSize = mm(0.5)
+    ds.m_MinThroughDrill = mm(0.3)
     ds.m_CopperEdgeClearance = mm(0.2)
+    ds.m_HoleClearance = mm(0.2)  # JLC: foro-rame 0,2 mm
     ds.SetBoardThickness(mm(0.8))
+    ds.m_TentViasFront = True   # via coperti dal solder mask: sotto il modulo non devono toccare nulla
+    ds.m_TentViasBack = True
     nc = ds.m_NetSettings.GetDefaultNetclass()
-    nc.SetTrackWidth(mm(0.15))
+    nc.SetTrackWidth(mm(0.127))  # 5 mil: serve per uscire dal BGA del caricatore (passo 0,4)
     nc.SetClearance(mm(0.1))
-    nc.SetViaDiameter(mm(0.45))
-    nc.SetViaDrill(mm(0.25))
+    nc.SetViaDiameter(mm(0.5))   # foro 0,3 mm: nessun sovrapprezzo JLC
+    nc.SetViaDrill(mm(0.3))
 
     # contorno con angoli arrotondati (r = 1 mm) tranne il bordo dell'antenna, che resta dritto
     rettangolo(board, pcbnew.Edge_Cuts, 0, 0, SCHEDA_L, SCHEDA_H)
@@ -104,11 +108,14 @@ def main():
         for disegno in fp.GraphicalItems():
             if isinstance(disegno, pcbnew.PCB_TEXT):
                 disegno.SetVisible(False)
+        # riferimenti sullo strato Fab (documentazione): in serigrafia sarebbero sotto 0,8 mm, illeggibili per JLC
+        fp.Reference().SetLayer(pcbnew.B_Fab if lato == "B" else pcbnew.F_Fab)
         fp.Reference().SetTextSize(punto(0.5, 0.5))
         fp.Reference().SetTextThickness(mm(0.08))
 
     # piani di massa: interno 1 e 2 interi, sopra e sotto riempimento di massa
-    for layer in (pcbnew.F_Cu, pcbnew.In1_Cu, pcbnew.In2_Cu, pcbnew.B_Cu):
+    strati = (pcbnew.In1_Cu,) if solo_piano_interno else (pcbnew.F_Cu, pcbnew.In1_Cu, pcbnew.In2_Cu, pcbnew.B_Cu)
+    for layer in strati:
         zona(board, "GND", layer, 0.25, 0.25, SCHEDA_L - 0.25, SCHEDA_H - 0.25, reti)
 
     # zona dell'antenna: niente rame su nessuno strato (foglio Raytac, 3,8 mm dal bordo)

@@ -23,3 +23,4 @@
 20. ~~Forma del tag~~: disposizione B compatta, ~19 × 21 × 7,2 mm.
 21. ~~Stampante 3D~~: Bambu Lab A1 mini.
 22. ~~Programmatore~~: da costruire (Raspberry Pi Pico con debugprobe + culla stampata con molle pogo), come la custodia di ricarica.
+23. PCB v0.1 pronto (`hardware/nrf52840/kicad/jlc/`): vuoi rivederlo in KiCad prima dell'ordine JLC? Accetti l'assenza di protezione sui contatti di ricarica (TVS e diodo tolti per spazio)?

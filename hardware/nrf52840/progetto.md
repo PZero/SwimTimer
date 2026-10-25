@@ -132,13 +132,39 @@ Confronto: una moneta da 2 € è Ø 25,75 mm; il prototipo attuale (SuperMini 1
 | **Porting del firmware** da Arduino/ESP32 a Zephyr | media | algoritmi già indipendenti dall'hardware e messi a punto sul prototipo ESP32; il porting si fa su un tag montato e **non resinato**, collegato all'attrezzo di programmazione |
 | **Sensore di pressione** con porta esposta | media | O-ring, prova di tenuta in vasca prima di resinare le altre schede |
 
+## Progetto KiCad v0.1 (2026-10-25)
+
+File in [`kicad/`](kicad/), generati da script a partire da un'unica tabella di dati, così schema e PCB restano coerenti:
+
+| File | Cosa fa |
+|---|---|
+| `dati_scheda.py` | componenti, codici LCSC, collegamenti, posizioni sulla scheda (**si modifica solo questo**) |
+| `genera_schema.py` | scrive `swimtag.kicad_sch` (schema a etichette di rete) |
+| `verifica_netlist.py` | confronta la netlist esportata da KiCad con i dati (oggi: 28 reti su 28) |
+| `genera_pcb.py` | scrive `swimtag.kicad_pcb`: contorno, componenti, piani di massa, zona antenna, regole JLC |
+| `sbroglia.py` | sbroglio automatico con **Freerouting 2.5.0** (Java 25), poi riempimenti di massa |
+| `esporta_jlc.py` | Gerber + fori (zip), BOM e CPL nel formato JLC, render, PDF dello schema in `jlc/` |
+| `lib/` | simboli, impronte e modelli 3D scaricati da LCSC con `easyeda2kicad` |
+
+**Scheda:** 17,5 × **20,5 mm** (1 mm più della stima: le piazzole della flash sono lunghe 9,5 mm), 4 strati, 0,8 mm. Tag finito ~**19 × 22 × 7,2 mm**.
+- Sopra tutti i componenti (montaggio JLC su un lato); sotto solo piazzole: 2 contatti di ricarica Ø 2,5 mm, 5 piazzole SWD a passo 2 mm (VDD, SWDIO, SWDCLK, RESET, GND, per molle pogo), BAT+/BAT− sul bordo sinistro, MOT+/MOT− sul bordo destro (fili saldati a mano).
+- Antenna sul bordo alto, striscia di 3,8 mm senza rame su tutti gli strati; massa su In1 (piano) e riempimenti di massa sugli altri strati.
+- Regole: piste 0,127 mm (minimo 0,1), distanze 0,1 mm, via 0,5/0,3 mm (nessun sovrapprezzo), foro-rame 0,2 mm; via coperti dal solder mask (anche quelli sotto il modulo).
+- **DRC: 0 errori**, 392 piste, 52 via. Restano avvisi di sola serigrafia (contorni delle impronte LCSC) e i pin liberi del modulo, che nello schema hanno la crocetta.
+
+**Pin dell'nRF52840:** QSPI flash P0.17 CS, P0.19 SCK, P0.20/21/22/23 IO0–3 (pin consigliati da Raytac); IMU in SPI P0.15 SCK, P0.13 MOSI, P0.14 MISO, P0.16 CS, INT1 P0.11, INT2 P0.12; pressione I2C P0.26 SDA, P0.27 SCL (pull-up interni); vibratore P0.08 (MOSFET, pull-down 100 kΩ); LED P0.06; stato di carica P0.04; VBUS del modulo collegato ai contatti di ricarica (evento USB = "nella custodia"); VDDH alla batteria, VDD 3,3 V da impostare in `UICR.REGOUT0`.
+
+**Per l'ordine JLC** (non ancora fatto): `jlc/swimtag_gerber.zip`, `jlc/bom_jlc.csv`, `jlc/cpl_jlc.csv`. Opzioni: 4 strati, 0,8 mm, **ENIG** (contatti dorati), montaggio *Economic* lato sopra, raggi X per modulo e BGA. Controllare nell'anteprima JLC la rotazione dei componenti (alcune impronte risultano ruotate di 90/180° rispetto alla libreria JLC).
+
+**Da verificare prima dell'ordine:** datasheet ST del LSM6DSV16X per i pin OCS_Aux e SDO_Aux (lasciati liberi; il sito ST non era raggiungibile) e SDx/SCx (a massa); stock dei 5 componenti *extended*; il modulo Raytac non ha modello 3D (nei render si vedono solo le piazzole).
+
 ## Piano a tappe
 
 **(a) Prototipo: resta l'ESP32-S3 SuperMini + BMI160** (decisione dell'utente 2026-10-25)
 - Su di esso si mettono a punto gli algoritmi (registrazioni e video) e si prova l'avviso in acqua: vibratore Ø 6 mm e cicalino con un MOSFET su un GPIO, sotto la cuffia.
 - Niente scheda di sviluppo nRF intermedia: il firmware Zephyr nasce direttamente sui primi tag definitivi.
 
-**(b) Schema e PCB (KiCad)** — dopo conferma dell'utente
+**(b) Schema e PCB (KiCad)** — v0.1 fatta il 2026-10-25 (vedi sopra)
 - Schema e layout 4 strati, regole e librerie JLC; simbolo/impronta MDBT50Q dal foglio Raytac.
 - Firmware `firmware/tag-nrf/` su nRF Connect SDK (VS Code + estensione nRF Connect) con overlay della scheda: lettura IMU con FIFO, servizio GATT compatibile con la pagina `tools/`, annuncio BLE per il display, registrazione su flash, sonno con risveglio dall'IMU, misura della batteria, MCUboot + aggiornamento via BLE (SMP, da aggiungere alla pagina web).
 - Revisione dello schema prima dell'ordine (consumi a riposo, piazzole SWD, zona antenna).
