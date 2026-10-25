@@ -2,7 +2,7 @@
 
 Componenti in `hardware/bom.md`. Nomi dei pin come serigrafati sulle schede.
 
-**Stato:** prototipo saldato e verificato il 2026-10-24 con `firmware/test-collegamenti` e `tools/assi.html` (accelerometro e giroscopio rispondono su tutti gli assi).
+**Stato:** prototipo saldato e verificato il 2026-10-24 (partitori su GPIO 1 e 2 aggiunti il 2026-10-25, da verificare con il firmware 0.4.1) con `firmware/test-collegamenti` e `tools/assi.html` (accelerometro e giroscopio rispondono su tutti gli assi).
 
 ## Schema a blocchi
 ```
@@ -24,7 +24,9 @@ LiPo 3,7 V ──(interruttore on/off facoltativo)──► BAT+/BAT−  ESP32-S
 | ESP32 **3V3** | BMI160 **CS** | CS alto = modalità I2C |
 | ESP32 **GND** | BMI160 **SAO** (SDO) | indirizzo I2C 0x68 |
 | ESP32 **GPIO 4** | BMI160 **INT1** | risveglio al movimento (risparmio batteria) |
-| BAT+ → 100 kΩ → **GPIO 1** → 100 kΩ → GND | partitore | facoltativo: livello batteria |
+| BAT+ → 100 kΩ → **GPIO 1** → 100 kΩ → GND | partitore | livello batteria (la pagina mostra V e %, in carica con correzione di 0,15 V) |
+| pin **5V** → 100 kΩ → **GPIO 2** → 100 kΩ → GND | partitore | alimentazione USB presente (>4 V): serve a sapere se è in carica; con la 5V a 0 V il partitore legge 0 |
+| ESP32 **GPIO 48** | LED RGB WS2812 integrato | riscontro: colori in `tools/index.html` (pulsante LED) |
 
 Pin del BMI160 non usati: VIN, INT2, OCS, ASCX, ASDX.
 

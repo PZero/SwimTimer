@@ -4,11 +4,11 @@
 | Componente | Modello (dalle foto) | Funzione | Note |
 |---|---|---|---|
 | Microcontrollore | ESP32-S3 SuperMini (USB-C, LED RGB su GPIO 48, pulsanti BOOT/RST) | logica, BLE | pad BAT+/BAT− sul retro confermati dall utente |
-| Sensore inerziale | GY-BMI160 (Bosch BMI160, 6 assi: accelerometro + giroscopio) | spinta, virata, calma | I2C, indirizzo 0x68; niente magnetometro |
+| Sensore inerziale | GY-BMI160 (Bosch BMI160, 6 assi: accelerometro + giroscopio) | spinta, virata, calma | I2C, indirizzo 0x68; niente magnetometro; ora a ±16 g e 100 Hz |
 | Caricabatterie | integrato nell ESP32-S3 (pad BAT+/BAT− sul retro). Il TP4056 USB-C resta di scorta | | |
 | Interruttore | facoltativo, solo on/off tra batteria e BAT+ | non serve per programmare | |
 | Batteria | LiPo 3,7 V a una cella (da scegliere, indicativamente 300–500 mAh) | alimentazione | |
-| Partitore (facoltativo) | 2 resistenze da 100 kΩ | lettura livello batteria | |
+| Partitori | 4 resistenze da 100 kΩ (2 per la batteria su GPIO 1, 2 per il pin 5V su GPIO 2) | livello batteria e USB presente | |
 
 ## Display a bordo vasca
 | Componente | Modello (dalle foto) | Funzione | Note |
