@@ -596,6 +596,11 @@ function nuovoCampione(tms, a, gd) {
   for (const c of A.finestra) varianza += (c.an - media) ** 2;
   const dev = Math.sqrt(varianza / A.finestra.length);
   const fermoIst = A.finestra.length > 5 && gmax < 8 && dev < 0.015 && Math.abs(media - 1) < 0.1;
+  // Da fermo il modulo deve valere 1 g: circa 8 g (o 0,125 g) vuol dire scala sbagliata tra tag e pagina
+  if (!offline && !A.scalaAvvisata && A.finestra.length > 10 && gmax < 8 && dev < 0.05 && (media > 4 || media < 0.3)) {
+    A.scalaAvvisata = true;
+    evento(ts, 'avviso', `Da fermo il tag misura ${media.toFixed(2).replace('.', ',')} g invece di 1 g: scala dell'accelerometro incoerente (aggiorna il firmware alla 0.4.3)`);
+  }
   if (fermoIst && !A.fermoIst) A.fermoDa = ts;
   A.fermoIst = fermoIst;
   const fermoPer = fermoIst ? ts - A.fermoDa : 0;
