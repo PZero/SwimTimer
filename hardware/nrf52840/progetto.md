@@ -93,6 +93,21 @@ Contatti di ricarica: due piazzole tonde Ø 2,5 mm sul lato sotto, a filo della 
 
 Confronto: una moneta da 2 € è Ø 25,75 mm; il prototipo attuale (SuperMini 18 × 22 mm + modulo BMI160 + LiPo da 300–500 mAh) è parecchie volte più grande.
 
+## Avviso in acqua: vibratore o cicalino
+
+| | Vibratore (motore a moneta Ø 6 × 2,7 mm) | Cicalino magnetico passivo (es. Huaneng MLT-5020, LCSC C94598, 5 × 5 mm, 4 kHz, ~75 dB, ~0,4 $) |
+|---|---|---|
+| Chi lo percepisce | tutti, anche i non udenti | solo chi sente; sotto la cuffia arriva per via ossea (come il metronomo FINIS Tempo Trainer) |
+| Dubbio | sotto la cuffia e in movimento potrebbe sentirsi poco | potrebbe sentirsi troppo o disturbare chi nuota vicino |
+| Intensità regolabile | sì, PWM sulla tensione del motore (soglia minima per partire) | **sì**: duty cycle del PWM (volume) e frequenza (tono; più forte vicino a 4 kHz). Livello impostabile dalla pagina web o dal display |
+| Consumo | 50–80 mA mentre vibra | decine di mA, molto meno a volume basso |
+| Ingombro sulla scheda B | sopra la flash, nessun mm in più | 5 × 5 mm sulla scheda: con entrambi la scheda passa da 19,5 a ~21 mm (tag ~19 × 22,5 mm) |
+
+**Consiglio:** puntare sul **vibratore** come avviso principale (vale per tutti, discreto, non disturba la corsia) e decidere con una **prova sul prototipo ESP32**, prima dello schema:
+- 2 motori a moneta (Ø 6 e Ø 8 mm, per confronto), 1 cicalino MLT-5020, 2 MOSFET AO3400 (SOT-23, facili da saldare a mano), 2 diodi 1N4148, resistenze; ~5 € in tutto.
+- Firmware di prova: impulsi singoli, doppi, lunghi; intensità in PWM a 3–4 livelli; da provare sotto la cuffia, prima a secco poi nuotando.
+- Se il vibratore si sente bene: solo vibratore. Se è al limite: entrambi sulla scheda (+1,5 mm) e scelta dall'utente nelle impostazioni.
+
 ## Sigillatura in resina
 
 - Guscio stampato in 3D (o stampo in silicone) riempito di **resina epossidica o poliuretanica a basso ritiro**; colata sotto vuoto o con degasaggio per evitare bolle sui componenti BGA.
@@ -134,7 +149,7 @@ Confronto: una moneta da 2 € è Ø 25,75 mm; il prototipo attuale (SuperMini 1
 - Collaudo a banco: carica a 15 mA, consumi, portata BLE, scrittura flash.
 - Resinare 1–2 pezzi, prova in vasca; gli altri restano aperti per le modifiche.
 
-**(d) Custodia di ricarica**
+**(d) Custodia di ricarica e attrezzo di programmazione** — da progettare noi (elettronica + parti 3D stampate con la Bambu Lab A1 mini, piano 180 × 180 mm)
 - Stampa 3D, molle pogo dorate, magneti per allineamento e polarità, alimentazione USB-C (eventuale batteria nella custodia in una seconda fase).
 - LED di carica sulla custodia (o lettura dello stato dal tag via BLE).
 
@@ -178,7 +193,7 @@ Confronto: una moneta da 2 € è Ø 25,75 mm; il prototipo attuale (SuperMini 1
 | VDDH dalla LiPo, VDD a 3,0 V da UICR, batteria con VDDHDIV5 | meno componenti, zero perdite di partitori |
 | Caricatore **BQ25100** a 15 mA | fatto per celle piccole, protetto fino a 28 V sull'ingresso |
 | Sensore di pressione **MS5837-02BA** (**deciso dall'utente** il 2026-10-25) | fase subacquea, uscita dall'acqua, BLE spento sott'acqua |
-| **Vibratore** Ø 6 mm in PWM oppure cicalino, dopo la prova sul prototipo ESP32 | unico avviso in acqua; va sentito sotto la cuffia |
+| **Vibratore** Ø 6 mm in PWM come avviso principale; cicalino MLT-5020 solo se la prova sul prototipo ESP32 lo richiede | vale anche per i non udenti, discreto; volume/intensità regolabili in PWM |
 | Cella **15–20 mAh** (non 40) | 3 h di autonomia richieste; l'ingombro è il vincolo principale |
 | Firmware su **Zephyr / nRF Connect SDK** con MCUboot e DFU via BLE | driver pronti, stesso stack di SlimeVR, aggiornamento senza aprire il tag |
 | Piazzole SWD interne, sotto la resina (**deciso dall'utente** il 2026-10-25) | si programmano una volta prima della colata; all'esterno solo i contatti di ricarica |

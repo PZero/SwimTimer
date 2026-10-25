@@ -18,8 +18,8 @@
 15. ~~Modulo~~: MDBT50Q-1MV2 (ISP1807 scartato).
 16. ~~IMU~~: LSM6DSV16X a ±4 g.
 17. ~~Sensore di pressione~~: MS5837-02BA.
-18. Avviso in acqua: proviamo sul prototipo ESP32 vibratore e cicalino (tipo FINIS Tempo Trainer) e scegliamo quello che si sente meglio? Per cosa deve avvisare (fine ripetuta, ritmo, tempo)?
-19. Cella da 15–20 mAh invece di 40 (bastano per 3 h)? (Memoria: 32 MB confermati.)
+18. Avviso in acqua: ok alla prova sul prototipo ESP32 con 2 vibratori e 1 cicalino (~5 € di componenti)? Per cosa deve avvisare (fine ripetuta, ritmo, tempo)?
+19. ~~Cella~~: 15–20 mAh; memoria 32 MB.
 20. ~~Forma del tag~~: disposizione B compatta, ~19 × 21 × 7,2 mm.
-21. Hai una stampante 3D (custodia, attrezzo di programmazione; lo stampo per la resina è rinviato)? Resina o filamento?
-22. Hai un programmatore SWD? Altrimenti un Raspberry Pi Pico (~5 €) col firmware debugprobe.
+21. ~~Stampante 3D~~: Bambu Lab A1 mini.
+22. ~~Programmatore~~: da costruire (Raspberry Pi Pico con debugprobe + culla stampata con molle pogo), come la custodia di ricarica.

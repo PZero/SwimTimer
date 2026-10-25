@@ -31,3 +31,5 @@
 | 2026-10-25 | Tag su misura: modulo Raytac MDBT50Q-1MV2, IMU LSM6DSV16X a ±4 g, sensore di pressione MS5837, piazzole SWD sotto la resina | Certificato e montabile da JLC; meno rumore del BMI160 senza saturare; programmazione una volta prima della colata |
 | 2026-10-25 | Autonomia del tag: 3 ore di nuoto | Requisito dell'utente: cella piccola, l'ingombro conta più della durata |
 | 2026-10-25 | Tag su misura: disposizione B compatta (scheda 17,5 × 19,5 mm, componenti su un lato, cella sopra il modulo), tag finito ~19 × 21 × 7,2 mm | Più raccolta della versione lunga; montaggio su un solo lato più economico |
+| 2026-10-25 | Tag su misura: cella LiPo 15–20 mAh con protezione | Bastano per le 3 ore richieste; l'ingombro conta più dell'autonomia |
+| 2026-10-25 | Programmatore e custodia di ricarica costruiti da noi (elettronica + stampa 3D su Bambu Lab A1 mini) | Scelta dell'utente: tutto l'hardware è da progettare |
