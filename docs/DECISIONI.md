@@ -41,3 +41,6 @@
 | 2026-10-25 | Sblocco automatico del bus I2C all'avvio e dopo 20 letture fallite | Il BMI160 si era incantato tenendo SDA a 0 V |
 | 2026-10-25 | Algoritmi propri, ispirati alla letteratura; origine annotata | Brevetti sul campo (es. FORM): verifica di libertà di operare prima di vendere |
 | 2026-10-25 | Scheda su misura nRF52840 affidata a una sessione dedicata; prototipo resta l'ESP32 finché gli algoritmi non funzionano | Gli algoritmi sono indipendenti dall'hardware; si evita di cambiare due cose insieme |
+| 2026-10-25 | Fondo scala ±16 g impostato a sensori accesi e riletto (fino a 5 tentativi) | Con il BMI160 sospeso le scritture si perdevano: ±2 g sul sensore, ±16 g nella pagina, 8 g da fermo |
+| 2026-10-25 | La pagina avvisa se da fermo il modulo non vale circa 1 g | Scale incoerenti tra tag e pagina falsano calibrazione, tap ed eventi |
+| 2026-10-25 | Vibrazione sospesa (serve un modulo con transistor; GPIO 5 libero) | Nessun modulo trovato da saldare; riscontro per ora dal LED |

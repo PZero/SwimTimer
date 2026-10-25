@@ -1,10 +1,10 @@
 # Stato del progetto
 
-**Ultimo aggiornamento:** 2026-10-25 — Fase 1: il tag registra sessioni da solo (tap), si aggiorna via Bluetooth e ha una pagina di analisi completa. Si sta preparando la scheda su misura nRF52840.
+**Ultimo aggiornamento:** 2026-10-25 (sera) — Fase 1: il tag registra sessioni da solo (tap), si aggiorna via Bluetooth e ha una pagina di analisi completa. Firmware 0.4.3 pronta ma da provare sul tag. Si sta preparando la scheda su misura nRF52840.
 
 ## Fatto
 - Repository pubblico `PZero/SwimTimer`; template, agenti, comandi; analisi in `docs/IDEA.md`.
-- **Tag** (ESP32-S3 SuperMini + BMI160, arduino-cli, core esp32 3.3.12), firmware **0.4.2** in `firmware/test-collegamenti`:
+- **Tag** (ESP32-S3 SuperMini + BMI160, arduino-cli, core esp32 3.3.12), firmware **0.4.3** in `firmware/test-collegamenti` (la 0.4.3 corregge il fondo scala: il BMI160 restava a ±2 g mentre la pagina leggeva ±16 g, da fermo 8 g invece di 1 g; ora è impostato a sensori accesi e riletto):
   - ±16 g (2048 LSB/g) e 100 Hz; flash 4 MB con due copie del programma (`partitions.csv`) e circa 1,9 MB di LittleFS (~40 min a 50 Hz).
   - Doppio tap = inizio registrazione, triplo tap = fine (rilevamento software: salto oltre 0,8 g tra due letture, escluso con giroscopio oltre 300 °/s). File `/rNNN.bin`, record da 16 byte.
   - BLE: dati 7a1e0002, stato 7a1e0003 (18 byte), comandi 7a1e0004, risposte 7a1e0005, OTA 7a1e0006, versione 7a1e0007. Stesso protocollo di comandi (LIST, GET, DEL, REC, STOP) via USB.
@@ -16,8 +16,8 @@
 - Sessione separata sulla scheda nRF52840 (ramo `claude/scheda-nrf52840-08642d`, non unito): progetto KiCad, BOM, pannello da 6 tag; mancano le piste.
 
 ## Prossimi passi
-1. Caricare 0.4.1 e 0.4.2 via Bluetooth (file in Download) e verificare partitori, LED, tap e triplo tap con scaricamento.
-2. Commit/push riusciti: attivare Pages (Settings → Pages → Source: GitHub Actions) per la pagina su iPhone (Bluefy).
+1. Caricare la 0.4.3 via Bluetooth (Download, `tag-0.4.3.bin`) e verificare da fermo: radar al centro, modulo ~1 g; poi partitori, LED, tap (forse abbassare la soglia 0,8 g) e triplo tap con scaricamento.
+2. Il codice è su GitHub (main): attivare Pages (Settings → Pages → Source: GitHub Actions) per la pagina su iPhone (Bluefy).
 3. Passare dal BMI160 alla lettura dalla FIFO: oggi la frequenza reale è ~44 Hz, si perdono campioni durante le scritture in flash.
 4. Registrare sessioni con video (battito di mani per sincronizzare) e mettere a punto gli algoritmi seguendo la ricerca; poi tradurli in C.
 5. Prova in vasca; tarare soglia tap, RSSI e calma; quadrante sempre dritto sul display.
@@ -26,6 +26,8 @@
 - **Display a batteria non si accende** staccando l'USB (polarità, tensione col tester, ricarica di un'ora).
 - Riavvii spontanei del tag osservati (motivo ora riportato nello stato); un crash a fine registrazione via Bluetooth corretto nella 0.4.0, da riverificare.
 - Il BMI160 si è bloccato una volta con SDA a 0 V (risolto togliendo l'alimentazione; sblocco automatico nella 0.4.2, non provato).
+- **Batteria del tag al 2%** (3,48–3,58 V letti dal partitore): da misurare col tester con e senza USB; se non sale in carica, provare un'altra LiPo; eventuale condensatore da 100 nF su GPIO 1 e fattore di correzione.
+- Vibrazione: sospesa finché non si trova un modulo con transistor (GPIO 5 libero).
 - Brevetti: la ricerca cita il brevetto FORM US 11833392; per un uso commerciale serve una verifica di libertà di operare. Algoritmi nostri, con l'origine annotata.
 - Il BLE non attraversa l'acqua: la logica usa l'accelerometro. Custodia stagna del tag e spegnimento da definire. Nessun test automatico.
 

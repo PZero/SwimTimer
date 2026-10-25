@@ -16,3 +16,4 @@
 15. Via libera a commit, push e attivazione di GitHub Pages (Settings → Pages → Source: GitHub Actions)?
 16. Per l'uso commerciale: vuoi far fare una verifica di libertà di operare (brevetti) prima di vendere?
 17. Quando e dove registriamo la prima sessione con video (battito di mani per sincronizzare)?
+18. Batteria del tag sempre al 2% (3,5 V): cosa segna il tester ai capi della LiPo, con e senza USB, e dopo 30 minuti di carica?

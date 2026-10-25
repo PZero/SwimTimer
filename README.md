@@ -42,13 +42,13 @@ Analisi completa e ipotesi di logica: [`docs/IDEA.md`](docs/IDEA.md). Ricerca su
 
 | Funzione | Stato |
 |---|---|
-| Lettura di accelerazione (3 assi, ±16 g) e rotazione (3 assi, ±2000 °/s) dal BMI160 a 100 Hz nominali | Firmware 0.4.2 compilato; letture provate con le versioni precedenti |
-| Registrazione di sessioni su flash (LittleFS), avviata con doppio tap e chiusa con triplo tap | Doppio tap provato con versioni di prova; 0.4.2 non ancora provata sul tag |
-| Scaricamento e cancellazione delle registrazioni via Bluetooth o USB | Da verificare sulla 0.4.2 |
+| Lettura di accelerazione (3 assi, ±16 g) e rotazione (3 assi, ±2000 °/s) dal BMI160 a 100 Hz nominali | Firmware 0.4.3 compilato; letture provate con le versioni precedenti |
+| Registrazione di sessioni su flash (LittleFS), avviata con doppio tap e chiusa con triplo tap | Doppio tap provato con versioni di prova; 0.4.3 non ancora provata sul tag |
+| Scaricamento e cancellazione delle registrazioni via Bluetooth o USB | Da verificare sulla 0.4.3 |
 | Aggiornamento del firmware via Bluetooth, con ritorno automatico alla versione precedente | Provato sul tag con versioni di prova |
-| Stato del tag (batteria, USB, sensore, registrazione, motivo dell'ultimo riavvio) | Nella 0.4.2, da verificare dopo il montaggio dei partitori |
-| Sblocco automatico del bus I2C | Nella 0.4.2, non provato |
-| LED RGB come riscontro (registrazione, aggiornamento, errori) | Nella 0.4.2, non provato |
+| Stato del tag (batteria, USB, sensore, registrazione, motivo dell'ultimo riavvio) | Nella 0.4.3, da verificare dopo il montaggio dei partitori |
+| Sblocco automatico del bus I2C | Nella 0.4.3, non provato |
+| LED RGB come riscontro (registrazione, aggiornamento, errori) | Nella 0.4.3, non provato |
 | Pagina di analisi: dal vivo, registrazioni, orientamento 3D, radar, interpretazione, eventi | Realizzata (`tools/index.html`) |
 | Annuncio BLE con l'ultimo campione a 20 Hz, letto dal display senza collegarsi | Prototipo sul tavolo |
 | Pace clock sul display (4 lancette), partenza dal colpo secco, arrivo con tag vicino e fermo 3 s | Prototipo sul tavolo (`firmware/display-prova`), non ancora provato in vasca |
@@ -158,12 +158,13 @@ Da definire. Ipotesi: involucro sigillato con resina o guscio, da provare in vas
 
 Il repository contiene il firmware del tag, un firmware di prova per il display e due pagine di controllo.
 
-### `firmware/test-collegamenti/` (tag, versione 0.4.2)
-Nonostante il nome, è il firmware del tag. Le versioni 0.4.0, 0.4.1 e 0.4.2 compilano. La 0.4.2 non è ancora provata sul tag (LED, sblocco I2C).
+### `firmware/test-collegamenti/` (tag, versione 0.4.3)
+Nonostante il nome, è il firmware del tag. Le versioni da 0.4.0 a 0.4.3 compilano. La 0.4.3 non è ancora provata sul tag (LED, sblocco I2C, fondo scala).
 
 **Sensore**
 - Scansione del bus I2C sui pin 8 e 9 e lettura del chip ID del BMI160, atteso `0xD1`.
 - Accelerometro a ±16 g (2048 LSB/g), giroscopio a ±2000 °/s (16,4 LSB/(°/s)), letture a 100 Hz nominali.
+- Fondo scala e frequenze impostati a sensori accesi e riletti (fino a 5 tentativi); in seriale "BMI160: fondo scala ±16 g verificato". Nella 0.4.2 le scritture a sensore sospeso andavano perse e il BMI160 restava a ±2 g.
 - Sblocco automatico del bus I2C se il sensore tiene SDA a 0 V.
 - Sonno profondo dopo 2 minuti fermo, solo senza PC e senza pagina collegata. Risveglio dal BMI160 con any-motion su INT1 (GPIO 4).
 
@@ -335,7 +336,7 @@ SwimTimer/
 ├── docs/                    idea, stato, decisioni, domande aperte, requisiti, design, ricerca sugli algoritmi
 ├── hardware/                distinta componenti (bom.md), schema (schema.md); involucro da creare
 ├── firmware/
-│   ├── test-collegamenti/   tag (0.4.2): registrazione, tap, BLE/USB, aggiornamento via Bluetooth; partitions.csv
+│   ├── test-collegamenti/   tag (0.4.3): registrazione, tap, BLE/USB, aggiornamento via Bluetooth; partitions.csv
 │   └── display-prova/       display T-RGB: ricezione degli annunci, corona e cronometro di prova
 │       └── src/trgb/        driver del display (copia adattata, licenza MIT)
 ├── tools/                   index.html: pagina di analisi; assi.html: vecchia pagina semplice
@@ -354,13 +355,13 @@ Esclusi da git (vedi `.gitignore`): file con segreti (`.env`, chiavi, account di
 **Fase 1: prototipo di tag e display.** Il tag registra sessioni da solo (tap), si aggiorna via Bluetooth e ha una pagina di analisi completa. Il display riceve l'annuncio e mostra il pace clock; non è cambiato.
 
 Stato del firmware del tag:
-- 0.4.0, 0.4.1 e 0.4.2 compilano.
-- La 0.4.2 non è ancora provata sul tag (LED, sblocco I2C).
+- Da 0.4.0 a 0.4.3 compilano.
+- La 0.4.3 corregge il fondo scala del BMI160 (restava a ±2 g mentre la pagina leggeva ±16 g: da fermo si vedevano 8 g invece di 1 g). Non è ancora provata sul tag (fondo scala, LED, sblocco I2C).
 - Aggiornamento via Bluetooth e doppio tap sono stati provati sul tag con versioni di prova.
 - Frequenza reale in registrazione: circa 44 Hz.
 
 Prossimi passi:
-1. Caricare 0.4.1 e 0.4.2 via Bluetooth; verificare partitori, LED, tap e triplo tap con scaricamento.
+1. Caricare la 0.4.3 via Bluetooth; verificare fondo scala (da fermo circa 1 g), partitori, LED, tap e triplo tap con scaricamento.
 2. Attivare GitHub Pages (Settings, Pages, Source: GitHub Actions).
 3. Leggere i campioni dalla FIFO del BMI160 per recuperare i 100 Hz.
 4. Registrare sessioni con video (battito di mani per sincronizzare) e mettere a punto gli algoritmi seguendo la ricerca; poi tradurli in C.
@@ -373,7 +374,9 @@ Problemi aperti (dettagli in [`docs/STATO.md`](docs/STATO.md)):
 - il BLE non attraversa l'acqua: la logica usa l'accelerometro, il BLE serve per vicinanza e invio;
 - il display a batteria, senza USB, non si accende: da verificare polarità e tensione;
 - riavvii spontanei del tag osservati (ora ne è riportato il motivo); un crash a fine registrazione via Bluetooth, corretto nella 0.4.0, da riverificare;
-- il BMI160 si è bloccato una volta con SDA a 0 V: sblocco automatico nella 0.4.2, non provato;
+- il BMI160 si è bloccato una volta con SDA a 0 V: sblocco automatico nella 0.4.3, non provato;
+- batteria del tag letta a 3,5 V (quasi scarica, circa 2%): da verificare con il tester;
+- vibrazione sospesa in attesa di un modulo con transistor (GPIO 5 libero);
 - brevetti e libertà di operare da verificare (vedi sotto);
 - capacità della LiPo, autonomia, protezione e spegnimento del tag, custodia stagna: da definire;
 - nessun test automatico.
