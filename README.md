@@ -102,7 +102,7 @@ Servizio GATT `7a1e0001-5b1d-4c8e-9f3a-1d2c3b4a5e60`. Le caratteristiche condivi
 | GATT `7a1e0007` versione | testo ASCII (lettura) | su richiesta | `tools/index.html` |
 | Annuncio BLE `SwimTag` | 1 byte contatore e 6 valori grezzi nel campo produttore `0xFFFF` | 20 Hz, senza collegamento | display T-RGB |
 
-Il display legge ancora i campioni con la scala a 16384 LSB/g (±2 g), mentre il tag ora lavora a ±16 g (2048 LSB/g). Da verificare la coerenza prima della prova in vasca.
+Il tag lavora a ±16 g (2048 LSB/g), ma nell'annuncio BLE per il display converte l'accelerazione alla scala di 16384 LSB/g (×8, saturata a ±2 g): il display non va riprogrammato.
 
 ### Flusso dei dati, dal sensore al tempo
 1. Il BMI160 misura accelerazione e rotazione.
