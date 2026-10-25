@@ -1,0 +1,2019 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>SwimTimer Analisi</title>
+<meta name="description" content="Analisi in tempo reale del tag SwimTimer: accelerometro, giroscopio, batteria, orientamento 3D e interpretazione dei movimenti.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<style>
+  :root {
+    --bg: #f2f4f7; --card: #ffffff; --card-2: #f7f9fb; --testo: #0f1720; --tenue: #5d6b7a; --debole: #8794a2;
+    --bordo: #e2e7ed; --griglia: #e9edf2; --accento: #0a7fc2; --accento-2: #0d9488; --accento-tenue: rgba(10,127,194,.10);
+    --x: #e5484d; --y: #2f9e5b; --z: #3b74f0; --ok: #2f9e5b; --attenzione: #c98300; --errore: #d93a3a;
+    --radar-sfondo: #f7fafc; --radar-anello: #dbe3ea; --ombra: 0 1px 2px rgba(16,24,40,.05), 0 1px 3px rgba(16,24,40,.06);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0a0f14; --card: #111820; --card-2: #0d141b; --testo: #e6edf3; --tenue: #93a3b3; --debole: #637384;
+      --bordo: #1d2833; --griglia: #18222c; --accento: #38bdf8; --accento-2: #2dd4bf; --accento-tenue: rgba(56,189,248,.12);
+      --x: #ff6b6f; --y: #4cc38a; --z: #6ea8ff; --ok: #4cc38a; --attenzione: #f5b041; --errore: #ff6b6f;
+      --radar-sfondo: #0c131a; --radar-anello: #1f2c38; --ombra: 0 1px 2px rgba(0,0,0,.4);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0a0f14; --card: #111820; --card-2: #0d141b; --testo: #e6edf3; --tenue: #93a3b3; --debole: #637384;
+    --bordo: #1d2833; --griglia: #18222c; --accento: #38bdf8; --accento-2: #2dd4bf; --accento-tenue: rgba(56,189,248,.12);
+    --x: #ff6b6f; --y: #4cc38a; --z: #6ea8ff; --ok: #4cc38a; --attenzione: #f5b041; --errore: #ff6b6f;
+    --radar-sfondo: #0c131a; --radar-anello: #1f2c38; --ombra: 0 1px 2px rgba(0,0,0,.4);
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body { margin: 0; background: var(--bg); color: var(--testo); font: 14px/1.45 Inter, system-ui, -apple-system, "Segoe UI", sans-serif; }
+  .mono { font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace; font-variant-numeric: tabular-nums; }
+  main { max-width: 1320px; margin: 0 auto; padding: 16px 16px 40px; }
+
+  /* Testata */
+  header.testata { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: center; justify-content: space-between; padding: 4px 0 16px; }
+  .marchio { display: flex; align-items: center; gap: 12px; }
+  .logo { width: 36px; height: 36px; border-radius: 10px; background: linear-gradient(135deg, var(--accento), var(--accento-2)); display: grid; place-items: center; color: #fff; }
+  .marchio h1 { font-size: 17px; margin: 0; font-weight: 700; letter-spacing: -.01em; }
+  .marchio p { margin: 0; color: var(--tenue); font-size: 12.5px; }
+  .comandi { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  button { font: 500 13px/1 Inter, system-ui, sans-serif; padding: 9px 14px; border-radius: 8px; border: 1px solid var(--bordo); background: var(--card); color: var(--testo); cursor: pointer; display: inline-flex; align-items: center; gap: 7px; transition: background .15s, border-color .15s; }
+  button:hover:not(:disabled) { border-color: var(--accento); }
+  button.primario { background: var(--accento); border-color: var(--accento); color: #fff; }
+  button.primario:hover:not(:disabled) { filter: brightness(1.07); }
+  button.piccolo { padding: 6px 10px; font-size: 12px; }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+  button svg { width: 15px; height: 15px; }
+  .pillola { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 999px; background: var(--card); border: 1px solid var(--bordo); font-size: 12.5px; color: var(--tenue); }
+  .pillola .punto { width: 8px; height: 8px; border-radius: 50%; background: var(--debole); }
+  .pillola.attivo .punto { background: var(--ok); box-shadow: 0 0 0 3px color-mix(in srgb, var(--ok) 25%, transparent); }
+  .pillola.attesa .punto { background: var(--attenzione); }
+  .avviso { margin: 0 0 16px; padding: 10px 14px; border-radius: 10px; background: color-mix(in srgb, var(--attenzione) 12%, var(--card)); border: 1px solid color-mix(in srgb, var(--attenzione) 35%, var(--bordo)); color: var(--testo); font-size: 13px; }
+
+  /* Griglia e schede */
+  .griglia { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 16px; }
+  .scheda { background: var(--card); border: 1px solid var(--bordo); border-radius: 14px; box-shadow: var(--ombra); padding: 16px; min-width: 0; }
+  .scheda > header { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+  .scheda h2 { margin: 0; font-size: 13px; font-weight: 600; letter-spacing: .01em; }
+  .scheda h2 small { color: var(--tenue); font-weight: 500; margin-left: 6px; }
+  .etichetta { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--tenue); font-weight: 600; }
+  .s3 { grid-column: span 3; } .s4 { grid-column: span 4; } .s5 { grid-column: span 5; } .s6 { grid-column: span 6; } .s7 { grid-column: span 7; } .s8 { grid-column: span 8; } .s12 { grid-column: span 12; }
+  @media (max-width: 1100px) { .s3 { grid-column: span 6; } .s5, .s7, .s4, .s8 { grid-column: span 12; } }
+  @media (max-width: 760px) { .s3, .s6 { grid-column: span 12; } main { padding: 12px 16px 32px; } }
+
+  /* Riquadri indicatori */
+  .indicatore { display: flex; flex-direction: column; gap: 6px; }
+  .indicatore .valore { font-size: 26px; font-weight: 600; letter-spacing: -.02em; line-height: 1.1; }
+  .indicatore .valore small { font-size: 14px; color: var(--tenue); font-weight: 500; margin-left: 4px; }
+  .indicatore .nota { color: var(--tenue); font-size: 12.5px; min-height: 18px; }
+  .barra { height: 6px; border-radius: 999px; background: var(--griglia); overflow: hidden; }
+  .barra > div { height: 100%; width: 0; border-radius: inherit; background: var(--ok); transition: width .4s, background .4s; }
+  .indicatore .riga { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+
+  /* Viste 3D */
+  .viste { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media (max-width: 560px) { .viste { grid-template-columns: 1fr; } }
+  .vista { position: relative; border-radius: 10px; background: var(--card-2); border: 1px solid var(--bordo); aspect-ratio: 1 / 1; overflow: hidden; touch-action: none; cursor: grab; }
+  .vista canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  .vista .titolo { position: absolute; left: 12px; top: 10px; font-size: 12px; font-weight: 600; pointer-events: none; }
+  .vista .titolo span { display: block; color: var(--tenue); font-weight: 500; font-size: 11.5px; }
+  .vista .lettura { position: absolute; left: 12px; bottom: 10px; right: 12px; display: flex; gap: 12px; font-size: 11.5px; color: var(--tenue); pointer-events: none; flex-wrap: wrap; }
+  .vista .lettura b { color: var(--testo); font-weight: 500; }
+  .vista .velo { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; padding: 24px; color: var(--tenue); font-size: 12.5px; background: color-mix(in srgb, var(--card-2) 70%, transparent); pointer-events: none; }
+  .vista .velo[hidden], .griglia[hidden], .avanzamento[hidden] { display: none; }
+  .kpi { grid-column: span 12; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
+  @media (max-width: 1100px) { .kpi { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (max-width: 560px) { .kpi { grid-template-columns: minmax(0, 1fr); } }
+  .indicatore .riga { flex-wrap: wrap; }
+  .schede-vista button { padding: 7px 14px; font-size: 13px; }
+  #vistaReg > .scheda { grid-column: span 12; }
+  #radar { position: absolute; inset: 0; }
+  .radar-contenitore { position: relative; }
+  .suggerimento { color: var(--debole); font-size: 11.5px; margin-top: 10px; }
+
+  /* Radar */
+  .radar-contenitore { position: relative; width: 100%; max-width: 460px; margin: 0 auto; aspect-ratio: 1 / 1; }
+  #radar { width: 100%; height: 100%; display: block; }
+  .segmentato { display: inline-flex; background: var(--card-2); border: 1px solid var(--bordo); border-radius: 8px; padding: 2px; }
+  .segmentato button { border: 0; background: transparent; padding: 5px 10px; font-size: 12px; border-radius: 6px; color: var(--tenue); }
+  .segmentato button[aria-pressed="true"] { background: var(--card); color: var(--testo); box-shadow: var(--ombra); }
+  .valori3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 12px; }
+  .valori3 > div { background: var(--card-2); border: 1px solid var(--bordo); border-radius: 8px; padding: 8px 10px; }
+  .valori3 .n { font-size: 17px; font-weight: 600; }
+  .valori3 > div { min-width: 0; overflow: hidden; } .valori3 .etichetta { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .legenda { flex-wrap: wrap; }
+  .x { color: var(--x); } .y { color: var(--y); } .z { color: var(--z); }
+
+  /* Interpretazione */
+  .attivita { font-size: 22px; font-weight: 600; letter-spacing: -.01em; margin: 2px 0 4px; }
+  .postura { color: var(--tenue); font-size: 13.5px; }
+  .calibrazione { margin-top: 14px; padding: 12px; border-radius: 10px; background: var(--accento-tenue); border: 1px solid color-mix(in srgb, var(--accento) 30%, var(--bordo)); }
+  .calibrazione .passi { display: flex; gap: 6px; margin: 8px 0 6px; }
+  .calibrazione .passo { flex: 1; height: 4px; border-radius: 999px; background: var(--griglia); }
+  .calibrazione .passo.fatto { background: var(--accento); }
+  .calibrazione p { margin: 0; font-size: 13px; }
+  .angoli { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 14px; }
+  .angoli > div { border-top: 2px solid var(--bordo); padding-top: 8px; }
+  .angoli .n { font-size: 19px; font-weight: 600; }
+
+  /* Registro eventi */
+  .eventi { list-style: none; margin: 0; padding: 0; max-height: 330px; overflow: auto; }
+  .eventi li { display: grid; grid-template-columns: 64px 10px 1fr; gap: 10px; align-items: baseline; padding: 7px 2px; border-bottom: 1px solid var(--griglia); font-size: 13px; }
+  .eventi li:last-child { border-bottom: 0; }
+  .eventi .ora { color: var(--debole); font-size: 11.5px; }
+  .eventi .segno { width: 8px; height: 8px; border-radius: 50%; align-self: center; }
+  .eventi .vuoto { display: block; color: var(--debole); padding: 24px 0; text-align: center; border: 0; }
+  .eventi small { color: var(--tenue); }
+
+  /* Grafici */
+  .grafico { width: 100%; height: 200px; display: block; }
+  .legenda { display: flex; gap: 14px; font-size: 12px; color: var(--tenue); }
+  .legenda span { display: inline-flex; align-items: center; gap: 6px; }
+  .legenda i { width: 10px; height: 3px; border-radius: 2px; display: inline-block; }
+  .legenda b { font-weight: 600; min-width: 52px; display: inline-block; text-align: right; }
+
+  /* Finestra firmware */
+  dialog.finestra { border: 1px solid var(--bordo); border-radius: 14px; background: var(--card); color: var(--testo); padding: 0; width: min(460px, calc(100vw - 32px)); box-shadow: 0 20px 50px rgba(0,0,0,.25); }
+  dialog.finestra::backdrop { background: rgba(10,15,20,.45); }
+  .finestra .corpo { padding: 18px 20px; display: flex; flex-direction: column; gap: 14px; }
+  .finestra h3 { margin: 0; font-size: 15px; }
+  .finestra .versioni { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .finestra .versioni > div { background: var(--card-2); border: 1px solid var(--bordo); border-radius: 10px; padding: 10px 12px; }
+  .finestra .versioni .n { font-size: 13px; font-weight: 600; margin-top: 2px; word-break: break-all; }
+  .finestra .piede { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; padding: 12px 20px; border-top: 1px solid var(--bordo); background: var(--card-2); border-radius: 0 0 14px 14px; }
+  .finestra .spiega { font-size: 12.5px; color: var(--tenue); margin: 0; }
+
+  /* Legenda del LED */
+  .legenda-led { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+  .legenda-led li { display: grid; grid-template-columns: 34px 1fr; gap: 10px; align-items: center; padding: 7px 4px; border-bottom: 1px solid var(--griglia); font-size: 13px; }
+  .legenda-led li:last-child { border-bottom: 0; }
+  .legenda-led small { display: block; color: var(--tenue); font-size: 11.5px; }
+  .led { width: 14px; height: 14px; border-radius: 50%; margin: 0 auto; background: var(--c); box-shadow: 0 0 8px 1px var(--c); }
+  .led.fisso { opacity: .75; }
+  .led.lampo { animation: lampo var(--t, 3s) infinite; }
+  .led.doppio { animation: doppio 2s infinite; }
+  .led.triplo { animation: triplo 2.4s infinite; }
+  .led.rapido { animation: lampo .2s infinite; }
+  .led.viola { animation: lampo .5s infinite; }
+  @keyframes lampo { 0%, 12% { opacity: 1; } 13%, 100% { opacity: .08; box-shadow: none; } }
+  @keyframes doppio { 0%, 8%, 16%, 24% { opacity: 1; } 8.1%, 15.9%, 24.1%, 100% { opacity: .08; box-shadow: none; } }
+  @keyframes triplo { 0%, 7%, 14%, 21%, 28%, 35% { opacity: 1; } 7.1%, 13.9%, 21.1%, 27.9%, 35.1%, 100% { opacity: .08; box-shadow: none; } }
+  @media (prefers-reduced-motion: reduce) { .led { animation: none !important; } }
+
+  /* Registrazioni */
+  .reg-griglia { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 16px; }
+  @media (max-width: 900px) { .reg-griglia { grid-template-columns: 1fr; } }
+  .reg-elenco { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+  .file { display: grid; grid-template-columns: 1fr auto; gap: 4px 8px; align-items: center; padding: 10px 12px; border: 1px solid var(--bordo); border-radius: 10px; background: var(--card-2); }
+  .file.aperto { border-color: var(--accento); box-shadow: 0 0 0 3px var(--accento-tenue); }
+  .file .nome { font-weight: 600; font-size: 13px; }
+  .file .info { color: var(--tenue); font-size: 12px; grid-column: 1; }
+  .file .azioni { grid-column: 2; grid-row: 1 / span 2; display: flex; gap: 6px; }
+  .file .azioni button { padding: 6px 9px; }
+  .file.locale { border-style: dashed; }
+  .vuoto-reg { color: var(--debole); font-size: 12.5px; padding: 18px 8px; text-align: center; border: 1px dashed var(--bordo); border-radius: 10px; }
+  .nota-reg { font-size: 12.5px; color: var(--tenue); min-height: 18px; }
+  .nota-reg.errore { color: var(--errore); }
+  .avanzamento { display: flex; flex-direction: column; gap: 6px; font-size: 12px; color: var(--tenue); }
+  .reg-vista { min-width: 0; display: flex; flex-direction: column; gap: 10px; }
+  .reg-testata { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; justify-content: space-between; }
+  .reg-testata h3 { margin: 0; font-size: 14px; }
+  .riassunto { display: flex; flex-wrap: wrap; gap: 6px 16px; color: var(--tenue); font-size: 12px; }
+  .riassunto b { color: var(--testo); font-weight: 600; }
+  #traccia { width: 100%; height: 470px; display: block; border: 1px solid var(--bordo); border-radius: 10px; background: var(--card-2); touch-action: none; cursor: crosshair; }
+  @media (max-width: 760px) { #traccia { height: 380px; } }
+  .tabella-eventi { max-height: 260px; overflow: auto; border: 1px solid var(--bordo); border-radius: 10px; }
+  .tabella-eventi table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  .tabella-eventi th { position: sticky; top: 0; background: var(--card); text-align: left; font-weight: 600; color: var(--tenue); font-size: 11px; text-transform: uppercase; letter-spacing: .05em; padding: 8px 10px; border-bottom: 1px solid var(--bordo); }
+  .tabella-eventi td { padding: 6px 10px; border-bottom: 1px solid var(--griglia); vertical-align: baseline; }
+  .tabella-eventi tr { cursor: pointer; }
+  .tabella-eventi tbody tr:hover { background: var(--accento-tenue); }
+  .chip { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; }
+  .chip.tag { background: color-mix(in srgb, var(--errore) 14%, transparent); color: var(--errore); }
+  .chip.analisi { background: var(--accento-tenue); color: var(--accento); }
+  .bottone-file { position: relative; overflow: hidden; }
+  .bottone-file input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+  .guida { font-size: 12px; color: var(--tenue); background: var(--card-2); border: 1px solid var(--bordo); border-radius: 10px; padding: 10px 12px; }
+  .guida ol { margin: 6px 0 0; padding-left: 18px; }
+
+  /* Schermo ampio: tutto in una schermata, nessuno scorrimento della pagina */
+  @media (min-width: 1000px) and (min-height: 600px) {
+    html, body { height: 100%; overflow: hidden; }
+    main { height: 100vh; height: 100dvh; display: flex; flex-direction: column; max-width: none; padding: 12px 16px; }
+    header.testata { padding: 0 0 10px; }
+    .avviso { margin: 0 0 10px; padding: 7px 12px; }
+    .griglia { flex: 1 1 0; min-height: 0; gap: 12px; }
+    .scheda { display: flex; flex-direction: column; min-height: 0; padding: 12px 14px; }
+    .scheda > header { margin-bottom: 8px; }
+    #vistaVivo { grid-template-columns: 1.3fr 1fr 1fr; grid-template-rows: auto minmax(0, 1.65fr) minmax(0, 1fr);
+                 grid-template-areas: "kpi kpi kpi" "d3 radar interp" "acc gyro eventi"; }
+    #vistaVivo .kpi { grid-area: kpi; gap: 12px; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .kpi .scheda { padding: 10px 14px; gap: 4px; }
+    .kpi .indicatore .valore { font-size: 21px; }
+    #vistaVivo .a-3d { grid-area: d3; } #vistaVivo .a-radar { grid-area: radar; } #vistaVivo .a-interp { grid-area: interp; overflow: auto; }
+    #vistaVivo .a-acc { grid-area: acc; } #vistaVivo .a-gyro { grid-area: gyro; } #vistaVivo .a-eventi { grid-area: eventi; }
+    .viste { flex: 1 1 0; min-height: 0; grid-template-rows: minmax(0, 1fr); }
+    .vista { aspect-ratio: auto; }
+    .radar-contenitore { flex: 1 1 0; min-height: 0; max-width: none; aspect-ratio: auto; }
+    .valori3 { margin-top: 8px; }
+    .valori3 > div { padding: 5px 10px; }
+    .valori3 .n { font-size: 15px; }
+    .grafico { flex: 1 1 0; min-height: 0; height: 0; }
+    .eventi { flex: 1 1 0; min-height: 0; max-height: none; }
+    .attivita { font-size: 20px; }
+    .angoli { margin-top: 10px; }
+    .calibrazione { margin-top: 10px; padding: 10px 12px; }
+    #vistaReg { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); }
+    .reg-griglia { flex: 1 1 0; min-height: 0; grid-template-rows: minmax(0, 1fr); }
+    .reg-elenco { overflow: auto; min-height: 0; }
+    .reg-vista { min-height: 0; }
+    #traccia { flex: 1 1 0; min-height: 0; height: 0; }
+    .tabella-eventi { flex: 0 0 auto; height: 27%; max-height: none; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <header class="testata">
+    <div class="marchio">
+      <div class="logo" aria-hidden="true">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M2 16c2 0 2-1.5 4-1.5S8 16 10 16s2-1.5 4-1.5 2 1.5 4 1.5 2-1.5 4-1.5"/><path d="M2 20c2 0 2-1.5 4-1.5S8 20 10 20s2-1.5 4-1.5 2 1.5 4 1.5 2-1.5 4-1.5"/><circle cx="16" cy="6" r="2"/><path d="M7 12l4-4 3 2 3-2"/></svg>
+      </div>
+      <div>
+        <h1>SwimTimer · Analisi del tag</h1>
+        <p>Accelerometro, giroscopio, orientamento e interpretazione dei movimenti in tempo reale</p>
+      </div>
+    </div>
+    <div class="segmentato schede-vista" id="schedeVista" role="tablist" aria-label="Sezione">
+      <button data-v="vivo" aria-pressed="true">Dal vivo</button>
+      <button data-v="reg" aria-pressed="false">Registrazioni</button>
+    </div>
+    <div class="comandi">
+      <span class="pillola" id="pillola"><span class="punto"></span><span id="stato">Non collegato</span></span>
+      <button id="collegaBt" class="primario"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7l10 10-5 5V2l5 5L7 17"/></svg>Bluetooth</button>
+      <button id="collegaUsb"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v14"/><path d="M8 6l4-4 4 4"/><circle cx="12" cy="19" r="3"/><path d="M12 11l-5-2v3"/><path d="M12 9l5-2v3"/></svg>USB</button>
+      <button id="demo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 4l14 8-14 8z"/></svg>Demo</button>
+      <button id="scollega" disabled>Scollega</button>
+    </div>
+  </header>
+
+  <p class="avviso" id="supporto" hidden></p>
+
+  <div class="griglia" id="vistaVivo">
+    <div class="kpi">
+    <!-- Indicatori -->
+    <section class="scheda indicatore" aria-label="Batteria">
+      <div class="riga"><span class="etichetta">Batteria</span><span class="mono" id="batV" style="color:var(--tenue)">– V</span></div>
+      <div class="valore mono" id="batPerc">–</div>
+      <div class="barra"><div id="batBarra"></div></div>
+      <div class="nota" id="batNota">In attesa dei dati del tag</div>
+      <div class="nota mono" id="partitori" style="font-size:11px;color:var(--debole);min-height:0"></div>
+    </section>
+    <section class="scheda indicatore" aria-label="Collegamento">
+      <div class="riga"><span class="etichetta">Collegamento</span><span class="mono" id="frequenza" style="color:var(--tenue)">– Hz</span></div>
+      <div class="valore" id="sorgente">Nessuno</div>
+      <div class="nota" id="collNota">Scegli Bluetooth, USB o Demo</div>
+    </section>
+    <section class="scheda indicatore" aria-label="Stato del tag">
+      <div class="riga"><span class="etichetta">Stato del tag</span><span><span class="mono" id="acceso" style="color:var(--tenue)"></span> <button class="piccolo" id="apriLed" title="Significato dei colori del LED del tag">LED</button> <button class="piccolo" id="apriFw" title="Versione e aggiornamento del firmware">Firmware</button></span></div>
+      <div class="valore" id="statoTag">–</div>
+      <div class="nota" id="statoNota">&nbsp;</div>
+    </section>
+    <section class="scheda indicatore" aria-label="Calibrazione">
+      <div class="riga"><span class="etichetta">Calibrazione</span><button class="piccolo" id="ricalibra" disabled>Ricalibra</button></div>
+      <div class="valore" id="calStato">–</div>
+      <div class="nota" id="calNota">&nbsp;</div>
+    </section>
+
+    </div>
+
+    <!-- 3D -->
+    <section class="scheda s7 a-3d">
+      <header>
+        <h2 title="Senza magnetometro la rotazione attorno alla verticale (imbardata) deriva lentamente; inclinazioni avanti/indietro e laterali restano stabili. La sagoma tratteggiata è la posizione registrata alla calibrazione.">Orientamento 3D <small>trascina per ruotare · doppio clic per ripristinare · tratteggio = calibrazione</small></h2>
+      </header>
+      <div class="viste">
+        <div class="vista" id="vistaReale">
+          <div class="titolo">Posizione reale<span>il tag com'è montato</span></div>
+          <div class="lettura mono" id="letturaReale"></div>
+          <div class="velo" id="veloReale">In attesa dei dati</div>
+        </div>
+        <div class="vista" id="vistaCorretta">
+          <div class="titolo">Posizione corretta<span>testa del nuotatore dopo la calibrazione</span></div>
+          <div class="lettura mono" id="letturaCorretta"></div>
+          <div class="velo" id="veloCorretta">Disponibile dopo la calibrazione</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Radar -->
+    <section class="scheda s5 a-radar">
+      <header>
+        <h2>Radar delle accelerazioni <small>scia degli ultimi 15 s</small></h2>
+        <div class="comandi">
+          <div class="segmentato" id="modoRadar" role="group" aria-label="Assi del radar">
+            <button data-v="tag" aria-pressed="true">Assi tag</button>
+            <button data-v="nuotatore" aria-pressed="false">Assi nuotatore</button>
+          </div>
+          <div class="segmentato" id="scalaRadar" role="group" aria-label="Fondo scala">
+            <button data-v="0.25">0,25 g</button>
+            <button data-v="0.5" aria-pressed="true">0,5 g</button>
+            <button data-v="1">1 g</button>
+            <button data-v="2">2 g</button>
+          </div>
+        </div>
+      </header>
+      <div class="radar-contenitore"><canvas id="radar"></canvas></div>
+      <div class="valori3 mono">
+        <div><div class="etichetta" id="radLx">X · orizzontale</div><div class="n x" id="radX">–</div></div>
+        <div><div class="etichetta" id="radLy">Y · verticale</div><div class="n y" id="radY">–</div></div>
+        <div><div class="etichetta" id="radLz">Z · dimensione</div><div class="n z" id="radZ">–</div></div>
+      </div>
+    </section>
+
+    <!-- Interpretazione -->
+    <section class="scheda s5 a-interp">
+      <header><h2>Interpretazione</h2><span class="etichetta" id="fermoChip"></span></header>
+      <div class="etichetta">Movimento</div>
+      <div class="attivita" id="attivita">–</div>
+      <div class="postura" id="postura">Collega il tag per iniziare.</div>
+      <div class="angoli mono">
+        <div><div class="etichetta">Beccheggio</div><div class="n" id="angPitch">–</div></div>
+        <div><div class="etichetta">Rollio</div><div class="n" id="angRoll">–</div></div>
+        <div><div class="etichetta">Imbardata</div><div class="n" id="angYaw">–</div></div>
+      </div>
+      <div class="calibrazione">
+        <div class="etichetta">Calibrazione automatica</div>
+        <div class="passi"><div class="passo" id="passo1"></div><div class="passo" id="passo2"></div><div class="passo" id="passo3"></div></div>
+        <p id="calIstruzione">Collega il tag, mettiti in piedi e resta fermo 2 secondi guardando avanti.</p>
+      </div>
+    </section>
+
+    <!-- Eventi -->
+    <section class="scheda s7 a-eventi">
+      <header>
+        <h2>Eventi riconosciuti</h2>
+        <div class="comandi">
+          <button class="piccolo" id="esporta" disabled>Esporta CSV</button>
+          <button class="piccolo" id="pulisci">Pulisci</button>
+        </div>
+      </header>
+      <ul class="eventi" id="eventi"><li class="vuoto">Nessun evento: gli eventi compaiono qui man mano che vengono riconosciuti.</li></ul>
+    </section>
+
+    <!-- Grafici -->
+    <section class="scheda s6 a-acc">
+      <header>
+        <h2>Accelerazione <small>g · ultimi 10 s</small></h2>
+        <div class="legenda mono"><span><i style="background:var(--x)"></i>X <b id="ax">–</b></span><span><i style="background:var(--y)"></i>Y <b id="ay">–</b></span><span><i style="background:var(--z)"></i>Z <b id="az">–</b></span></div>
+      </header>
+      <canvas class="grafico" id="graficoAcc"></canvas>
+    </section>
+    <section class="scheda s6 a-gyro">
+      <header>
+        <h2>Velocità angolare <small>°/s · ultimi 10 s</small></h2>
+        <div class="legenda mono"><span><i style="background:var(--x)"></i>X <b id="gx">–</b></span><span><i style="background:var(--y)"></i>Y <b id="gy">–</b></span><span><i style="background:var(--z)"></i>Z <b id="gz">–</b></span></div>
+      </header>
+      <canvas class="grafico" id="graficoGyro"></canvas>
+    </section>
+  </div>
+
+  <div class="griglia" id="vistaReg" hidden>
+    <!-- Registrazioni -->
+    <section class="scheda s12" id="schedaReg">
+      <header>
+        <h2>Registrazioni sul tag <small>toc toc = inizio · toc toc toc = fine</small></h2>
+        <div class="comandi">
+          <button class="piccolo" id="regAvvia" disabled>● Avvia</button>
+          <button class="piccolo" id="regFerma" disabled>■ Ferma</button>
+          <button class="piccolo" id="regAggiorna" disabled>Aggiorna elenco</button>
+          <span class="bottone-file"><button class="piccolo" tabindex="-1">Apri file .bin</button><input type="file" id="regApri" accept=".bin,application/octet-stream" aria-label="Apri una registrazione salvata"></span>
+        </div>
+      </header>
+      <div class="reg-griglia">
+        <div class="reg-elenco">
+          <div id="regFile"></div>
+          <div class="avanzamento" id="regAvanz" hidden><div class="barra"><div id="regBarra"></div></div><span id="regAvanzTesto" class="mono"></span></div>
+          <div class="nota-reg" id="regNota"></div>
+          <div class="guida">
+            <b>Come registrare</b>
+            <ol>
+              <li>Due colpetti sul tag (toc toc): parte la registrazione.</li>
+              <li>Resta fermo in piedi 2 s, poi un cenno in avanti: serve alla calibrazione.</li>
+              <li>Muoviti; tre colpetti (toc toc toc) chiudono la registrazione.</li>
+              <li>Con la pagina collegata, la registrazione si scarica e si apre da sola.</li>
+            </ol>
+          </div>
+        </div>
+        <div class="reg-vista">
+          <div class="reg-testata">
+            <div>
+              <h3 id="visTitolo">Nessuna registrazione aperta</h3>
+              <div class="riassunto mono" id="visRiassunto"></div>
+            </div>
+            <div class="comandi">
+              <button class="piccolo" id="visMeno" disabled aria-label="Riduci lo zoom">−</button>
+              <button class="piccolo" id="visPiu" disabled aria-label="Aumenta lo zoom">+</button>
+              <button class="piccolo" id="visTutto" disabled>Tutto</button>
+              <button class="piccolo" id="visSalva" disabled>Salva .bin</button>
+              <button class="piccolo" id="visCsv" disabled>Esporta CSV</button>
+            </div>
+          </div>
+          <canvas id="traccia"></canvas>
+          <div class="legenda mono"><span><i style="background:var(--x)"></i>X</span><span><i style="background:var(--y)"></i>Y</span><span><i style="background:var(--z)"></i>Z</span><span><i style="background:var(--errore)"></i>comandi del tag</span><span><i style="background:var(--accento)"></i>eventi riconosciuti</span><span style="color:var(--debole)">rotella o pulsanti per lo zoom · trascina per scorrere · doppio clic per vedere tutto</span></div>
+          <div class="tabella-eventi"><table><thead><tr><th style="width:84px">Tempo</th><th style="width:84px">Origine</th><th>Evento</th></tr></thead><tbody id="visEventi"><tr><td colspan="3" style="color:var(--debole);text-align:center;padding:18px">Gli eventi della registrazione compariranno qui</td></tr></tbody></table></div>
+        </div>
+      </div>
+    </section>
+
+  </div>
+</main>
+
+<dialog class="finestra" id="dlgFw" aria-labelledby="fwTitolo">
+  <div class="corpo">
+    <h3 id="fwTitolo">Firmware del tag</h3>
+    <div class="versioni mono">
+      <div><div class="etichetta">Sul tag</div><div class="n" id="fwTag">–</div></div>
+      <div><div class="etichetta">Ultima pubblicata</div><div class="n" id="fwUltima">–</div></div>
+    </div>
+    <p class="spiega" id="fwSpiega">L'aggiornamento avviene via Bluetooth in 1–2 minuti. Se la nuova versione non parte, il tag torna da solo a quella precedente. Tieni il tag vicino e la pagina aperta.</p>
+    <div class="avanzamento" id="fwAvanz" hidden><div class="barra"><div id="fwBarra"></div></div><span id="fwAvanzTesto" class="mono"></span></div>
+    <div class="nota-reg" id="fwNota"></div>
+  </div>
+  <div class="piede">
+    <span class="bottone-file"><button class="piccolo" id="fwFileBtn" tabindex="-1">Da file .bin…</button><input type="file" id="fwFile" accept=".bin,application/octet-stream" aria-label="Scegli un file firmware"></span>
+    <button class="piccolo primario" id="fwAggiorna" disabled>Aggiorna all'ultima</button>
+    <button class="piccolo" id="fwChiudi">Chiudi</button>
+  </div>
+</dialog>
+
+<dialog class="finestra" id="dlgLed" aria-labelledby="ledTitolo">
+  <div class="corpo">
+    <h3 id="ledTitolo">Segnali del LED del tag</h3>
+    <ul class="legenda-led">
+      <li><span class="led lampo" style="--c:#3b82f6;--t:4s"></span><span>Lampo blu<small>avvio del tag</small></span></li>
+      <li><span class="led lampo" style="--c:#ffffff;--t:1.2s"></span><span>Lampo bianco breve<small>ogni tap riconosciuto (serve a regolare la soglia)</small></span></li>
+      <li><span class="led doppio" style="--c:#22c55e"></span><span>2 lampi verdi<small>toc toc accettato: registrazione avviata</small></span></li>
+      <li><span class="led lampo" style="--c:#ef4444;--t:3s"></span><span>Lampo rosso tenue ogni 3 s<small>registrazione in corso</small></span></li>
+      <li><span class="led triplo" style="--c:#ef4444"></span><span>3 lampi rossi<small>toc toc toc accettato: registrazione chiusa</small></span></li>
+      <li><span class="led lampo" style="--c:#22d3ee;--t:5s"></span><span>Lampo azzurro ogni 5 s<small>pagina collegata via Bluetooth</small></span></li>
+      <li><span class="led viola" style="--c:#a855f7"></span><span>Viola lampeggiante<small>aggiornamento del firmware in corso: non spegnere</small></span></li>
+      <li><span class="led fisso" style="--c:#f59e0b"></span><span>Arancio fisso tenue<small>USB collegata, in carica</small></span></li>
+      <li><span class="led fisso" style="--c:#22c55e"></span><span>Verde fisso tenue<small>USB collegata, batteria carica</small></span></li>
+      <li><span class="led lampo" style="--c:#f59e0b;--t:10s"></span><span>Lampo arancio ogni 10 s<small>batteria scarica (sotto 3,4 V): ricaricare</small></span></li>
+      <li><span class="led rapido" style="--c:#ef4444"></span><span>Rosso rapido continuo<small>errore: sensore assente o bus I2C bloccato (togli e ridai alimentazione)</small></span></li>
+    </ul>
+    <p class="spiega">I lampi di evento hanno la precedenza sui colori di fondo. Legenda valida dal firmware 0.4.2; le versioni precedenti usano solo i lampi verdi e rossi della registrazione.</p>
+  </div>
+  <div class="piede"><button class="piccolo" id="ledChiudi">Chiudi</button></div>
+</dialog>
+
+<script>
+'use strict';
+const $ = id => document.getElementById(id);
+const D2R = Math.PI / 180, R2D = 180 / Math.PI;
+const HZ_USB = 50, HZ_BT = 25, HZ_DEMO = 50;
+const FINESTRA_GRAFICI = 10, FINESTRA_SCIA = 15;
+const BLE_SERVIZIO = '7a1e0001-5b1d-4c8e-9f3a-1d2c3b4a5e60';
+const BLE_DATI = '7a1e0002-5b1d-4c8e-9f3a-1d2c3b4a5e60';
+const BLE_STATO = '7a1e0003-5b1d-4c8e-9f3a-1d2c3b4a5e60';
+const BLE_COMANDI = '7a1e0004-5b1d-4c8e-9f3a-1d2c3b4a5e60';
+const BLE_RISPOSTE = '7a1e0005-5b1d-4c8e-9f3a-1d2c3b4a5e60';
+const BLE_OTA = '7a1e0006-5b1d-4c8e-9f3a-1d2c3b4a5e60';
+const BLE_VERSIONE = '7a1e0007-5b1d-4c8e-9f3a-1d2c3b4a5e60';
+
+// ---------- Preferenze locali (facoltative) ----------
+const pref = {
+  get(k, d) { try { const v = localStorage.getItem('swimtimer.' + k); return v === null ? d : v; } catch { return d; } },
+  set(k, v) { try { localStorage.setItem('swimtimer.' + k, v); } catch {} },
+};
+
+// ---------- Quaternioni [w, x, y, z]; il quaternione dell'assetto porta dal tag al mondo (Z in alto) ----------
+const Q = {
+  id: () => [1, 0, 0, 0],
+  mul(a, b) {
+    const [aw, ax, ay, az] = a, [bw, bx, by, bz] = b;
+    return [aw * bw - ax * bx - ay * by - az * bz, aw * bx + ax * bw + ay * bz - az * by,
+            aw * by - ax * bz + ay * bw + az * bx, aw * bz + ax * by - ay * bx + az * bw];
+  },
+  conj: q => [q[0], -q[1], -q[2], -q[3]],
+  norm(q) { const n = Math.hypot(q[0], q[1], q[2], q[3]) || 1; return [q[0] / n, q[1] / n, q[2] / n, q[3] / n]; },
+  asse(v, gradi) { const h = gradi * D2R / 2, s = Math.sin(h), n = Math.hypot(...v) || 1; return [Math.cos(h), v[0] / n * s, v[1] / n * s, v[2] / n * s]; },
+  ruota(q, v) {
+    const [w, x, y, z] = q;
+    const tx = 2 * (y * v[2] - z * v[1]), ty = 2 * (z * v[0] - x * v[2]), tz = 2 * (x * v[1] - y * v[0]);
+    return [v[0] + w * tx + (y * tz - z * ty), v[1] + w * ty + (z * tx - x * tz), v[2] + w * tz + (x * ty - y * tx)];
+  },
+  // Rotazione minima che porta il versore a sul versore b
+  daA(a, b) {
+    const d = a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+    if (d < -0.9999) return Q.asse(Math.abs(a[0]) < 0.9 ? vettore(a, [1, 0, 0]) : vettore(a, [0, 1, 0]), 180);
+    const c = vettore(a, b);
+    return Q.norm([1 + d, c[0], c[1], c[2]]);
+  },
+};
+const vettore = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+const modulo = v => Math.hypot(v[0], v[1], v[2]);
+const versore = v => { const n = modulo(v) || 1; return [v[0] / n, v[1] / n, v[2] / n]; };
+const limita = (v, a, b) => Math.min(b, Math.max(a, v));
+
+// Filtro di Mahony a 6 assi: il giroscopio integra, l'accelerometro corregge l'inclinazione
+function mahony(q, g, a, dt, kp) {
+  const [w, x, y, z] = q;
+  let [gx, gy, gz] = g;
+  const n = modulo(a);
+  if (n > 0.75 && n < 1.25) {
+    const ax = a[0] / n, ay = a[1] / n, az = a[2] / n;
+    const vx = 2 * (x * z - w * y), vy = 2 * (w * x + y * z), vz = w * w - x * x - y * y + z * z;
+    gx += kp * (ay * vz - az * vy); gy += kp * (az * vx - ax * vz); gz += kp * (ax * vy - ay * vx);
+  }
+  const h = 0.5 * dt;
+  return Q.norm([w + (-x * gx - y * gy - z * gz) * h, x + (w * gx + y * gz - z * gy) * h,
+                 y + (w * gy - x * gz + z * gx) * h, z + (w * gz + x * gy - y * gx) * h]);
+}
+
+// ---------- Colori dal tema ----------
+let C = {};
+function leggiColori() {
+  const s = getComputedStyle(document.documentElement);
+  ['--x', '--y', '--z', '--testo', '--tenue', '--debole', '--bordo', '--griglia', '--accento', '--accento-2', '--ok', '--attenzione', '--errore', '--radar-sfondo', '--radar-anello', '--card', '--card-2']
+    .forEach(k => C[k.slice(2)] = s.getPropertyValue(k).trim());
+}
+leggiColori();
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { leggiColori(); viste.forEach(v => v.colori()); if (typeof disegnaTraccia === 'function') disegnaTraccia(); });
+
+// ---------- Stato dell'analisi ----------
+let A, offline = false;
+function nuovaAnalisi(hz, perRegistrazione) {
+  A = {
+    hz, q: null, tPrec: null, t0: null, bias: [0, 0, 0],
+    finestra: [], fermo: false, fermoDa: null, fermoIst: false,
+    cal: { fase: 'attesa', qc: null, psi: 0, Mq: null, Rz: Q.id(), su: null, avanti: null, tFase: 0, accSomma: [0, 0, 0], n: 0 },
+    seg: [0, 1, 2].map(() => ({ attivo: false, angolo: 0, picco: 0 })),
+    rotFinestra: [], ultimaRotRapida: -9,
+    passi: [], vertPrec: 0, vertPrec2: 0, vertFilt: 0, cammina: false,
+    linFilt: [0, 0, 0], radFilt: [0, 0, 0],
+    ultimoImpulso: -9, testoImpulso: '',
+    postura: null, posturaCandidata: null, posturaDa: 0,
+    attivaFermo: false,
+    ultimo: null, angoli: null, saturo: 0,
+  };
+  if (perRegistrazione) return;
+  scia.length = 0;
+  serie.length = 0;
+  registro.length = 0;
+}
+const scia = [], serie = [], registro = [];
+
+// Riceve un campione: t in ms (orologio del tag), a in g, g in °/s, tutto negli assi del tag
+function nuovoCampione(tms, a, gd) {
+  const t = tms / 1000;
+  let dt = A.tPrec === null ? 1 / A.hz : t - A.tPrec;
+  if (!(dt > 0 && dt < 0.5)) dt = 1 / A.hz;
+  A.tPrec = t;
+  if (A.t0 === null) A.t0 = t;
+  const ts = t - A.t0; // secondi dall'inizio della sessione
+  if (!offline) {
+    arrivi.push(performance.now());
+    if (registro.length < 60 * 60 * 50) registro.push([tms, ...a, ...gd]);
+  }
+
+  // Quiete: giroscopio quasi nullo e modulo dell'accelerazione stabile per 0,6 s
+  const gc = [gd[0] - A.bias[0], gd[1] - A.bias[1], gd[2] - A.bias[2]];
+  const an = modulo(a);
+  A.finestra.push({ t: ts, gm: modulo(gc), an });
+  while (A.finestra[0].t < ts - 0.6) A.finestra.shift();
+  let gmax = 0, media = 0;
+  for (const c of A.finestra) { gmax = Math.max(gmax, c.gm); media += c.an; }
+  media /= A.finestra.length;
+  let varianza = 0;
+  for (const c of A.finestra) varianza += (c.an - media) ** 2;
+  const dev = Math.sqrt(varianza / A.finestra.length);
+  const fermoIst = A.finestra.length > 5 && gmax < 8 && dev < 0.015 && Math.abs(media - 1) < 0.1;
+  if (fermoIst && !A.fermoIst) A.fermoDa = ts;
+  A.fermoIst = fermoIst;
+  const fermoPer = fermoIst ? ts - A.fermoDa : 0;
+  A.fermo = fermoPer > 0.3;
+  // Deriva del giroscopio stimata solo da fermi
+  if (A.fermo) for (let i = 0; i < 3; i++) A.bias[i] += 0.02 * (gd[i] - A.bias[i]);
+
+  // Assetto
+  if (!A.q) A.q = Q.daA(versore(a), [0, 0, 1]);
+  const kp = ts < 2 ? 5 : A.fermo ? 1.5 : 0.4;
+  A.q = mahony(A.q, [gc[0] * D2R, gc[1] * D2R, gc[2] * D2R], a, dt, kp);
+
+  const gravS = Q.ruota(Q.conj(A.q), [0, 0, 1]);               // gravità negli assi del tag
+  const linS = [a[0] - gravS[0], a[1] - gravS[1], a[2] - gravS[2]]; // accelerazione senza gravità
+  const linW = Q.ruota(A.q, linS);                              // ... negli assi del mondo
+
+  calibra(ts, a, fermoPer);
+  const cal = A.cal, calibrato = !!cal.Mq;
+  const linT = calibrato ? Q.ruota(Q.conj(cal.Mq), linS) : linS; // assi della testa (X destra, Y avanti, Z su)
+  const gT = calibrato ? Q.ruota(Q.conj(cal.Mq), gc) : gc;
+
+  // Assetto da mostrare: reale (tag) e corretto (testa), entrambi nel riferimento della calibrazione
+  const qReale = Q.mul(Q.conj(cal.Rz), A.q);
+  const qTesta = calibrato ? Q.mul(Q.mul(Q.conj(cal.Rz), A.q), cal.Mq) : null;
+  A.ultimo = { ts, a, gd, linS, linT, qReale, qTesta, calibrato };
+  A.angoli = qTesta ? angoli(qTesta) : null;
+
+  interpreta(ts, dt, a, linW, linT, gT, calibrato);
+
+  if (offline) return;
+  // Serie per grafici e radar
+  serie.push([ts, a[0], a[1], a[2], gd[0], gd[1], gd[2]]);
+  while (serie.length && serie[0][0] < ts - FINESTRA_GRAFICI) serie.shift();
+  const r = modoRadar === 'nuotatore' && calibrato ? linT : linS;
+  for (let i = 0; i < 3; i++) A.radFilt[i] += 0.35 * (r[i] - A.radFilt[i]);
+  scia.push([ts, ...A.radFilt]);
+  while (scia.length && scia[0][0] < ts - FINESTRA_SCIA) scia.shift();
+}
+
+// Angoli della testa in gradi: beccheggio (+ sguardo in alto), rollio (+ inclinata a destra), imbardata (+ a sinistra)
+function angoli(q) {
+  const f = Q.ruota(q, [0, 1, 0]), r = Q.ruota(q, [1, 0, 0]), su = Q.ruota(q, [0, 0, 1]);
+  return {
+    pitch: Math.asin(limita(f[2], -1, 1)) * R2D,
+    roll: -Math.asin(limita(r[2], -1, 1)) * R2D,
+    yaw: Math.atan2(-f[0], f[1]) * R2D,
+    tilt: Math.acos(limita(su[2], -1, 1)) * R2D,
+  };
+}
+
+// ---------- Calibrazione: fermo in piedi (asse "su"), poi un cenno in avanti (asse "avanti") ----------
+const NOMI_ASSI = ['X', 'Y', 'Z'];
+function asseDominante(v) {
+  let i = 0;
+  for (let k = 1; k < 3; k++) if (Math.abs(v[k]) > Math.abs(v[i])) i = k;
+  const scarto = Math.acos(limita(Math.abs(v[i]) / (modulo(v) || 1), -1, 1)) * R2D;
+  return { nome: (v[i] >= 0 ? '+' : '−') + NOMI_ASSI[i], scarto };
+}
+function calibra(ts, a, fermoPer) {
+  const c = A.cal;
+  if (c.fase === 'attesa') {
+    if (A.fermoIst) { for (let i = 0; i < 3; i++) c.accSomma[i] += a[i]; c.n++; } else { c.accSomma = [0, 0, 0]; c.n = 0; }
+    if (fermoPer >= 2) {
+      c.qc = A.q.slice();
+      c.su = versore(c.accSomma);
+      c.Rz = Q.id();
+      c.Mq = Q.conj(c.qc);
+      c.fase = 'avanti'; c.tFase = ts;
+      const d = asseDominante(c.su);
+      evento(ts, 'cal', `In piedi e fermo: il tag ha ${d.nome} verso l'alto` + (d.scarto > 3 ? ` (inclinato di ${d.scarto.toFixed(0)}°)` : ''));
+      evento(ts, 'cal', 'Ora fai un cenno con la testa in avanti per indicare la direzione "avanti"');
+    }
+  } else if (c.fase === 'avanti') {
+    const su = Q.ruota(Q.mul(A.q, Q.conj(c.qc)), [0, 0, 1]);
+    const incl = Math.acos(limita(su[2], -1, 1)) * R2D;
+    if (incl > 20) {
+      const h = versore([su[0], su[1], 0]);
+      c.psi = Math.atan2(-h[0], h[1]) * R2D;
+      c.Rz = Q.asse([0, 0, 1], c.psi);
+      c.Mq = Q.mul(Q.conj(c.qc), c.Rz);
+      c.avanti = Q.ruota(Q.conj(c.qc), h);
+      c.fase = 'pronto';
+      const d = asseDominante(c.avanti);
+      evento(ts, 'cal', `Calibrazione completata: ${d.nome} del tag punta in avanti`);
+    } else if (ts - c.tFase > 20) {
+      c.fase = 'pronto';
+      evento(ts, 'avviso', 'Direzione "avanti" non rilevata: uso quella provvisoria (premi Ricalibra per ripetere)');
+    }
+  }
+}
+
+// ---------- Interpretazione dei movimenti ----------
+const ASSI_TESTA = [
+  { pos: 'Sollevi lo sguardo', neg: 'Abbassi lo sguardo' },
+  { pos: 'Inclini la testa a destra', neg: 'Inclini la testa a sinistra' },
+  { pos: 'Giri la testa a sinistra', neg: 'Giri la testa a destra' },
+];
+const DIREZIONI_TESTA = [['a destra', 'a sinistra'], ['in avanti', 'indietro'], ["verso l'alto", 'verso il basso']];
+function direzione(v, calibrato) {
+  let i = 0;
+  for (let k = 1; k < 3; k++) if (Math.abs(v[k]) > Math.abs(v[i])) i = k;
+  return calibrato ? DIREZIONI_TESTA[i][v[i] >= 0 ? 0 : 1] : `lungo ${v[i] >= 0 ? '+' : '−'}${NOMI_ASSI[i]} del tag`;
+}
+
+function interpreta(ts, dt, a, linW, linT, gT, calibrato) {
+  // Gesti di rotazione, asse per asse: inizio oltre 25 °/s, fine sotto 12 °/s, evento se oltre 15°
+  let rotazioneInCorso = null;
+  A.seg.forEach((s, i) => {
+    const w = gT[i];
+    if (Math.abs(w) > 25) {
+      if (!s.attivo) { s.attivo = true; s.angolo = 0; s.picco = 0; }
+      s.angolo += w * dt;
+      s.picco = Math.max(s.picco, Math.abs(w));
+      if (Math.abs(w) > 60 && (!rotazioneInCorso || Math.abs(w) > Math.abs(rotazioneInCorso.w))) rotazioneInCorso = { i, w };
+    } else if (s.attivo && Math.abs(w) < 12) {
+      s.attivo = false;
+      if (Math.abs(s.angolo) > 15) {
+        // Proni, la rotazione attorno all'asse "avanti" è il gesto della respirazione
+        const respiro = calibrato && i === 1 && A.postura && A.postura.id === 'prono';
+        const testo = respiro ? `Rotazione per respirare a ${s.angolo > 0 ? 'destra' : 'sinistra'} di ${Math.abs(s.angolo).toFixed(0)}°`
+                    : calibrato ? `${ASSI_TESTA[i][s.angolo > 0 ? 'pos' : 'neg']} di ${Math.abs(s.angolo).toFixed(0)}°`
+                                : `Rotazione attorno a ${NOMI_ASSI[i]} del tag: ${s.angolo > 0 ? '+' : '−'}${Math.abs(s.angolo).toFixed(0)}°`;
+        evento(ts, 'rot', testo, `picco ${s.picco.toFixed(0)} °/s`);
+      }
+    }
+  });
+
+  // Rotazione rapida complessiva (oltre 150° in 1,5 s): candidata virata
+  A.rotFinestra.push([ts, modulo(gT) * dt]);
+  while (A.rotFinestra[0][0] < ts - 1.5) A.rotFinestra.shift();
+  const rotTot = A.rotFinestra.reduce((s, r) => s + r[1], 0);
+  if (rotTot > 150 && ts - A.ultimaRotRapida > 2.5) {
+    A.ultimaRotRapida = ts;
+    evento(ts, 'impulso', `Rotazione rapida di circa ${rotTot.toFixed(0)}°`, 'in acqua: possibile virata');
+  }
+
+  // Impulso: accelerazione netta oltre 0,9 g o modulo oltre 1,9 g
+  const linMod = modulo(linT);
+  if (Math.max(Math.abs(a[0]), Math.abs(a[1]), Math.abs(a[2])) > 0.99 * (A.fondoScala || 2)) A.saturo = ts;
+  if ((linMod > 0.9 || modulo(a) > 1.9) && ts - A.ultimoImpulso > 1.2) {
+    A.ultimoImpulso = ts;
+    A.testoImpulso = `Impulso di ${linMod.toFixed(2)} g ${direzione(linT, calibrato)}`;
+    evento(ts, 'impulso', A.testoImpulso, 'in acqua: possibile partenza o spinta dal muro');
+  }
+
+  // Passi: picchi dell'accelerazione verticale (mondo) oltre 0,1 g, almeno 0,28 s l'uno dall'altro
+  A.vertFilt += 0.3 * (linW[2] - A.vertFilt);
+  if (A.vertPrec > A.vertPrec2 && A.vertPrec > A.vertFilt && A.vertPrec > 0.1 &&
+      (!A.passi.length || ts - A.passi[A.passi.length - 1] > 0.28)) A.passi.push(ts);
+  A.vertPrec2 = A.vertPrec; A.vertPrec = A.vertFilt;
+  const recenti = A.passi.filter(p => p > ts - 2.5);
+  const cadenza = recenti.length >= 3 ? 60 * (recenti.length - 1) / (recenti[recenti.length - 1] - recenti[0]) : 0;
+  if (!A.cammina && recenti.length >= 3 && cadenza > 50 && cadenza < 200) {
+    A.cammina = true; A.inizioCammino = A.passi.length - recenti.length;
+    evento(ts, 'mov', 'Inizi a camminare', `${cadenza.toFixed(0)} passi/min`);
+  } else if (A.cammina && (!A.passi.length || ts - A.passi[A.passi.length - 1] > 1.5)) {
+    A.cammina = false;
+    evento(ts, 'mov', `Ti fermi dopo ${A.passi.length - A.inizioCammino} passi`);
+  }
+
+  // Postura (solo dopo la calibrazione), stabile per 0,7 s prima di essere registrata
+  if (calibrato && A.angoli) {
+    const p = postura(A.angoli);
+    if (p.id !== A.posturaCandidata) { A.posturaCandidata = p.id; A.posturaDa = ts; }
+    else if (p.id !== (A.postura && A.postura.id) && ts - A.posturaDa > 0.7) {
+      const primo = !A.postura;
+      A.postura = p;
+      if (!primo || p.id !== 'dritto') evento(ts, 'post', `Posizione: ${p.breve}`, p.nota || '');
+    }
+  }
+
+  // Ingresso nella quiete dopo un movimento
+  if (A.fermo && !A.attivaFermo) { A.attivaFermo = true; if (ts > 3) evento(ts, 'info', 'Fermo'); }
+  if (!A.fermoIst && A.attivaFermo && modulo(gT) > 20) A.attivaFermo = false;
+
+  // Movimento attuale, in ordine di priorità
+  for (let i = 0; i < 3; i++) A.linFilt[i] += 0.15 * (linT[i] - A.linFilt[i]);
+  const linFiltMod = modulo(A.linFilt);
+  let att;
+  if (ts - A.ultimoImpulso < 0.8) att = A.testoImpulso;
+  else if (rotazioneInCorso) att = calibrato
+    ? `${ASSI_TESTA[rotazioneInCorso.i][rotazioneInCorso.w > 0 ? 'pos' : 'neg']} · ${Math.abs(rotazioneInCorso.w).toFixed(0)} °/s`
+    : `Rotazione attorno a ${NOMI_ASSI[rotazioneInCorso.i]} del tag · ${Math.abs(rotazioneInCorso.w).toFixed(0)} °/s`;
+  else if (A.cammina) att = `Cammini · ${cadenza.toFixed(0)} passi/min`;
+  else if (linFiltMod > 0.08) att = `Acceleri ${direzione(A.linFilt, calibrato)} · ${linFiltMod.toFixed(2)} g`;
+  else if (A.fermo) att = 'Fermo';
+  else att = 'Piccoli movimenti';
+  A.attivita = att;
+}
+
+function postura(g) {
+  if (g.pitch < -60) return { id: 'prono', breve: 'prono, a pancia in giù', testo: 'Prono, a pancia in giù', nota: 'assetto di stile libero, rana, delfino' };
+  if (g.pitch > 60) return { id: 'supino', breve: 'supino', testo: 'Supino, a pancia in su', nota: 'assetto di dorso' };
+  if (g.roll > 55) return { id: 'fiancoD', breve: 'sul fianco destro', testo: 'Sdraiato sul fianco destro' };
+  if (g.roll < -55) return { id: 'fiancoS', breve: 'sul fianco sinistro', testo: 'Sdraiato sul fianco sinistro' };
+  if (g.tilt < 20) return { id: 'dritto', breve: 'in piedi, testa dritta', testo: 'In piedi, testa dritta' };
+  if (g.pitch < -20) return { id: 'avanti', breve: 'testa china in avanti', testo: 'Testa china in avanti' };
+  if (g.pitch > 20) return { id: 'indietro', breve: "testa piegata all'indietro", testo: "Testa piegata all'indietro" };
+  return { id: 'lato', breve: 'testa inclinata di lato', testo: `Testa inclinata a ${g.roll > 0 ? 'destra' : 'sinistra'}` };
+}
+
+// ---------- Registro eventi ----------
+const COLORI_EVENTI = { cal: 'accento', rot: 'z', mov: 'y', impulso: 'attenzione', post: 'accento-2', info: 'debole', avviso: 'errore', coll: 'ok', cmd: 'errore' };
+const eventi = [];
+let destEventi = null; // durante l'analisi di una registrazione gli eventi vanno qui
+function evento(ts, tipo, testo, nota) {
+  if (destEventi) {
+    const u = destEventi[destEventi.length - 1];
+    if (!(u && u.testo === testo && ts - u.ts < 2)) destEventi.push({ ts, tipo, testo, nota });
+    return;
+  }
+  const ultimo = eventi[0];
+  if (ultimo && ultimo.testo === testo && ts - ultimo.ts < 2) return;
+  eventi.unshift({ ts, tipo, testo, nota });
+  if (eventi.length > 200) eventi.pop();
+  disegnaEventi();
+}
+// Rielabora una registrazione con gli stessi algoritmi della vista dal vivo
+function analizzaRegistrazione(campioni, hz, gFs = 2) {
+  const salvaA = A, risultato = [];
+  offline = true; destEventi = risultato;
+  try {
+    nuovaAnalisi(hz, true);
+    A.fondoScala = gFs;
+    for (const c of campioni) nuovoCampione(c[0], [c[1], c[2], c[3]], [c[4], c[5], c[6]]);
+  } finally { A = salvaA; offline = false; destEventi = null; }
+  return risultato;
+}
+function oraSessione(ts) {
+  const m = Math.floor(ts / 60), s = ts - m * 60;
+  return `${String(m).padStart(2, '0')}:${s.toFixed(1).padStart(4, '0')}`;
+}
+function disegnaEventi() {
+  const ul = $('eventi');
+  if (!eventi.length) { ul.innerHTML = '<li class="vuoto">Nessun evento: gli eventi compaiono qui man mano che vengono riconosciuti.</li>'; return; }
+  ul.replaceChildren(...eventi.slice(0, 80).map(e => {
+    const li = document.createElement('li');
+    const ora = document.createElement('span'); ora.className = 'ora mono'; ora.textContent = oraSessione(e.ts);
+    const segno = document.createElement('span'); segno.className = 'segno'; segno.style.background = `var(--${COLORI_EVENTI[e.tipo] || 'debole'})`;
+    const testo = document.createElement('span'); testo.textContent = e.testo;
+    if (e.nota) { const n = document.createElement('small'); n.textContent = ' · ' + e.nota; testo.append(n); }
+    li.append(ora, segno, testo);
+    return li;
+  }));
+}
+$('pulisci').addEventListener('click', () => { eventi.length = 0; disegnaEventi(); });
+
+// ---------- Batteria e stato ----------
+const CURVA_LIPO = [[4.20, 100], [4.15, 95], [4.11, 90], [4.08, 85], [4.02, 80], [3.98, 75], [3.95, 70], [3.91, 65], [3.87, 60], [3.85, 55],
+                    [3.84, 50], [3.82, 45], [3.80, 40], [3.79, 35], [3.77, 30], [3.75, 25], [3.73, 20], [3.71, 15], [3.69, 10], [3.61, 5], [3.27, 0]];
+function percentuale(v) {
+  if (v >= CURVA_LIPO[0][0]) return 100;
+  for (let i = 1; i < CURVA_LIPO.length; i++) {
+    const [v1, p1] = CURVA_LIPO[i - 1], [v2, p2] = CURVA_LIPO[i];
+    if (v >= v2) return p2 + (p1 - p2) * (v - v2) / (v1 - v2);
+  }
+  return 0;
+}
+let statoTag = null, vbatFilt = null;
+// Unità per g dei valori grezzi: il firmware a ±16 g lo segnala con il bit4 dello stato
+const lsbAcc = () => statoTag && statoTag.g16 ? 2048 : 16384;
+const fondoScala = () => statoTag && statoTag.g16 ? 16 : 2;
+function nuovoStato(mv, flag, causa, millis, liberi = null, nfile = null, secReg = 0, mvVbus = null) {
+  const v = mv / 1000;
+  vbatFilt = vbatFilt === null || Math.abs(v - vbatFilt) > 0.3 ? v : vbatFilt + 0.2 * (v - vbatFilt);
+  const registrava = statoTag && statoTag.reg, segnalata = statoTag && statoTag.causaSegnalata && statoTag.causa === causa;
+  const vbus = mvVbus === null ? null : mvVbus / 1000;
+  statoTag = { v: vbatFilt, vbus, pc: !!(flag & 1), usb: vbus === null ? !!(flag & 1) : vbus > 4, sensore: !!(flag & 2), reg: !!(flag & 4), g16: !!(flag & 16), causa, causaSegnalata: segnalata, millis, liberi, nfile, secReg, ricevuto: performance.now() };
+  aggiornaStato();
+  if (A && !offline) A.fondoScala = fondoScala();
+  if (statoTag.reg && !registrava) eventoTag('Registrazione avviata sul tag');
+  if (registrava && !statoTag.reg) {
+    eventoTag('Registrazione terminata: la scarico');
+    autoScarica = true;
+    comando('LIST');
+  }
+  aggiornaRegistrazioniUI();
+}
+function eventoTag(testo) { evento(A && A.ultimo ? A.ultimo.ts : 0, 'cmd', testo); }
+// Verifica dei partitori: GPIO 1 = metà della batteria, GPIO 2 = metà del pin 5V
+function verificaPartitori(s) {
+  const f = v => v.toFixed(2).replace('.', ',');
+  const bat = s.v < 0.5 ? `GPIO 1: ${f(s.v / 2)} V ✗ partitore batteria assente`
+    : s.v < 3.0 || s.v > 4.35 ? `GPIO 1: ${f(s.v / 2)} V → ${f(s.v)} V ⚠ fuori dall'intervallo di una LiPo (3,0–4,35 V)`
+    : `GPIO 1: ${f(s.v / 2)} V → batteria ${f(s.v)} V ✓`;
+  if (s.vbus === null) return bat + ' · GPIO 2: il firmware non lo legge (serve la 0.4.1)';
+  const usb = s.vbus > 4.2 ? `GPIO 2: ${f(s.vbus / 2)} V → 5V ${f(s.vbus)} V ✓ USB collegata`
+    : s.vbus < 0.3 ? `GPIO 2: ${f(s.vbus / 2)} V → 5V assente ✓ (corretto senza cavo; con il cavo collegato il partitore non funziona)`
+    : `GPIO 2: ${f(s.vbus / 2)} V → ${f(s.vbus)} V ⚠ valore intermedio: controlla il partitore (o la 5V riceve la batteria tramite un diodo)`;
+  return bat + ' · ' + usb;
+}
+function aggiornaStato() {
+  const s = statoTag;
+  if (!s) return;
+  $('batNota').title = verificaPartitori(s);
+  if (s.v < 2.5) {
+    $('batV').textContent = s.v.toFixed(2) + ' V';
+    $('batPerc').textContent = '–';
+    $('batBarra').style.width = '0';
+    $('batNota').textContent = 'Partitore non montato (BAT+ → 100 kΩ → GPIO 1 → 100 kΩ → GND)';
+    $('partitori').textContent = verificaPartitori(s);
+  } else {
+    // In carica la tensione ai morsetti è gonfiata dalla corrente: stima corretta di circa 0,15 V
+    const p = percentuale(s.usb ? s.v - 0.15 : s.v);
+    $('batV').textContent = s.v.toFixed(2) + ' V';
+    $('batPerc').innerHTML = `${Math.round(p)}<small>%</small>`;
+    const b = $('batBarra');
+    b.style.width = p.toFixed(0) + '%';
+    b.style.background = p < 15 ? 'var(--errore)' : p < 35 ? 'var(--attenzione)' : 'var(--ok)';
+    $('batNota').textContent = (s.usb ? (s.vbus === null ? 'PC collegato: probabilmente in carica, valore stimato' : '⚡ In carica: valore stimato')
+      : s.v < 3.4 ? 'Batteria quasi scarica: ricaricare' : 'Lettura dal partitore su GPIO 1') + (s.vbus === null ? '' : ` · USB ${s.vbus.toFixed(2).replace('.', ',')} V`);
+    $('partitori').textContent = verificaPartitori(s);
+  }
+  const durata = sec => `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
+  $('statoTag').textContent = !s.sensore ? 'Sensore assente' : s.reg ? `● Registra ${durata(s.secReg)}` : 'Attivo';
+  $('statoTag').style.color = !s.sensore || s.reg ? 'var(--errore)' : 'var(--ok)';
+  const CAUSE = { 2: 'errore del firmware (panic)', 3: 'watchdog', 4: 'tensione bassa (brownout)', 5: 'riavvio software', 6: 'altro' };
+  $('statoNota').title = CAUSE[s.causa] ? 'Ultimo riavvio: ' + CAUSE[s.causa] : '';
+  if (CAUSE[s.causa] && s.causa !== 5 && !s.causaSegnalata) { s.causaSegnalata = true; evento(A && A.ultimo ? A.ultimo.ts : 0, 'avviso', 'Il tag si era riavviato per: ' + CAUSE[s.causa]); }
+  $('statoNota').textContent = (CAUSE[s.causa] ? '⚠ riavvio: ' + CAUSE[s.causa] + ' · ' : '') + (s.liberi !== null
+    ? `${s.nfile} registrazion${s.nfile === 1 ? 'e' : 'i'} · ${(s.liberi / 1048576).toFixed(2).replace('.', ',')} MB liberi (~${Math.floor(s.liberi / 800 / 60)} min)`
+    : (s.causa === 1 ? 'Risvegliato dal movimento' : 'Avviato da accensione o reset') + (s.usb ? ' · USB con PC' : ''));
+  const sec = Math.floor(s.millis / 1000);
+  $('acceso').textContent = `acceso da ${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
+}
+
+// ---------- Collegamenti ----------
+const arrivi = [];
+let sorgente = null; // { nome, chiudi() }
+function iniziaSorgente(nome, hz, chiudi, invia) {
+  sorgente = { nome, chiudi, invia };
+  nuovaAnalisi(hz);
+  statoTag = null; vbatFilt = null;
+  $('pillola').className = 'pillola attivo';
+  $('stato').textContent = 'Collegato · ' + nome;
+  $('sorgente').textContent = nome;
+  $('collNota').textContent = nome === 'Demo' ? 'Dati simulati: sessione in casa di 44 s ripetuta' : `Campioni attesi a ${hz} Hz`;
+  $('batNota').textContent = 'In attesa dei dati di stato';
+  aggiornaPulsanti();
+  evento(0, 'coll', `Collegato via ${nome}`);
+  elencoTag = null; trasf = null; versioneTag = nome === 'Demo' ? 'demo' : null;
+  aggiornaRegistrazioniUI();
+  aggiornaFw();
+  if (invia) setTimeout(() => comando('LIST'), 800);
+}
+function finisceSorgente(motivo) {
+  if (!sorgente) return;
+  sorgente = null;
+  $('pillola').className = 'pillola';
+  $('stato').textContent = 'Scollegato' + (motivo ? ': ' + motivo : '');
+  $('sorgente').textContent = 'Nessuno';
+  $('collNota').textContent = 'Scegli Bluetooth, USB o Demo';
+  aggiornaPulsanti();
+  trasf = null;
+  aggiornaRegistrazioniUI();
+  if (ota) ota.annullato = true;
+  aggiornaFw();
+}
+function aggiornaPulsanti() {
+  const attiva = !!sorgente;
+  $('collegaBt').disabled = attiva || !('bluetooth' in navigator);
+  $('collegaUsb').disabled = attiva || !('serial' in navigator);
+  $('demo').disabled = attiva;
+  $('scollega').disabled = !attiva;
+  $('ricalibra').disabled = !attiva;
+  $('esporta').disabled = !A || !registro.length;
+}
+$('scollega').addEventListener('click', () => { if (sorgente) sorgente.chiudi(); });
+$('ricalibra').addEventListener('click', () => {
+  if (!A) return;
+  A.cal = { fase: 'attesa', qc: null, psi: 0, Mq: null, Rz: Q.id(), su: null, avanti: null, tFase: 0, accSomma: [0, 0, 0], n: 0 };
+  A.postura = null;
+  evento(A.ultimo ? A.ultimo.ts : 0, 'cal', 'Calibrazione azzerata: resta fermo in piedi per 2 secondi');
+});
+
+// Avvisi sulle API mancanti
+(() => {
+  const avvisi = [];
+  const ios = /iPhone|iPad|iPod/.test(navigator.userAgent);
+  if (!('bluetooth' in navigator)) avvisi.push(ios ? 'Su iPhone e iPad Safari non supporta il Web Bluetooth: apri questa pagina con il browser gratuito Bluefy.'
+                                                    : 'Questo browser non supporta il Web Bluetooth: usa Chrome o Edge.');
+  if (!('serial' in navigator) && !ios) avvisi.push('Il collegamento USB richiede Chrome o Edge su computer.');
+  if (avvisi.length) { $('supporto').hidden = false; $('supporto').textContent = avvisi.join(' '); }
+  aggiornaPulsanti();
+})();
+
+// USB: righe "D,millis,ax,ay,az,gx,gy,gz" a 50 Hz e "S,millis,mV,flag,causa" una volta al secondo
+$('collegaUsb').addEventListener('click', async () => {
+  let porta, lettore, chiuso = false;
+  try {
+    porta = await navigator.serial.requestPort({ filters: [{ usbVendorId: 0x303a }] });
+    await porta.open({ baudRate: 115200 });
+    lettore = porta.readable.pipeThrough(new TextDecoderStream()).getReader();
+    const scrittore = porta.writable.getWriter(), cod = new TextEncoder();
+    iniziaSorgente('USB', HZ_USB, async () => { chiuso = true; try { await lettore.cancel(); } catch {} },
+      testo => scrittore.write(cod.encode(testo + '\n')));
+    sorgente.rilascia = () => { try { scrittore.releaseLock(); } catch {} };
+    let resto = '';
+    while (true) {
+      const { value, done } = await lettore.read();
+      if (done) break;
+      const righe = (resto + value).split('\n');
+      resto = righe.pop();
+      for (const r of righe) gestisciRiga(r.replace('\r', ''));
+    }
+  } catch (e) {
+    if (!chiuso) { finisceSorgente(e.message); return; }
+  }
+  if (sorgente && sorgente.rilascia) sorgente.rilascia();
+  try { await porta.close(); } catch {}
+  finisceSorgente();
+});
+function gestisciRiga(r) {
+  const p = r.split(',');
+  if (p[0] === 'D' && p.length === 8) {
+    const v = p.slice(1).map(Number);
+    if (!v.some(isNaN)) nuovoCampione(v[0], v.slice(1, 4), v.slice(4, 7));
+  } else if (p[0] === 'S' && (p.length === 5 || p.length === 8 || p.length === 9)) {
+    const v = p.slice(1).map(Number);
+    if (!v.some(isNaN)) nuovoStato(v[1], v[2], v[3], v[0], v[4] ?? null, v[5] ?? null, v[6] ?? 0, v[7] ?? null);
+  } else if (p[0] === 'F' && p.length >= 3) rispostaElenco(p[1], Number(p[2]));
+  else if (p[0] === 'Z') fineElenco();
+  else if (p[0] === 'H' && p.length === 3) {
+    const h = p[2], b = new Uint8Array(h.length >> 1);
+    for (let i = 0; i < b.length; i++) b[i] = parseInt(h.substr(2 * i, 2), 16);
+    datiFile(Number(p[1]), b);
+  } else if (p[0] === 'E' && p.length === 2) fineFile(Number(p[1]));
+  else if (p[0] === 'K') conferma(p.slice(1).join(','));
+  else if (p[0] === 'X') errore(p.slice(1).join(','));
+  else if (p[0] === 'T' && p.length === 3) eventoTag(`Sequenza di ${p[2]} tap`);
+  else if (p[0] === 'V' && p.length >= 2) { versioneTag = p[1]; aggiornaFw(); }
+}
+
+// Bluetooth: dati da 16 byte a 25 Hz (uint32 millis + 6 int16 grezzi) e stato da 8 byte una volta al secondo
+$('collegaBt').addEventListener('click', async () => {
+  let dispositivo;
+  try {
+    dispositivo = await navigator.bluetooth.requestDevice({ filters: [{ name: 'SwimTag' }], optionalServices: [BLE_SERVIZIO] });
+    dispositivo.addEventListener('gattserverdisconnected', () => finisceSorgente());
+    $('stato').textContent = 'Connessione…';
+    $('pillola').className = 'pillola attesa';
+    const server = await dispositivo.gatt.connect();
+    const servizio = await server.getPrimaryService(BLE_SERVIZIO);
+    const dati = await servizio.getCharacteristic(BLE_DATI);
+    iniziaSorgente('Bluetooth', HZ_BT, () => dispositivo.gatt.disconnect());
+    dati.addEventListener('characteristicvaluechanged', e => {
+      const d = e.target.value;
+      if (!d || d.byteLength !== 16) return;
+      const k = lsbAcc();
+      nuovoCampione(d.getUint32(0, true),
+        [d.getInt16(4, true) / k, d.getInt16(6, true) / k, d.getInt16(8, true) / k],
+        [d.getInt16(10, true) / 16.4, d.getInt16(12, true) / 16.4, d.getInt16(14, true) / 16.4]);
+    });
+    await dati.startNotifications();
+    try {
+      const stato = await servizio.getCharacteristic(BLE_STATO);
+      const leggiStato = d => {
+        if (!d || d.byteLength < 8) return;
+        const esteso = d.byteLength >= 16;
+        nuovoStato(d.getUint16(0, true), d.getUint8(2), d.getUint8(3), d.getUint32(4, true),
+          esteso ? d.getUint32(8, true) : null, esteso ? d.getUint16(12, true) : null, esteso ? d.getUint16(14, true) : 0,
+          d.byteLength >= 18 ? d.getUint16(16, true) : null);
+      };
+      stato.addEventListener('characteristicvaluechanged', e => leggiStato(e.target.value));
+      await stato.startNotifications();
+      leggiStato(await stato.readValue());
+    } catch {
+      $('batNota').textContent = 'Il firmware del tag non invia lo stato (aggiornalo)';
+    }
+    // Comandi (testo) e risposte: il primo byte della notifica è il tipo
+    try {
+      const carCmd = await servizio.getCharacteristic(BLE_COMANDI);
+      const carRisp = await servizio.getCharacteristic(BLE_RISPOSTE);
+      const dec = new TextDecoder();
+      carRisp.addEventListener('characteristicvaluechanged', e => {
+        const d = e.target.value;
+        if (!d || !d.byteLength) return;
+        const tipo = String.fromCharCode(d.getUint8(0));
+        const testo = () => dec.decode(new Uint8Array(d.buffer, d.byteOffset + 1, d.byteLength - 1));
+        if (tipo === 'L') { const [n, b] = testo().split(','); rispostaElenco(n, Number(b)); }
+        else if (tipo === 'Z') fineElenco();
+        else if (tipo === 'D' && d.byteLength >= 5) datiFile(d.getUint32(1, true), new Uint8Array(d.buffer.slice(d.byteOffset + 5, d.byteOffset + d.byteLength)));
+        else if (tipo === 'E' && d.byteLength >= 5) fineFile(d.getUint32(1, true));
+        else if (tipo === 'K') conferma(testo());
+        else if (tipo === 'X') errore(testo());
+      });
+      await carRisp.startNotifications();
+      const cod = new TextEncoder();
+      let coda = Promise.resolve();
+      sorgente.invia = testo => (coda = coda.then(() => carCmd.writeValue(cod.encode(testo))).catch(e => errore(e.message)));
+      aggiornaRegistrazioniUI();
+      setTimeout(() => comando('LIST'), 300);
+      try { sorgente.ota = await servizio.getCharacteristic(BLE_OTA); } catch {}
+      try { versioneTag = new TextDecoder().decode(await (await servizio.getCharacteristic(BLE_VERSIONE)).readValue()); } catch { versioneTag = null; }
+      aggiornaFw();
+    } catch {
+      $('regNota').textContent = 'Il firmware del tag non supporta le registrazioni (aggiornalo)';
+    }
+  } catch (e) {
+    if (dispositivo && dispositivo.gatt.connected) dispositivo.gatt.disconnect();
+    if (sorgente) finisceSorgente(e.message);
+    else { $('pillola').className = 'pillola'; $('stato').textContent = e.name === 'NotFoundError' ? 'Nessun tag scelto' : 'Errore: ' + e.message; }
+  }
+});
+
+// ---------- Demo: sessione in casa simulata con il tag montato storto ----------
+$('demo').addEventListener('click', () => {
+  const montaggio = Q.mul(Q.asse([1, 0, 0], -80), Q.asse([0, 0, 1], 25)); // dalla testa al tag
+  const rumore = s => (Math.random() * 2 - 1) * s;
+  const liscio = x => x <= 0 ? 0 : x >= 1 ? 1 : x * x * (3 - 2 * x);
+  const DUR = 46;
+  function testa(t) {
+    let yaw = 30, pitch = 0, roll = 0, lin = [0, 0, 0];
+    if (t > 5 && t < 7.5) pitch = -35 * Math.sin(Math.PI * (t - 5) / 2.5);
+    if (t > 10 && t < 14) yaw += 60 * Math.sin(2 * Math.PI * (t - 10) / 4);
+    if (t > 15 && t < 21) {
+      const f = 1.8 * (t - 15);
+      lin = [0.04 * Math.sin(Math.PI * f), 0.06 * Math.sin(2 * Math.PI * f + 1), 0.28 * Math.sin(2 * Math.PI * f)];
+      roll = 3 * Math.sin(Math.PI * f);
+    }
+    if (t >= 21 && t < 23) pitch = -90 * liscio((t - 21) / 2);
+    if (t >= 23 && t < 29) { pitch = -90; roll = 40 * Math.sin(2 * Math.PI * (t - 23) / 3); }
+    if (t >= 29 && t < 31) pitch = -90 * (1 - liscio((t - 29) / 2));
+    if (t >= 31) yaw += 180 * liscio((t - 31) / 1.2);
+    if (t >= 42) yaw -= 180 * liscio((t - 42) / 2.5);
+    const qT = Q.mul(Q.mul(Q.asse([0, 0, 1], yaw), Q.asse([1, 0, 0], pitch)), Q.asse([0, 1, 0], roll));
+    const imp = Math.exp(-(((t - 36) / 0.12) ** 2)) * 1.3;
+    if (imp > 0.01) lin = lin.map((v, i) => v + Q.ruota(qT, [0, imp, 0])[i]);
+    return { q: Q.mul(qT, Q.conj(montaggio)), lin };
+  }
+  let t = 0, qPrec = testa(0).q;
+  const bias = [1.2, -0.8, 0.5];
+  // Tag simulato: registrazioni in memoria con lo stesso formato e protocollo del firmware
+  const file = new Map();
+  let reg = null, numero = 0;
+  const record = (ms, v, ev) => {
+    const b = new ArrayBuffer(16), d = new DataView(b);
+    d.setUint32(0, ev ? (ms | 0x80000000) >>> 0 : ms, true);
+    v.forEach((x, i) => d.setInt16(4 + 2 * i, x, true));
+    return new Uint8Array(b);
+  };
+  const unisci = parti => { const u = new Uint8Array(parti.length * 16); parti.forEach((p, i) => u.set(p, i * 16)); return u; };
+  const statoDemo = () => nuovoStato(3920 + Math.round(rumore(8)), 2 | (reg ? 4 : 0), 0, Math.round(t * 1000),
+    3000000 - [...file.values()].reduce((s, f) => s + f.length, 0), file.size, reg ? Math.round(t - reg.t0) : 0);
+  const invia = testo => {
+    const [cmd, nome, off] = testo.split(',');
+    setTimeout(() => {
+      if (cmd === 'LIST') { [...file.keys()].sort().forEach(n => rispostaElenco(n, file.get(n).length)); fineElenco(); }
+      else if (cmd === 'REC') {
+        if (reg) return errore('registrazione già in corso');
+        reg = { nome: `r${String(++numero).padStart(3, '0')}.bin`, parti: [record(Math.round(t * 1000), [4, 0, 0, 0, 0, 0], true)], t0: t };
+        conferma('rec'); statoDemo();
+      } else if (cmd === 'STOP') {
+        if (!reg) return errore('nessuna registrazione in corso');
+        reg.parti.push(record(Math.round(t * 1000), [5, 0, 0, 0, 0, 0], true));
+        file.set(reg.nome, unisci(reg.parti)); reg = null;
+        conferma('stop'); statoDemo();
+      } else if (cmd === 'GET') {
+        const dati = file.get(nome);
+        if (!dati) return errore('file inesistente');
+        let o = Number(off) || 0;
+        const invio = setInterval(() => {
+          for (let k = 0; k < 4 && o < dati.length; k++, o += 180) datiFile(o, dati.slice(o, o + 180));
+          if (o >= dati.length) { clearInterval(invio); fineFile(dati.length); }
+        }, 8);
+      } else if (cmd === 'DEL') { file.delete(nome); conferma('del ' + nome); }
+      else if (cmd === 'DELALL') { file.clear(); conferma('del tutti'); }
+    }, 30);
+  };
+  const id = setInterval(() => {
+    for (let k = 0; k < 2; k++) { // 50 Hz con un timer da 40 ms
+      t += 1 / HZ_DEMO;
+      const tl = t % DUR;
+      const { q, lin } = testa(tl);
+      const dq = Q.mul(Q.conj(qPrec), q);
+      const s = dq[0] < 0 ? -2 : 2;
+      const g = [dq[1], dq[2], dq[3]].map((v, i) => s * v * HZ_DEMO * R2D + bias[i] + rumore(0.4));
+      qPrec = q;
+      const acc = Q.ruota(Q.conj(q), [lin[0], lin[1], 1 + lin[2]]).map(v => limita(v + rumore(0.006), -2, 2));
+      nuovoCampione(t * 1000, acc, g);
+      if (reg) reg.parti.push(record(Math.round(t * 1000), [...acc.map(v => Math.round(limita(v * 16384, -32768, 32767))), ...g.map(v => Math.round(limita(v * 16.4, -32768, 32767)))]));
+    }
+  }, 40);
+  const idStato = setInterval(statoDemo, 1000);
+  iniziaSorgente('Demo', HZ_DEMO, () => { clearInterval(id); clearInterval(idStato); finisceSorgente(); }, invia);
+  statoDemo();
+});
+
+// Esportazione dei campioni e degli eventi della sessione
+$('esporta').addEventListener('click', () => {
+  const righe = ['millis,ax_g,ay_g,az_g,gx_dps,gy_dps,gz_dps', ...registro.map(r => r.map((v, i) => i ? v.toFixed(4) : v).join(','))];
+  const ev = ['secondi,tipo,evento,nota', ...eventi.slice().reverse().map(e => [e.ts.toFixed(2), e.tipo, `"${e.testo.replace(/"/g, '""')}"`, `"${(e.nota || '').replace(/"/g, '""')}"`].join(','))];
+  const data = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
+  scaricaTesto(righe.join('\n'), `swimtimer-campioni-${data}.csv`);
+  scaricaTesto(ev.join('\n'), `swimtimer-eventi-${data}.csv`);
+});
+
+// ---------- Registrazioni sul tag ----------
+const CODICI_TAG = { 1: 'Inizio registrazione · toc toc', 2: 'Fine registrazione · toc toc toc', 3: 'Fine: memoria piena', 4: 'Inizio da comando', 5: 'Fine da comando' };
+let elencoTag = null, elencoProvv = [], trasf = null, autoScarica = false, vis = null;
+const scaricate = new Map(); // nome → byte della registrazione (solo in memoria, mai inviati altrove)
+
+function comando(testo) {
+  if (!sorgente || !sorgente.invia) return false;
+  if (testo === 'LIST') elencoProvv = [];
+  try { const p = sorgente.invia(testo); if (p && p.catch) p.catch(e => errore(e.message)); } catch (e) { errore(e.message); }
+  return true;
+}
+function notaReg(testo, err) { $('regNota').textContent = testo; $('regNota').classList.toggle('errore', !!err); }
+function rispostaElenco(nome, byte) { if (nome) elencoProvv.push({ nome, byte }); }
+function fineElenco() {
+  elencoTag = elencoProvv.sort((a, b) => a.nome.localeCompare(b.nome));
+  elencoProvv = [];
+  aggiornaRegistrazioniUI();
+  if (autoScarica && elencoTag.length && !trasf) {
+    autoScarica = false;
+    const u = elencoTag[elencoTag.length - 1];
+    scarica(u.nome, u.byte);
+  }
+}
+function conferma(t) {
+  if (t.startsWith('ota')) return rispostaOta(t, false);
+  if (t.startsWith('tap,')) return eventoTag(`Sequenza di ${t.slice(4)} tap`);
+  const testi = { rec: 'Registrazione avviata', stop: 'Registrazione fermata' };
+  notaReg(testi[t] || (t.startsWith('del') ? 'Eliminata: ' + t.slice(4) : t));
+  if (t.startsWith('del')) comando('LIST');
+}
+function errore(t) {
+  if (t.startsWith('ota') || ota) return rispostaOta(t, true);
+  notaReg('Errore: ' + t, true);
+}
+
+function scarica(nome, byte) {
+  if (trasf) return;
+  trasf = { nome, byte, buf: new Uint8Array(Math.max(byte, 16)), ricevuti: 0, richiesto: -1, ultimo: performance.now(), t0: performance.now(), tentativi: 0 };
+  notaReg('');
+  comando(`GET,${nome}`);
+  aggiornaRegistrazioniUI();
+}
+function richiediDa() {
+  trasf.richiesto = trasf.ricevuti; trasf.ultimo = performance.now();
+  comando(`GET,${trasf.nome},${trasf.ricevuti}`);
+}
+function datiFile(off, d) {
+  if (!trasf) return;
+  trasf.ultimo = performance.now();
+  if (off !== trasf.ricevuti) { if (off > trasf.ricevuti && trasf.richiesto !== trasf.ricevuti) richiediDa(); return; } // pacchetto perso: riprende
+  if (off + d.length > trasf.buf.length) { const nb = new Uint8Array(Math.max(off + d.length, trasf.buf.length * 2)); nb.set(trasf.buf); trasf.buf = nb; }
+  trasf.buf.set(d, off);
+  trasf.ricevuti += d.length;
+  avanzamento();
+}
+function fineFile(totale) {
+  if (!trasf) return;
+  if (trasf.ricevuti < totale) { if (trasf.richiesto !== trasf.ricevuti) richiediDa(); return; }
+  const { nome, buf, t0 } = trasf;
+  trasf = null;
+  const dati = buf.slice(0, totale);
+  scaricate.set(nome, dati);
+  notaReg(`${nome} scaricata in ${((performance.now() - t0) / 1000).toFixed(1).replace('.', ',')} s`);
+  apriRegistrazione(nome, dati);
+  aggiornaRegistrazioniUI();
+}
+// Nessun dato da 3 s: richiede di nuovo dal punto raggiunto, al massimo 5 volte
+setInterval(() => {
+  if (!trasf || performance.now() - trasf.ultimo < 3000) return;
+  if (++trasf.tentativi > 5) { errore(`scaricamento di ${trasf.nome} interrotto`); trasf = null; aggiornaRegistrazioniUI(); return; }
+  richiediDa();
+}, 1000);
+let ultimoAvanz = 0;
+function avanzamento(forza) {
+  const ora = performance.now();
+  if (!trasf || (!forza && ora - ultimoAvanz < 100)) return;
+  ultimoAvanz = ora;
+  const p = trasf.byte ? Math.min(100, trasf.ricevuti / trasf.byte * 100) : 0;
+  const vel = trasf.ricevuti / Math.max(0.1, (ora - trasf.t0) / 1000) / 1024;
+  $('regBarra').style.width = p.toFixed(1) + '%';
+  $('regAvanzTesto').textContent = `${trasf.nome} · ${(trasf.ricevuti / 1024).toFixed(0)} / ${(trasf.byte / 1024).toFixed(0)} KB · ${vel.toFixed(1).replace('.', ',')} KB/s`;
+}
+
+const durataFile = byte => Math.round(byte / 16 / 50); // stima: ~50 record al secondo
+const mmss = sec => `${Math.floor(sec / 60)}:${String(Math.round(sec % 60)).padStart(2, '0')}`;
+function aggiornaRegistrazioniUI() {
+  const comandi = !!(sorgente && sorgente.invia);
+  const reg = !!(statoTag && statoTag.reg);
+  $('regAvvia').disabled = !comandi || reg || !!trasf;
+  $('regFerma').disabled = !comandi || !reg;
+  $('regAggiorna').disabled = !comandi || !!trasf;
+  $('regAvanz').hidden = !trasf;
+  if (trasf) avanzamento(true);
+  const box = $('regFile');
+  const nomi = new Set([...(elencoTag || []).map(f => f.nome), ...scaricate.keys()]);
+  if (!nomi.size) {
+    box.innerHTML = `<div class="vuoto-reg">${!sorgente ? 'Collega il tag per vedere le registrazioni salvate, oppure apri un file .bin.' : comandi ? (elencoTag ? 'Nessuna registrazione sul tag.' : 'Lettura dell’elenco…') : 'Questa sorgente non supporta le registrazioni.'}</div>`;
+    return;
+  }
+  box.replaceChildren(...[...nomi].sort().reverse().map(nome => {
+    const sulTag = (elencoTag || []).find(f => f.nome === nome);
+    const locale = scaricate.get(nome);
+    const byte = sulTag ? sulTag.byte : locale.length;
+    const div = document.createElement('div');
+    div.className = 'file' + (vis && vis.nome === nome ? ' aperto' : '') + (sulTag ? '' : ' locale');
+    const n = document.createElement('div'); n.className = 'nome mono'; n.textContent = nome;
+    const info = document.createElement('div'); info.className = 'info';
+    info.textContent = `${mmss(durataFile(byte))} · ${(byte / 1024).toFixed(0)} KB · ${locale ? (sulTag ? 'scaricata' : 'solo nella pagina') : 'sul tag'}`;
+    const az = document.createElement('div'); az.className = 'azioni';
+    const btn = (testo, titolo, fn, dis) => { const b = document.createElement('button'); b.className = 'piccolo'; b.textContent = testo; b.title = titolo; b.disabled = !!dis; b.onclick = fn; az.append(b); };
+    if (locale) btn('Apri', 'Mostra la traccia', () => { apriRegistrazione(nome, locale); aggiornaRegistrazioniUI(); });
+    else btn('Scarica', 'Scarica dal tag e mostra la traccia', () => scarica(nome, byte), !comandi || !!trasf);
+    if (sulTag) btn('✕', 'Elimina dal tag', () => { if (confirm(`Eliminare ${nome} dal tag? L'operazione non si può annullare.`)) comando(`DEL,${nome}`); }, !comandi || !!trasf);
+    div.append(n, info, az);
+    return div;
+  }));
+}
+$('regAvvia').addEventListener('click', () => comando('REC'));
+$('regFerma').addEventListener('click', () => { autoScarica = true; comando('STOP'); });
+$('regAggiorna').addEventListener('click', () => comando('LIST'));
+$('regApri').addEventListener('change', async e => {
+  const f = e.target.files[0];
+  if (!f) return;
+  const dati = new Uint8Array(await f.arrayBuffer());
+  scaricate.set(f.name, dati);
+  apriRegistrazione(f.name, dati);
+  aggiornaRegistrazioniUI();
+  e.target.value = '';
+});
+aggiornaRegistrazioniUI();
+
+// Decodifica: record da 16 byte; bit 31 dei millis = evento (codice nel primo int16)
+function apriRegistrazione(nome, dati) {
+  const dv = new DataView(dati.buffer, dati.byteOffset, dati.byteLength);
+  const n = Math.floor(dati.byteLength / 16);
+  const campioni = [], evTag = [];
+  let base = null, k = 16384, gFs = 2, hzDich = 0;
+  for (let i = 0; i < n; i++) {
+    const o = i * 16, m = dv.getUint32(o, true), ms = m & 0x7fffffff;
+    if (base === null) base = ms;
+    if (m >>> 31) {
+      const codice = dv.getInt16(o + 4, true);
+      if ((codice === 1 || codice === 4) && [2, 4, 8, 16].includes(dv.getInt16(o + 6, true))) {
+        gFs = dv.getInt16(o + 6, true); k = 32768 / gFs; hzDich = dv.getInt16(o + 8, true);
+      }
+      evTag.push({ t: (ms - base) / 1000, testo: CODICI_TAG[codice] || `Evento ${codice}` });
+    } else {
+      campioni.push([ms, dv.getInt16(o + 4, true) / k, dv.getInt16(o + 6, true) / k, dv.getInt16(o + 8, true) / k,
+                     dv.getInt16(o + 10, true) / 16.4, dv.getInt16(o + 12, true) / 16.4, dv.getInt16(o + 14, true) / 16.4]);
+    }
+  }
+  if (!campioni.length) { notaReg(`${nome}: nessun campione nel file`, true); return; }
+  const T = new Float64Array(campioni.length), ch = [0, 1, 2, 3, 4, 5].map(() => new Float32Array(campioni.length));
+  campioni.forEach((c, i) => { T[i] = (c[0] - base) / 1000; for (let k = 0; k < 6; k++) ch[k][i] = c[k + 1]; });
+  const durata = Math.max(T[T.length - 1], evTag.length ? evTag[evTag.length - 1].t : 0, 0.5);
+  const hz = campioni.length > 1 ? (campioni.length - 1) / Math.max(0.001, T[T.length - 1] - T[0]) : 50;
+  const scarto = T[0];
+  const evAn = analizzaRegistrazione(campioni, hz, gFs).map(e => ({ t: e.ts + scarto, tipo: e.tipo, testo: e.testo, nota: e.nota }));
+  vis = { nome, dati, T, ch, evTag, evAn, durata, hz, v0: 0, v1: durata, hover: null };
+  mostraVista('reg');
+  $('visTitolo').textContent = nome;
+  $('visRiassunto').innerHTML = `<span>durata <b>${mmss(durata)}</b></span><span>campioni <b>${campioni.length}</b></span><span>frequenza <b>${hz.toFixed(1).replace('.', ',')} Hz</b></span><span>fondo scala <b>±${gFs} g</b></span><span>comandi <b>${evTag.length}</b></span><span>eventi riconosciuti <b>${evAn.length}</b></span>`;
+  ['visMeno', 'visPiu', 'visTutto', 'visSalva', 'visCsv'].forEach(id => $(id).disabled = false);
+  const righe = [...evTag.map(e => ({ ...e, origine: 'tag' })), ...evAn.map(e => ({ ...e, origine: 'analisi' }))].sort((a, b) => a.t - b.t);
+  $('visEventi').replaceChildren(...righe.map(e => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td class="mono">${oraSessione(e.t)}</td><td><span class="chip ${e.origine}">${e.origine === 'tag' ? 'Tag' : 'Analisi'}</span></td><td></td>`;
+    tr.lastChild.textContent = e.testo + (e.nota ? ' · ' + e.nota : '');
+    tr.onclick = () => { const span = Math.min(vis.v1 - vis.v0, 10); vista(e.t - span / 2, e.t + span / 2); };
+    return tr;
+  }));
+  disegnaTraccia();
+}
+
+function vista(a, b) {
+  if (!vis) return;
+  const span = limita(b - a, 0.5, vis.durata);
+  a = limita(a, 0, vis.durata - span);
+  vis.v0 = a; vis.v1 = a + span;
+  disegnaTraccia();
+}
+function zoom(fattore, centro) {
+  if (!vis) return;
+  const c = centro ?? (vis.v0 + vis.v1) / 2, f = (c - vis.v0) / (vis.v1 - vis.v0), span = (vis.v1 - vis.v0) * fattore;
+  vista(c - f * span, c - f * span + span);
+}
+$('visMeno').onclick = () => zoom(1.6);
+$('visPiu').onclick = () => zoom(1 / 1.6);
+$('visTutto').onclick = () => vis && vista(0, vis.durata);
+function scaricaTesto(testo, nome, tipo = 'text/csv') {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([testo], { type: tipo }));
+  a.download = nome; a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+$('visSalva').onclick = () => vis && scaricaTesto(vis.dati, vis.nome, 'application/octet-stream');
+$('visCsv').onclick = () => {
+  if (!vis) return;
+  const base = vis.nome.replace(/\.bin$/, '');
+  const righe = ['t_s,ax_g,ay_g,az_g,gx_dps,gy_dps,gz_dps'];
+  for (let i = 0; i < vis.T.length; i++) righe.push([vis.T[i].toFixed(3), ...vis.ch.map((c, k) => c[i].toFixed(k < 3 ? 4 : 2))].join(','));
+  scaricaTesto(righe.join('\n'), `${base}-campioni.csv`);
+  const q = v => `"${String(v || '').replace(/"/g, '""')}"`;
+  const ev = ['t_s,origine,evento,nota', ...vis.evTag.map(e => [e.t.toFixed(3), 'tag', q(e.testo), ''].join(',')),
+              ...vis.evAn.map(e => [e.t.toFixed(3), 'analisi', q(e.testo), q(e.nota)].join(','))];
+  scaricaTesto(ev.join('\n'), `${base}-eventi.csv`);
+};
+
+// Traccia: corsia eventi, accelerazione, velocità angolare, asse dei tempi
+function geometriaTraccia(w, h) {
+  const sx = 54, dx = w - 12, evH = 50, assi = 22, spazio = 14;
+  const corsia = (h - evH - assi - spazio - 8) / 2;
+  return { sx, dx, evTop: 4, evH, accTop: evH + 8, gyrTop: evH + 8 + corsia + spazio, corsia, assiY: h - 6 };
+}
+function cerca(T, t) { let lo = 0, hi = T.length - 1; while (lo < hi) { const m = (lo + hi) >> 1; if (T[m] < t) lo = m + 1; else hi = m; } return lo; }
+function disegnaTraccia() {
+  const { ctx, w, h } = preparaCanvas($('traccia'));
+  if (!vis) {
+    ctx.fillStyle = C.debole; ctx.font = '500 13px Inter, sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText('Scarica una registrazione dal tag o apri un file .bin', w / 2, h / 2);
+    return;
+  }
+  const G = geometriaTraccia(w, h), { sx, dx } = G, v0 = vis.v0, v1 = vis.v1;
+  const x = t => sx + (t - v0) / (v1 - v0) * (dx - sx);
+  const i0 = Math.max(0, cerca(vis.T, v0) - 1), i1 = Math.min(vis.T.length - 1, cerca(vis.T, v1) + 1);
+
+  function corsia(top, canali, titolo, minimo, dec) {
+    const alto = G.corsia;
+    let lo = Infinity, hi = -Infinity;
+    const passo = Math.max(1, Math.floor((i1 - i0) / 6000));
+    for (const k of canali) for (let i = i0; i <= i1; i += passo) { const v = vis.ch[k][i]; if (v < lo) lo = v; if (v > hi) hi = v; }
+    if (!isFinite(lo)) { lo = -minimo; hi = minimo; }
+    if (hi - lo < minimo) { const c = (hi + lo) / 2; lo = c - minimo / 2; hi = c + minimo / 2; }
+    const pad = (hi - lo) * 0.08; lo -= pad; hi += pad;
+    const y = v => top + alto - (v - lo) / (hi - lo) * alto;
+    ctx.save();
+    ctx.font = '10px "JetBrains Mono", monospace'; ctx.textAlign = 'right';
+    for (let i = 0; i <= 4; i++) {
+      const v = lo + (hi - lo) * i / 4, yy = Math.round(y(v)) + .5;
+      ctx.strokeStyle = C.griglia; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(sx, yy); ctx.lineTo(dx, yy); ctx.stroke();
+      ctx.fillStyle = C.debole; ctx.fillText(v.toFixed(dec).replace('.', ','), sx - 6, yy + 3);
+    }
+    if (lo < 0 && hi > 0) { ctx.strokeStyle = C.bordo; ctx.beginPath(); ctx.moveTo(sx, Math.round(y(0)) + .5); ctx.lineTo(dx, Math.round(y(0)) + .5); ctx.stroke(); }
+    ctx.textAlign = 'left'; ctx.fillStyle = C.tenue; ctx.font = '600 10.5px Inter, sans-serif';
+    ctx.fillText(titolo.toUpperCase(), sx + 6, top + 12);
+    ctx.beginPath(); ctx.rect(sx, top, dx - sx, alto); ctx.clip();
+    const perPx = (i1 - i0) / (dx - sx);
+    canali.forEach((k, j) => {
+      const c = vis.ch[k];
+      ctx.strokeStyle = C[['x', 'y', 'z'][j]]; ctx.lineWidth = perPx > 2 ? 1 : 1.5; ctx.lineJoin = 'round';
+      ctx.beginPath();
+      if (perPx > 2) {
+        // Più campioni per pixel: inviluppo minimo/massimo per colonna
+        let i = i0;
+        for (let px = Math.floor(sx); px <= dx; px++) {
+          const tFine = v0 + (px + 1 - sx) / (dx - sx) * (v1 - v0);
+          let mn = Infinity, mx = -Infinity;
+          while (i <= i1 && vis.T[i] < tFine) { const v = c[i++]; if (v < mn) mn = v; if (v > mx) mx = v; }
+          if (mn === Infinity) continue;
+          ctx.lineTo(px + .5, y(mn)); ctx.lineTo(px + .5, y(mx));
+        }
+      } else {
+        for (let i = i0; i <= i1; i++) i === i0 ? ctx.moveTo(x(vis.T[i]), y(c[i])) : ctx.lineTo(x(vis.T[i]), y(c[i]));
+      }
+      ctx.stroke();
+    });
+    ctx.restore();
+    return y;
+  }
+  corsia(G.accTop, [0, 1, 2], 'Accelerazione · g', 0.3, 2);
+  corsia(G.gyrTop, [3, 4, 5], 'Velocità angolare · °/s', 30, 0);
+
+  // Asse dei tempi con passo "rotondo"
+  const passi = [0.1, 0.2, 0.5, 1, 2, 5, 10, 15, 30, 60, 120, 300, 600];
+  const passo = passi.find(p => (dx - sx) / ((v1 - v0) / p) >= 80) || 600;
+  ctx.font = '10px "JetBrains Mono", monospace'; ctx.textAlign = 'center'; ctx.fillStyle = C.debole;
+  for (let t = Math.ceil(v0 / passo) * passo; t <= v1; t += passo) {
+    const xx = Math.round(x(t)) + .5;
+    ctx.strokeStyle = C.griglia; ctx.beginPath(); ctx.moveTo(xx, G.accTop); ctx.lineTo(xx, G.gyrTop + G.corsia); ctx.stroke();
+    ctx.fillText(passo < 1 ? oraSessione(t) : mmss(t), xx, G.assiY);
+  }
+
+  // Eventi: comandi del tag in alto, eventi riconosciuti sotto (etichette solo se c'è spazio)
+  ctx.save();
+  ctx.beginPath(); ctx.rect(sx, 0, dx - sx, h); ctx.clip();
+  const ultimaX = [-1e9, -1e9];
+  vis.evAn.forEach(e => {
+    if (e.t < v0 || e.t > v1) return;
+    const xx = Math.round(x(e.t)) + .5, col = C[COLORI_EVENTI[e.tipo] || 'accento'] || C.accento;
+    ctx.strokeStyle = conAlfa(col, 0.35); ctx.lineWidth = 1; ctx.setLineDash([3, 3]);
+    ctx.beginPath(); ctx.moveTo(xx, G.evTop + 30); ctx.lineTo(xx, G.gyrTop + G.corsia); ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle = col; ctx.beginPath(); ctx.arc(xx, G.evTop + 36, 3.5, 0, 2 * Math.PI); ctx.fill();
+    const riga = ultimaX[0] <= ultimaX[1] ? 0 : 1;
+    if (xx - ultimaX[riga] > 150) {
+      ctx.font = '500 10.5px Inter, sans-serif'; ctx.textAlign = 'left'; ctx.fillStyle = C.tenue;
+      let testo = e.testo; while (ctx.measureText(testo).width > 140 && testo.length > 4) testo = testo.slice(0, -2);
+      if (testo !== e.testo) testo += '…';
+      ctx.fillText(testo, xx + 6, G.evTop + 30 + (riga ? 16 : 0) - 8 + (riga ? 0 : 0));
+      ultimaX[riga] = xx;
+    }
+  });
+  vis.evTag.forEach(e => {
+    if (e.t < v0 || e.t > v1) return;
+    const xx = Math.round(x(e.t)) + .5;
+    ctx.strokeStyle = C.errore; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(xx, G.evTop + 14); ctx.lineTo(xx, G.gyrTop + G.corsia); ctx.stroke();
+    ctx.fillStyle = C.errore; ctx.beginPath(); ctx.moveTo(xx, G.evTop + 4); ctx.lineTo(xx + 6, G.evTop + 10); ctx.lineTo(xx, G.evTop + 16); ctx.lineTo(xx - 6, G.evTop + 10); ctx.fill();
+    ctx.font = '600 11px Inter, sans-serif'; ctx.textAlign = 'left';
+    ctx.fillText(e.testo, xx + 10, G.evTop + 14);
+  });
+  ctx.restore();
+
+  // Cursore con i valori
+  if (vis.hover !== null && vis.hover >= sx && vis.hover <= dx) {
+    const t = v0 + (vis.hover - sx) / (dx - sx) * (v1 - v0);
+    const i = limita(cerca(vis.T, t), 0, vis.T.length - 1);
+    const xx = Math.round(x(vis.T[i])) + .5;
+    ctx.strokeStyle = C.tenue; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(xx, G.accTop); ctx.lineTo(xx, G.gyrTop + G.corsia); ctx.stroke();
+    const vicino = [...vis.evTag, ...vis.evAn].filter(e => Math.abs(x(e.t) - vis.hover) < 8).sort((a, b) => Math.abs(a.t - t) - Math.abs(b.t - t))[0];
+    const f = (v, d) => (v >= 0 ? '+' : '−') + Math.abs(v).toFixed(d);
+    const righe = [[oraSessione(vis.T[i]), C.testo], [`a  ${f(vis.ch[0][i], 2)} ${f(vis.ch[1][i], 2)} ${f(vis.ch[2][i], 2)} g`, C.tenue],
+                   [`ω  ${f(vis.ch[3][i], 0)} ${f(vis.ch[4][i], 0)} ${f(vis.ch[5][i], 0)} °/s`, C.tenue]];
+    if (vicino) righe.push([vicino.testo, C.accento]);
+    ctx.font = '11px "JetBrains Mono", monospace';
+    const larg = Math.max(...righe.map(r => ctx.measureText(r[0]).width)) + 20, alt = righe.length * 16 + 10;
+    let bx = xx + 12; if (bx + larg > dx) bx = xx - 12 - larg;
+    const by = G.accTop + 8;
+    ctx.fillStyle = conAlfa(C.card, 0.94); ctx.strokeStyle = C.bordo;
+    ctx.beginPath(); ctx.roundRect ? ctx.roundRect(bx, by, larg, alt, 8) : ctx.rect(bx, by, larg, alt); ctx.fill(); ctx.stroke();
+    ctx.textAlign = 'left';
+    righe.forEach((r, k) => { ctx.fillStyle = r[1]; ctx.fillText(r[0], bx + 10, by + 19 + k * 16); });
+  }
+}
+(() => {
+  const cv = $('traccia');
+  let trascina = null;
+  const tempo = px => { const r = cv.getBoundingClientRect(), G = geometriaTraccia(r.width, r.height); return vis.v0 + (px - G.sx) / (G.dx - G.sx) * (vis.v1 - vis.v0); };
+  cv.addEventListener('wheel', e => {
+    if (!vis) return;
+    e.preventDefault();
+    zoom(Math.exp(e.deltaY * 0.0015), tempo(e.offsetX));
+  }, { passive: false });
+  cv.addEventListener('pointerdown', e => { if (!vis) return; trascina = { x: e.clientX, v0: vis.v0, v1: vis.v1 }; cv.setPointerCapture(e.pointerId); });
+  cv.addEventListener('pointermove', e => {
+    if (!vis) return;
+    if (trascina) {
+      const r = cv.getBoundingClientRect(), G = geometriaTraccia(r.width, r.height);
+      const dt = (e.clientX - trascina.x) / (G.dx - G.sx) * (trascina.v1 - trascina.v0);
+      vis.hover = null;
+      vista(trascina.v0 - dt, trascina.v1 - dt);
+    } else { vis.hover = e.offsetX; disegnaTraccia(); }
+  });
+  const fine = () => { trascina = null; };
+  cv.addEventListener('pointerup', fine); cv.addEventListener('pointercancel', fine);
+  cv.addEventListener('pointerleave', () => { if (vis && !trascina) { vis.hover = null; disegnaTraccia(); } });
+  cv.addEventListener('dblclick', () => vis && vista(0, vis.durata));
+  new ResizeObserver(() => disegnaTraccia()).observe(cv);
+})();
+
+// ---------- Aggiornamento del firmware via Bluetooth ----------
+let versioneTag = null, ultimaFw = null, ota = null;
+const TABELLA_CRC = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+function crc32(d) { let c = 0xffffffff; for (let i = 0; i < d.length; i++) c = TABELLA_CRC[(c ^ d[i]) & 0xff] ^ (c >>> 8); return ((c ^ 0xffffffff) >>> 0).toString(16).padStart(8, '0'); }
+// Versioni numeriche "0.4.0" (eventuale "+build" ignorato nel confronto)
+const versioneNum = v => { const m = /^(\d+(?:\.\d+){0,3})(?:\+.*)?$/.exec(String(v || '').trim()); return m ? m[1].split('.').map(Number) : null; };
+function confrontaVersioni(a, b) {
+  const x = versioneNum(a), y = versioneNum(b);
+  if (!x || !y) return null;
+  for (let i = 0; i < Math.max(x.length, y.length); i++) { const d = (x[i] || 0) - (y[i] || 0); if (d) return Math.sign(d); }
+  return 0;
+}
+// Il firmware del tag contiene il marcatore "SWIMTAG_VER=<versione>;"
+function versioneDaBin(bin) {
+  const firma = [...'SWIMTAG_VER='].map(c => c.charCodeAt(0));
+  outer: for (let i = 0; i < bin.length - firma.length - 1; i++) {
+    for (let k = 0; k < firma.length; k++) if (bin[i + k] !== firma[k]) continue outer;
+    let v = '';
+    for (let j = i + firma.length; j < Math.min(bin.length, i + firma.length + 40) && bin[j] !== 0x3b; j++) v += String.fromCharCode(bin[j]);
+    if (versioneNum(v)) return v; // altre occorrenze (es. il formato "%s" usato dal tag) si saltano
+  }
+  return null;
+}
+const versioneBreve = v => String(v || '').split('+')[0];
+// Decide se si può caricare: blocca stessa versione e file non riconosciuti, chiede conferma per le versioni precedenti
+function controllaVersione(vFile) {
+  if (!vFile) { notaFw('Questo file non è un firmware del tag SwimTimer (manca il marcatore di versione).', true); return null; }
+  const c = confrontaVersioni(vFile, versioneTag);
+  if (c === 0) { notaFw(`La versione ${versioneBreve(vFile)} è già installata sul tag: non serve caricarla.`, true); return null; }
+  if (c === -1) return confirm(`Stai caricando la versione ${versioneBreve(vFile)}, PRECEDENTE a quella del tag (${versioneBreve(versioneTag)}). Continuare?`) ? { forza: true } : null;
+  if (c === null && !confirm(`Il tag ha la versione "${versioneTag || 'sconosciuta'}", non confrontabile con ${versioneBreve(vFile)}. Caricare comunque?`)) return null;
+  return { forza: c === null };
+}
+function notaFw(t, err) { $('fwNota').textContent = t; $('fwNota').classList.toggle('errore', !!err); }
+async function leggiUltimaFw() {
+  try {
+    const r = await fetch('firmware/tag.json', { cache: 'no-store' });
+    if (!r.ok) throw new Error(r.status);
+    ultimaFw = await r.json();
+  } catch { ultimaFw = null; }
+  aggiornaFw();
+}
+function aggiornaFw() {
+  const ble = !!(sorgente && sorgente.ota);
+  $('fwTag').textContent = !sorgente ? 'tag non collegato' : versioneTag || (sorgente.nome === 'USB' ? 'in attesa…' : 'sconosciuta');
+  $('fwUltima').textContent = ultimaFw ? ultimaFw.versione + (ultimaFw.build ? ` (${ultimaFw.build})` : '') : !/^https?:/.test(location.protocol) ? 'solo dalla pagina pubblicata' : 'non disponibile';
+  const c = ultimaFw ? confrontaVersioni(ultimaFw.versione, versioneTag) : null;
+  $('fwAggiorna').textContent = c === 0 ? 'Già aggiornato' : c === -1 ? 'Il tag è più recente' : "Aggiorna all'ultima";
+  $('fwAggiorna').disabled = !ble || !ultimaFw || !!ota || c === 0 || c === -1;
+  $('fwFile').disabled = !ble || !!ota;
+  $('fwFileBtn').disabled = !ble || !!ota;
+  $('fwChiudi').textContent = ota ? 'Annulla' : 'Chiudi';
+  if (!ota) $('fwSpiega').textContent = !sorgente ? 'Collega il tag via Bluetooth per aggiornarlo.'
+    : !ble ? (sorgente.nome === 'Bluetooth' ? 'Il firmware del tag non supporta ancora l’aggiornamento via Bluetooth: va caricato una volta via cavo.' : 'L’aggiornamento avviene solo via Bluetooth: collega il tag con il pulsante Bluetooth.')
+    : 'L’aggiornamento avviene via Bluetooth in 1–2 minuti. Se la nuova versione non parte, il tag torna da solo a quella precedente. Tieni il tag vicino e la pagina aperta.';
+  $('fwAvanz').hidden = !ota;
+}
+// Attende una conferma (K) o un errore (X) che inizia con il prefisso
+function attendiOta(prefisso, ms) {
+  return new Promise((ok, ko) => {
+    ota.attesa = { prefisso, ok, ko, timer: setTimeout(() => ko(new Error('nessuna risposta dal tag')), ms) };
+  });
+}
+function rispostaOta(t, err) {
+  if (!ota) { if (err) notaReg('Errore: ' + t, true); return; }
+  const m = /^ota offset,(\d+)/.exec(t);
+  if (m) { ota.offset = Number(m[1]); return; }             // il tag chiede di ripartire da qui
+  if (/^ota,\d+/.test(t)) return;                            // avanzamento ogni 32 KB
+  const a = ota.attesa;
+  if (!a) { if (err && t.startsWith('ota')) ota.errore = t; return; }
+  if (err) { clearTimeout(a.timer); ota.attesa = null; a.ko(new Error(t)); }
+  else if (t.startsWith(a.prefisso)) { clearTimeout(a.timer); ota.attesa = null; a.ok(t); }
+}
+async function aggiornaFirmware(bin, etichetta, versione, forza) {
+  if (!sorgente || !sorgente.ota || ota) return;
+  if (statoTag && statoTag.reg && !confirm('Il tag sta registrando: la registrazione va fermata prima. Fermarla ora?')) return;
+  if (statoTag && statoTag.reg) { comando('STOP'); await new Promise(r => setTimeout(r, 800)); }
+  const car = sorgente.ota, crc = crc32(bin);
+  ota = { offset: 0, annullato: false, attesa: null, errore: null, t0: performance.now() };
+  aggiornaFw();
+  notaFw(`Invio di ${etichetta} (${(bin.length / 1024).toFixed(0)} KB)…`);
+  try {
+    const pronto = attendiOta('ota pronto', 8000);
+    comando(`OTA,${bin.length},${crc},${versioneBreve(versione)}${forza ? ',forza' : ''}`);
+    const massimo = Math.max(16, Number((await pronto).split(',')[1]) || 180);
+    const scrivi = d => car.writeValueWithResponse ? car.writeValueWithResponse(d) : car.writeValue(d);
+    let ultimoUi = 0;
+    while (ota.offset < bin.length) {
+      if (ota.annullato) throw new Error('annullato');
+      if (ota.errore) throw new Error(ota.errore);
+      const o = ota.offset, n = Math.min(massimo, bin.length - o);
+      const pacchetto = new Uint8Array(4 + n);
+      new DataView(pacchetto.buffer).setUint32(0, o, true);
+      pacchetto.set(bin.subarray(o, o + n), 4);
+      await scrivi(pacchetto);
+      if (ota.offset === o) ota.offset = o + n;               // se il tag ha chiesto un altro punto, si riparte da lì
+      const ora = performance.now();
+      if (ora - ultimoUi > 150 || ota.offset >= bin.length) {
+        ultimoUi = ora;
+        const vel = ota.offset / Math.max(0.1, (ora - ota.t0) / 1000);
+        $('fwBarra').style.width = (ota.offset / bin.length * 100).toFixed(1) + '%';
+        $('fwAvanzTesto').textContent = `${(ota.offset / 1024).toFixed(0)} / ${(bin.length / 1024).toFixed(0)} KB · ${(vel / 1024).toFixed(1).replace('.', ',')} KB/s · ancora ${Math.ceil((bin.length - ota.offset) / Math.max(1, vel))} s`;
+      }
+    }
+    const fatto = attendiOta('ota ok', 15000);
+    comando('OTAEND');
+    await fatto;
+    notaFw('Aggiornamento completato: il tag si riavvia. Ricollegalo tra qualche secondo per vedere la nuova versione.');
+    evento(A && A.ultimo ? A.ultimo.ts : 0, 'cal', `Firmware aggiornato (${etichetta})`);
+    versioneTag = null;
+  } catch (e) {
+    if (sorgente) comando('OTAABORT');
+    notaFw(e.message === 'annullato' ? 'Aggiornamento annullato: il tag continua con la versione attuale.' : 'Aggiornamento non riuscito: ' + e.message + '. Il tag continua con la versione attuale.', true);
+  } finally {
+    ota = null;
+    aggiornaFw();
+  }
+}
+$('apriLed').addEventListener('click', () => $('dlgLed').showModal());
+$('ledChiudi').addEventListener('click', () => $('dlgLed').close());
+$('apriFw').addEventListener('click', () => { notaFw(''); aggiornaFw(); leggiUltimaFw(); $('dlgFw').showModal(); });
+$('fwChiudi').addEventListener('click', () => { if (ota) ota.annullato = true; else $('dlgFw').close(); });
+$('dlgFw').addEventListener('cancel', e => { if (ota) { e.preventDefault(); ota.annullato = true; } });
+$('fwAggiorna').addEventListener('click', async () => {
+  try {
+    const r = await fetch('firmware/tag.bin', { cache: 'no-store' });
+    if (!r.ok) throw new Error('scaricamento non riuscito (' + r.status + ')');
+    const bin = new Uint8Array(await r.arrayBuffer());
+    if (ultimaFw && (bin.length !== ultimaFw.byte || crc32(bin) !== ultimaFw.crc32)) throw new Error('il file scaricato non corrisponde a tag.json');
+    const v = versioneDaBin(bin), ok = controllaVersione(v);
+    if (ok) aggiornaFirmware(bin, 'versione ' + versioneBreve(v), v, ok.forza);
+  } catch (e) { notaFw(e.message, true); }
+});
+$('fwFile').addEventListener('change', async e => {
+  const f = e.target.files[0];
+  e.target.value = '';
+  if (!f) return;
+  const bin = new Uint8Array(await f.arrayBuffer());
+  if (bin[0] !== 0xe9) return notaFw('Il file non sembra un firmware ESP32 (.bin dell’applicazione).', true);
+  const v = versioneDaBin(bin), ok = controllaVersione(v);
+  if (!ok) return;
+  if (confirm(`Caricare ${f.name}, versione ${versioneBreve(v)} (${(bin.length / 1024).toFixed(0)} KB), sul tag?`)) aggiornaFirmware(bin, `${f.name} (${versioneBreve(v)})`, v, ok.forza);
+});
+
+// ---------- Schede della pagina ----------
+function mostraVista(v) {
+  $('vistaVivo').hidden = v !== 'vivo';
+  $('vistaReg').hidden = v !== 'reg';
+  $('schedeVista').querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v === v)));
+  if (v === 'reg') disegnaTraccia();
+}
+$('schedeVista').addEventListener('click', e => { const b = e.target.closest('button'); if (b) mostraVista(b.dataset.v); });
+
+// ---------- Radar ----------
+let modoRadar = pref.get('modoRadar', 'tag'), scalaRadar = Number(pref.get('scalaRadar', '0.5'));
+function segmentato(id, valore, cambia) {
+  const g = $(id);
+  const aggiorna = v => g.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v === String(v))));
+  aggiorna(valore);
+  g.addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; aggiorna(b.dataset.v); cambia(b.dataset.v); });
+}
+segmentato('modoRadar', modoRadar, v => { modoRadar = v; pref.set('modoRadar', v); scia.length = 0; etichetteRadar(); });
+segmentato('scalaRadar', scalaRadar, v => { scalaRadar = Number(v); pref.set('scalaRadar', v); });
+function etichetteRadar() {
+  const n = modoRadar === 'nuotatore';
+  $('radLx').textContent = n ? 'Destra / sinistra' : 'X · orizzontale';
+  $('radLy').textContent = n ? 'Avanti / indietro' : 'Y · verticale';
+  $('radLz').textContent = n ? 'Su / giù · dimensione' : 'Z · dimensione';
+}
+etichetteRadar();
+
+function preparaCanvas(canvas) {
+  const dpr = window.devicePixelRatio || 1, w = canvas.clientWidth, h = canvas.clientHeight;
+  if (canvas.width !== Math.round(w * dpr) || canvas.height !== Math.round(h * dpr)) { canvas.width = Math.round(w * dpr); canvas.height = Math.round(h * dpr); }
+  const ctx = canvas.getContext('2d');
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, w, h);
+  return { ctx, w, h };
+}
+function conAlfa(colore, a) {
+  if (colore.startsWith('#')) {
+    const n = colore.length === 4 ? colore.slice(1).split('').map(c => c + c).join('') : colore.slice(1);
+    return `rgba(${parseInt(n.slice(0, 2), 16)},${parseInt(n.slice(2, 4), 16)},${parseInt(n.slice(4, 6), 16)},${a})`;
+  }
+  return colore;
+}
+
+function disegnaRadar(ora) {
+  const { ctx, w, h } = preparaCanvas($('radar'));
+  const cx = w / 2, cy = h / 2, R = Math.min(w, h) / 2 - 26;
+  const nuot = modoRadar === 'nuotatore' && A && A.cal.Mq;
+  // Fondo, anelli e assi
+  ctx.fillStyle = C['radar-sfondo'];
+  ctx.beginPath(); ctx.arc(cx, cy, R, 0, 2 * Math.PI); ctx.fill();
+  ctx.strokeStyle = C['radar-anello']; ctx.lineWidth = 1;
+  for (let i = 1; i <= 4; i++) { ctx.beginPath(); ctx.arc(cx, cy, R * i / 4, 0, 2 * Math.PI); ctx.stroke(); }
+  ctx.beginPath(); ctx.moveTo(cx - R, cy); ctx.lineTo(cx + R, cy); ctx.moveTo(cx, cy - R); ctx.lineTo(cx, cy + R); ctx.stroke();
+  ctx.save(); ctx.setLineDash([2, 4]);
+  ctx.beginPath(); ctx.moveTo(cx - R * .707, cy - R * .707); ctx.lineTo(cx + R * .707, cy + R * .707);
+  ctx.moveTo(cx + R * .707, cy - R * .707); ctx.lineTo(cx - R * .707, cy + R * .707); ctx.stroke(); ctx.restore();
+  // Fascio rotante
+  if (sorgente && ctx.createConicGradient) {
+    const ang = (ora / 1000 * 1.4) % (2 * Math.PI);
+    const g = ctx.createConicGradient(ang - 0.9, cx, cy);
+    g.addColorStop(0, conAlfa(C.accento, 0)); g.addColorStop(0.14, conAlfa(C.accento, 0.14)); g.addColorStop(0.145, conAlfa(C.accento, 0)); g.addColorStop(1, conAlfa(C.accento, 0));
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx, cy, R, 0, 2 * Math.PI); ctx.fill();
+  }
+  // Etichette
+  ctx.fillStyle = C.debole; ctx.font = '500 10px "JetBrains Mono", monospace'; ctx.textAlign = 'left';
+  for (let i = 1; i <= 4; i++) ctx.fillText((scalaRadar * i / 4).toFixed(scalaRadar < 1 ? 3 : 2).replace(/0+$/, '').replace(/\.$/, '').replace('.', ',') + ' g', cx + 4, cy - R * i / 4 + 12);
+  ctx.fillStyle = C.tenue; ctx.font = '600 11px Inter, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  const et = nuot ? ['AVANTI', 'INDIETRO', 'SX', 'DX'] : ['+Y', '−Y', '−X', '+X'];
+  ctx.fillText(et[0], cx, cy - R - 13); ctx.fillText(et[1], cx, cy + R + 13);
+  ctx.fillText(et[2], cx - R - 13, cy); ctx.fillText(et[3], cx + R + 13, cy);
+  ctx.textBaseline = 'alphabetic';
+
+  if (!scia.length) return;
+  const pos = p => {
+    let x = p[1] / scalaRadar, y = p[2] / scalaRadar;
+    const m = Math.hypot(x, y);
+    if (m > 1) { x /= m; y /= m; }
+    return [cx + x * R, cy - y * R];
+  };
+  const raggio = z => limita(13 * (1 + 1.4 * z / scalaRadar), 4, 44);
+  const tUltimo = scia[scia.length - 1][0];
+  // Scia: segmenti che sbiadiscono con l'età, pallini più radi
+  ctx.lineCap = 'round';
+  for (let i = 1; i < scia.length; i++) {
+    const eta = (tUltimo - scia[i][0]) / FINESTRA_SCIA;
+    const [x1, y1] = pos(scia[i - 1]), [x2, y2] = pos(scia[i]);
+    ctx.strokeStyle = conAlfa(C.accento, 0.75 * (1 - eta) ** 1.6);
+    ctx.lineWidth = 1 + 2 * (1 - eta);
+    ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+  }
+  const passo = Math.max(1, Math.round(A.hz / 5));
+  for (let i = scia.length - 1; i >= 0; i -= passo) {
+    const eta = (tUltimo - scia[i][0]) / FINESTRA_SCIA;
+    const [x, y] = pos(scia[i]);
+    ctx.fillStyle = conAlfa(C['accento-2'], 0.35 * (1 - eta) ** 2);
+    ctx.beginPath(); ctx.arc(x, y, raggio(scia[i][3]) * 0.35, 0, 2 * Math.PI); ctx.fill();
+  }
+  // Pallino attuale: posizione = X/Y, dimensione = Z
+  const p = scia[scia.length - 1], [x, y] = pos(p), r = raggio(p[3]);
+  const alone = ctx.createRadialGradient(x, y, r * 0.2, x, y, r * 2.2);
+  alone.addColorStop(0, conAlfa(C.accento, 0.35)); alone.addColorStop(1, conAlfa(C.accento, 0));
+  ctx.fillStyle = alone; ctx.beginPath(); ctx.arc(x, y, r * 2.2, 0, 2 * Math.PI); ctx.fill();
+  const corpo = ctx.createRadialGradient(x - r * .35, y - r * .35, r * .1, x, y, r);
+  corpo.addColorStop(0, conAlfa(C['accento-2'], 1)); corpo.addColorStop(1, conAlfa(C.accento, 1));
+  ctx.fillStyle = corpo; ctx.beginPath(); ctx.arc(x, y, r, 0, 2 * Math.PI); ctx.fill();
+  ctx.strokeStyle = C.card; ctx.lineWidth = 2; ctx.stroke();
+  // Riferimento della dimensione a riposo
+  ctx.strokeStyle = conAlfa(C.tenue, 0.5); ctx.lineWidth = 1; ctx.setLineDash([3, 3]);
+  ctx.beginPath(); ctx.arc(cx, cy, 13, 0, 2 * Math.PI); ctx.stroke(); ctx.setLineDash([]);
+  const fmt = v => (Math.round(v * 100) >= 0 ? '+' : '−') + Math.abs(v).toFixed(2);
+  $('radX').textContent = fmt(p[1]); $('radY').textContent = fmt(p[2]); $('radZ').textContent = fmt(p[3]);
+}
+
+// ---------- Grafici ----------
+function disegnaGrafico(canvas, colonne, minimo, decimali) {
+  const { ctx, w, h } = preparaCanvas(canvas);
+  const sx = 44, dx = w - 6, alto = 8, basso = h - 20;
+  let lo = -minimo, hi = minimo;
+  for (const r of serie) for (const c of colonne) { if (r[c] < lo) lo = r[c]; if (r[c] > hi) hi = r[c]; }
+  const m = Math.max(-lo, hi); lo = -m; hi = m;
+  const y = v => basso - (v - lo) / (hi - lo) * (basso - alto);
+  const tFine = serie.length ? serie[serie.length - 1][0] : FINESTRA_GRAFICI, tIni = tFine - FINESTRA_GRAFICI;
+  const x = t => sx + (t - tIni) / FINESTRA_GRAFICI * (dx - sx);
+  ctx.font = '10px "JetBrains Mono", monospace'; ctx.textAlign = 'right';
+  for (let i = 0; i <= 4; i++) {
+    const v = lo + (hi - lo) * i / 4, yy = Math.round(y(v)) + .5;
+    ctx.strokeStyle = i === 2 ? C.bordo : C.griglia; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(sx, yy); ctx.lineTo(dx, yy); ctx.stroke();
+    ctx.fillStyle = C.debole; ctx.fillText(v.toFixed(decimali).replace('.', ','), sx - 6, yy + 3);
+  }
+  ctx.textAlign = 'center';
+  for (let s = Math.ceil(tIni); s <= tFine; s++) {
+    if (s % 2) continue;
+    const xx = Math.round(x(s)) + .5;
+    ctx.strokeStyle = C.griglia; ctx.beginPath(); ctx.moveTo(xx, alto); ctx.lineTo(xx, basso); ctx.stroke();
+    ctx.fillStyle = C.debole; ctx.fillText(oraSessione(s).slice(0, 5), xx, h - 5);
+  }
+  ['x', 'y', 'z'].forEach((k, i) => {
+    ctx.strokeStyle = C[k]; ctx.lineWidth = 1.6; ctx.lineJoin = 'round'; ctx.beginPath();
+    serie.forEach((r, j) => j ? ctx.lineTo(x(r[0]), y(r[colonne[i]])) : ctx.moveTo(x(r[0]), y(r[colonne[i]])));
+    ctx.stroke();
+  });
+}
+
+// ---------- Viste 3D (three.js) ----------
+const camera3d = { az: 35, el: 22, dist: 7.2 };
+const viste = [];
+function vista3d(id, tipo) {
+  const el = $(id);
+  if (!window.THREE) { el.querySelector('.velo').textContent = 'Libreria 3D non caricata: serve la connessione a internet'; return null; }
+  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+  el.prepend(renderer.domElement);
+  const scena = new THREE.Scene();
+  const cam = new THREE.PerspectiveCamera(32, 1, 0.1, 100);
+  scena.add(new THREE.HemisphereLight(0xffffff, 0x445566, 0.85));
+  const luce = new THREE.DirectionalLight(0xffffff, 0.75); luce.position.set(3, 6, 4); scena.add(luce);
+  const piano = new THREE.GridHelper(8, 16); piano.position.y = -1.7; scena.add(piano);
+
+  // Coordinate: mondo (X destra, Y avanti, Z su) → three.js (x, z, −y)
+  const v3 = v => new THREE.Vector3(v[0], v[2], -v[1]);
+  // Dimensioni del parallelepipedo negli assi del modello
+  const dim = tipo === 'tag' ? [1.5, 1.0, 0.45] : [1.3, 1.5, 1.7];
+  const oggetto = new THREE.Group(); scena.add(oggetto);
+  const geo = new THREE.BoxGeometry(dim[0], dim[2], dim[1]);
+  const mat = new THREE.MeshStandardMaterial({ roughness: 0.55, metalness: 0.05, transparent: true, opacity: 0.92 });
+  const scatola = new THREE.Mesh(geo, mat); oggetto.add(scatola);
+  const spigoli = new THREE.LineSegments(new THREE.EdgesGeometry(geo), new THREE.LineBasicMaterial({ transparent: true, opacity: 0.6 }));
+  oggetto.add(spigoli);
+  // Faccia "avanti" della testa evidenziata
+  let fronte = null;
+  if (tipo === 'testa') {
+    fronte = new THREE.Mesh(new THREE.PlaneGeometry(dim[0] * 0.7, dim[2] * 0.35), new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.9 }));
+    fronte.position.copy(v3([0, dim[1] / 2 + 0.005, 0.15])); fronte.rotation.y = Math.PI; oggetto.add(fronte);
+  }
+  // Assi con etichette
+  const nomi = tipo === 'tag' ? ['X', 'Y', 'Z'] : ['Destra', 'Avanti', 'Su'];
+  const frecce = [[1, 0, 0], [0, 1, 0], [0, 0, 1]].map((d, i) => {
+    const lung = dim[i] / 2 + 0.9;
+    const f = new THREE.ArrowHelper(v3(d), new THREE.Vector3(), lung, 0xffffff, 0.22, 0.13);
+    oggetto.add(f);
+    const s = etichetta(nomi[i]); s.renderOrder = 10; s.position.copy(v3(d).multiplyScalar(lung + 0.32)); oggetto.add(s);
+    return { f, s };
+  });
+  // Sagoma della posizione alla calibrazione
+  const fantasma = new THREE.LineSegments(new THREE.EdgesGeometry(geo), new THREE.LineDashedMaterial({ dashSize: 0.08, gapSize: 0.06, transparent: true, opacity: 0.55 }));
+  fantasma.computeLineDistances(); fantasma.visible = false; scena.add(fantasma);
+
+  function etichetta(testo) {
+    const c = document.createElement('canvas'); c.width = 256; c.height = 64;
+    const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(c), transparent: true, depthTest: false }));
+    s.userData = { c, testo };
+    s.scale.set(1.2, 0.3, 1);
+    return s;
+  }
+  function scriviEtichetta(s, colore) {
+    const { c, testo } = s.userData, ctx = c.getContext('2d');
+    ctx.clearRect(0, 0, c.width, c.height);
+    ctx.font = '600 34px Inter, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillStyle = colore; ctx.fillText(testo, c.width / 2, c.height / 2);
+    s.material.map.needsUpdate = true;
+  }
+  function colori() {
+    const assi = [C.x, C.y, C.z];
+    frecce.forEach(({ f, s }, i) => { f.setColor(new THREE.Color(assi[i])); scriviEtichetta(s, assi[i]); });
+    mat.color.set(tipo === 'tag' ? C['card-2'] : C.card);
+    mat.color.lerp(new THREE.Color(C.accento), tipo === 'tag' ? 0.28 : 0.12);
+    spigoli.material.color.set(C.tenue);
+    fantasma.material.color.set(C.tenue);
+    if (fronte) fronte.material.color.set(C.y);
+    piano.material.color = new THREE.Color(C.bordo);
+    piano.material.vertexColors = false;
+  }
+  colori();
+
+  function disegna(q, qFantasma) {
+    const w = el.clientWidth, h = el.clientHeight;
+    if (!w || !h) return; // vista nascosta
+    const dim = renderer.getSize(new THREE.Vector2());
+    if (dim.x !== w || dim.y !== h) { renderer.setSize(w, h, false); cam.aspect = w / h; cam.updateProjectionMatrix(); }
+    const az = camera3d.az * D2R, elv = camera3d.el * D2R;
+    // Camera alle spalle e a destra: "avanti" si allontana dall'osservatore
+    cam.position.copy(v3([Math.sin(az) * Math.cos(elv) * camera3d.dist, -Math.cos(az) * Math.cos(elv) * camera3d.dist, Math.sin(elv) * camera3d.dist]));
+    cam.lookAt(0, -0.1, 0);
+    if (q) oggetto.quaternion.set(q[1], q[3], -q[2], q[0]);
+    fantasma.visible = !!qFantasma;
+    if (qFantasma) fantasma.quaternion.set(qFantasma[1], qFantasma[3], -qFantasma[2], qFantasma[0]);
+    renderer.render(scena, cam);
+  }
+
+  // Rotazione della vista con il trascinamento (condivisa tra le due viste)
+  let trascina = null;
+  el.addEventListener('pointerdown', e => { trascina = [e.clientX, e.clientY]; el.setPointerCapture(e.pointerId); el.style.cursor = 'grabbing'; });
+  el.addEventListener('pointermove', e => {
+    if (!trascina) return;
+    camera3d.az -= (e.clientX - trascina[0]) * 0.4;
+    camera3d.el = limita(camera3d.el + (e.clientY - trascina[1]) * 0.3, -10, 80);
+    trascina = [e.clientX, e.clientY];
+  });
+  const fine = () => { trascina = null; el.style.cursor = ''; };
+  el.addEventListener('pointerup', fine); el.addEventListener('pointercancel', fine);
+  el.addEventListener('dblclick', () => Object.assign(camera3d, { az: 35, el: 22, dist: 7.2 }));
+  return { disegna, colori };
+}
+const vistaReale = vista3d('vistaReale', 'tag'), vistaCorretta = vista3d('vistaCorretta', 'testa');
+[vistaReale, vistaCorretta].forEach(v => v && viste.push(v));
+
+// ---------- Aggiornamento dell'interfaccia ----------
+const segno = v => { const r = Math.round(v); return (r >= 0 ? '+' : '−') + Math.abs(r) + '°'; };
+let ultimoTesto = 0;
+function ciclo(ora) {
+  if (!$('vistaVivo').hidden) {
+    disegnaRadar(ora);
+    disegnaGrafico($('graficoAcc'), [1, 2, 3], 1.2, 1);
+    disegnaGrafico($('graficoGyro'), [4, 5, 6], 100, 0);
+  }
+  const u = A && A.ultimo;
+  if (vistaReale) vistaReale.disegna(u ? u.qReale : Q.id(), u && A.cal.qc ? Q.mul(Q.conj(A.cal.Rz), A.cal.qc) : null);
+  if (vistaCorretta) vistaCorretta.disegna(u && u.qTesta ? u.qTesta : Q.id(), u && u.qTesta ? Q.id() : null);
+  $('veloReale').hidden = !!u;
+  $('veloCorretta').hidden = !!(u && u.qTesta);
+  if (ora - ultimoTesto > 100) { ultimoTesto = ora; aggiornaTesti(); }
+  requestAnimationFrame(ciclo);
+}
+
+function aggiornaTesti() {
+  // Frequenza effettiva dei campioni
+  const adesso = performance.now();
+  while (arrivi.length && arrivi[0] < adesso - 2000) arrivi.shift();
+  $('frequenza').textContent = sorgente ? `${(arrivi.length / 2).toFixed(0)} Hz` : '– Hz';
+  if (sorgente && statoTag && adesso - statoTag.ricevuto > 4000) $('batNota').textContent = 'Stato non aggiornato da oltre 4 s';
+  aggiornaPulsanti();
+  if (!A || !A.ultimo) return;
+  const u = A.ultimo, c = A.cal;
+  ['ax', 'ay', 'az'].forEach((id, i) => $(id).textContent = (u.a[i] >= 0 ? '+' : '−') + Math.abs(u.a[i]).toFixed(2));
+  ['gx', 'gy', 'gz'].forEach((id, i) => $(id).textContent = (u.gd[i] >= 0 ? '+' : '−') + Math.abs(u.gd[i]).toFixed(0));
+
+  // Interpretazione
+  $('attivita').textContent = A.attivita || '–';
+  $('fermoChip').textContent = A.fermo ? 'Fermo' : 'In movimento';
+  $('fermoChip').style.color = A.fermo ? 'var(--ok)' : 'var(--attenzione)';
+  const ang = A.angoli;
+  if (ang) {
+    const p = postura(ang);
+    $('postura').textContent = p.testo + (p.nota ? ` · ${p.nota}` : '');
+    $('angPitch').textContent = segno(ang.pitch); $('angRoll').textContent = segno(ang.roll); $('angYaw').textContent = segno(ang.yaw);
+    $('letturaCorretta').innerHTML = `<span>becc. <b>${segno(ang.pitch)}</b></span><span>rollio <b>${segno(ang.roll)}</b></span><span>imb. <b>${segno(ang.yaw)}</b></span>`;
+  } else {
+    $('postura').textContent = c.fase === 'attesa' ? 'Postura disponibile dopo la calibrazione' : '';
+    ['angPitch', 'angRoll', 'angYaw'].forEach(id => $(id).textContent = '–');
+    $('letturaCorretta').textContent = '';
+  }
+  const giu = Q.ruota(Q.conj(A.q), [0, 0, 1]), d = asseDominante(giu);
+  $('letturaReale').innerHTML = `<span>verso l'alto <b>${d.nome}</b></span><span>scarto <b>${d.scarto.toFixed(0)}°</b></span>` +
+    (A.saturo && u.ts - A.saturo < 2 ? `<span style="color:var(--errore)">fondo scala ±${A.fondoScala || 2} g</span>` : '');
+
+  // Calibrazione
+  const passi = { attesa: 0, avanti: 1, pronto: 3 }[c.fase];
+  ['passo1', 'passo2', 'passo3'].forEach((id, i) => $(id).classList.toggle('fatto', i < passi || (c.fase === 'avanti' && i === 0)));
+  if (c.fase === 'attesa') {
+    const mancano = A.fermoIst ? Math.max(0, 2 - (u.ts - A.fermoDa)) : 2;
+    $('calIstruzione').textContent = A.fermoIst ? `Ti vedo fermo: resta così ancora ${mancano.toFixed(1)} s…` : 'Mettiti in piedi, guarda avanti e resta fermo 2 secondi.';
+    $('calStato').textContent = 'In attesa'; $('calStato').style.color = 'var(--attenzione)';
+    $('calNota').textContent = 'Passo 1 di 2: in piedi e fermo';
+  } else if (c.fase === 'avanti') {
+    const s = asseDominante(c.su);
+    $('calIstruzione').textContent = `In piedi rilevato: ${s.nome} del tag è verso l'alto. Ora fai un cenno con la testa in avanti.`;
+    $('calStato').textContent = 'Quasi pronta'; $('calStato').style.color = 'var(--accento)';
+    $('calNota').textContent = 'Passo 2 di 2: cenno in avanti';
+  } else {
+    const s = asseDominante(c.su), f = c.avanti ? asseDominante(c.avanti) : null;
+    $('calIstruzione').textContent = `Tag montato con ${s.nome} verso l'alto` + (s.scarto > 3 ? ` (inclinato di ${s.scarto.toFixed(0)}°)` : '') +
+      (f ? ` e ${f.nome} in avanti.` : '; direzione avanti provvisoria.') + ' I movimenti sono ora interpretati negli assi della testa.';
+    $('calStato').textContent = 'Completata'; $('calStato').style.color = 'var(--ok)';
+    $('calNota').textContent = f ? `Su ${s.nome} · avanti ${f.nome}` : `Su ${s.nome}`;
+  }
+}
+requestAnimationFrame(ciclo);
+</script>
+</body>
+</html>

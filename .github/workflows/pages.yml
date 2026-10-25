@@ -1,0 +1,77 @@
+# Compila il firmware del tag e pubblica su GitHub Pages la pagina di analisi (tools/)
+# insieme al firmware (firmware/tag.bin + firmware/tag.json) per l'aggiornamento via Bluetooth.
+name: Pagina e firmware su GitHub Pages
+
+on:
+  push:
+    branches: [main]
+    paths: ['tools/**', 'firmware/test-collegamenti/**', '.github/workflows/pages.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+env:
+  CORE: esp32:esp32@3.3.12
+  FQBN: esp32:esp32:esp32s3:CDCOnBoot=cdc,FlashSize=4M,PartitionScheme=noota_3g  # il layout vero è firmware/test-collegamenti/partitions.csv; noota_3g fa solo controllare il limite di 1 MB
+  URL_CORE: https://espressif.github.io/arduino-esp32/package_esp32_index.json
+
+jobs:
+  pubblica:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: arduino/setup-arduino-cli@v2
+
+      - name: Cache del core ESP32
+        uses: actions/cache@v4
+        with:
+          path: ~/.arduino15
+          key: arduino15-${{ env.CORE }}
+
+      - name: Installa il core
+        run: |
+          arduino-cli core update-index --additional-urls "$URL_CORE"
+          arduino-cli core install "$CORE" --additional-urls "$URL_CORE"
+
+      - name: Compila il firmware del tag
+        run: |
+          VERSIONE="$(grep -oP '#define FIRMWARE_VERSIONE "\K[^"]+' firmware/test-collegamenti/test-collegamenti.ino)"
+          BUILD="$(date -u +%Y-%m-%d).$(git rev-parse --short HEAD)"
+          echo "#define FIRMWARE_BUILD \"$BUILD\"" > firmware/test-collegamenti/versione.h
+          arduino-cli compile --fqbn "$FQBN" --output-dir build firmware/test-collegamenti
+          # il binario deve contenere il marcatore di versione, altrimenti l'OTA lo rifiuterebbe
+          grep -qa "SWIMTAG_VER=$VERSIONE;" build/test-collegamenti.ino.bin
+          echo "VERSIONE=$VERSIONE" >> "$GITHUB_ENV"
+          echo "BUILD=$BUILD" >> "$GITHUB_ENV"
+
+      - name: Prepara il sito
+        run: |
+          mkdir -p sito/firmware
+          cp -r tools/. sito/
+          cp build/test-collegamenti.ino.bin sito/firmware/tag.bin
+          python3 - <<'PY'
+          import json, os, zlib
+          dati = open('sito/firmware/tag.bin', 'rb').read()
+          json.dump({'versione': os.environ['VERSIONE'], 'build': os.environ['BUILD'], 'byte': len(dati),
+                     'crc32': '%08x' % (zlib.crc32(dati) & 0xffffffff)},
+                    open('sito/firmware/tag.json', 'w'))
+          PY
+          cat sito/firmware/tag.json
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: sito
+      - id: deploy
+        uses: actions/deploy-pages@v4
