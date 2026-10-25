@@ -134,7 +134,7 @@ def main(solo_piano_interno=False):
 
     # testo in serigrafia sotto
     t = pcbnew.PCB_TEXT(board)
-    t.SetText("SwimTimer tag v0.1")
+    t.SetText("SwimTimer tag v0.2")
     t.SetLayer(pcbnew.B_SilkS)
     t.SetPosition(punto(SCHEDA_L / 2, 14.0))
     t.SetTextSize(punto(0.8, 0.8))

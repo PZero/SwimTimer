@@ -124,7 +124,7 @@ def main():
     testo = (
         f'(kicad_sch (version 20250114) (generator "genera_schema.py") (generator_version "9.0")\n'
         f'(uuid "{RADICE}") (paper "A3")\n'
-        f'(title_block (title "SwimTimer - tag nRF52840") (rev "0.1") (comment 1 "Generato da dati_scheda.py: modificare i dati, non lo schema"))\n'
+        f'(title_block (title "SwimTimer - tag nRF52840") (rev "0.2") (comment 1 "Generato da dati_scheda.py: modificare i dati, non lo schema"))\n'
         f'(lib_symbols\n' + "\n".join(lib_symbols.values()) + "\n)\n"
         + "\n".join(simboli + etichette + croci)
         + '\n(sheet_instances (path "/" (page "1")))\n)\n')

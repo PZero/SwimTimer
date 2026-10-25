@@ -1,4 +1,4 @@
-# Verifiche prima dell'ordine — tag nRF52840 v0.1
+# Verifiche prima dell'ordine — tag nRF52840 v0.2
 
 Controllo componente per componente di schema e PCB (`kicad/`) contro i documenti dei produttori.
 Esito: ✅ conforme · 🔧 corretto in questa revisione · ⚠️ scelta consapevole (motivata) · ⏳ da fare.
@@ -62,7 +62,15 @@ Il datasheet su st.com non era raggiungibile (né da riga di comando né dal bro
 | AO3400A (Vgs(th) ≤ 1,45 V, pilotato a 3,3 V), pull-down 100 kΩ sul gate, diodo 1N4148WS sul motore | ✅ |
 | LED rosso con anodo sulla batteria: a LED spento il pin vede al massimo ~2,6 V (< VDD + 0,3 V) | ✅ |
 | Piste ≥ 0,1 mm, distanze ≥ 0,1 mm, via 0,5/0,3 mm, foro-rame ≥ 0,2 mm, rame-bordo ≥ 0,2 mm, via coperti | ✅ DRC |
-| Nessuna protezione ESD/inversione sui contatti di ricarica | ⚠️ tolta per spazio, polarità garantita dai magneti (domanda 23) |
+| Contatti di ricarica: TVS Semtech SD05 (5 V, 350 W, C85201) subito dopo il contatto VIN, Schottky B5819WS (C22624) in serie contro l'inversione; caduta ~0,3 V → caricatore e VBUS vedono ~4,7 V (VBUS minimo 4,35 V) | 🔧 aggiunti (v0.2); con polarità invertita il TVS conduce: la custodia deve avere un fusibile ripristinabile |
+| Reset all'inserimento nella custodia: fronte di VIN → 100 nF → gate di AO3400A (1 MΩ a massa) → RESET basso per ~0,16 s (τ = 0,1 s, soglia ~1 V); all'estrazione il gate va a −5 V (limite ±12 V) | 🔧 aggiunto (v0.2); serve `PSELRESET` = P0.18 nel firmware |
+
+## Misura della batteria
+- La tensione della cella è misurata dall'nRF52840 con il canale interno **VDDHDIV5** (VDDH = batteria, nessun partitore esterno): funziona **sempre, sia durante l'uso sia in carica**.
+- **In uso**: tensione → percentuale con la curva della LiPo (precisione ~±10 %, migliore a riposo che durante i picchi del vibratore o della radio: misurare a radio ferma).
+- **In carica**: la tensione letta è più alta della reale (corrente di carica × resistenza interna, poi 4,2 V fissi nella fase finale) → si mostra "in carica" dal pin /CHG (P0.04) e la tensione solo come indicazione; carica finita quando /CHG torna alto (terminazione a 1,35 mA).
+- Nel sonno profondo (System OFF) non si misura: la lettura si fa al risveglio.
+- Per una percentuale più precisa servirebbe un *fuel gauge* (es. MAX17048, 0,9 × 1,7 mm): non previsto in v0.2.
 
 ## Note per il firmware (nate dalle verifiche)
 - Scrivere `UICR.REGOUT0 = 3,3 V` al primo avvio (di serie VDD esce a 1,8 V e la flash non partirebbe).
@@ -73,4 +81,4 @@ Il datasheet su st.com non era raggiungibile (né da riga di comando né dal bro
 
 ## Ancora da fare prima di confermare l'ordine
 - ⏳ Caricare Gerber, BOM e CPL nell'anteprima JLC: controllare rotazioni e stock dei 5 componenti *extended*.
-- ⏳ Decisione dell'utente sulla protezione dei contatti (domanda 23).
+- ✅ Protezione dei contatti e reset all'inserimento aggiunti (v0.2).

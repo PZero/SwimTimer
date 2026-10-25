@@ -35,3 +35,4 @@
 | 2026-10-25 | Programmatore e custodia di ricarica costruiti da noi (elettronica + stampa 3D su Bambu Lab A1 mini) | Scelta dell'utente: tutto l'hardware è da progettare |
 | 2026-10-25 | PCB del tag v0.1: 17,5 × 20,5 mm, 4 strati 0,8 mm, generato da script KiCad e sbrogliato con Freerouting; avviso solo con vibratore | Schema e PCB coerenti da un'unica tabella; 1 mm in più per le piazzole reali della flash |
 | 2026-10-25 | Caricatore BQ25101 (disponibile su LCSC) al posto del BQ25100; niente TVS né diodo su VIN, un LED rosso | Spazio sulla scheda; polarità garantita dai magneti della custodia |
+| 2026-10-25 | PCB v0.2: protezione dei contatti (TVS SD05 + Schottky B5819WS) e reset hardware all'inserimento nella custodia; scheda 17,5 × 22,5 mm | Richiesta dell'utente; un terzo contatto RESET esposto in acqua rischierebbe corrosione e reset spontanei |

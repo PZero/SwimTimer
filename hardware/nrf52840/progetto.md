@@ -132,7 +132,7 @@ Confronto: una moneta da 2 € è Ø 25,75 mm; il prototipo attuale (SuperMini 1
 | **Porting del firmware** da Arduino/ESP32 a Zephyr | media | algoritmi già indipendenti dall'hardware e messi a punto sul prototipo ESP32; il porting si fa su un tag montato e **non resinato**, collegato all'attrezzo di programmazione |
 | **Sensore di pressione** con porta esposta | media | O-ring, prova di tenuta in vasca prima di resinare le altre schede |
 
-## Progetto KiCad v0.1 (2026-10-25)
+## Progetto KiCad v0.2 (2026-10-25)
 
 File in [`kicad/`](kicad/), generati da script a partire da un'unica tabella di dati, così schema e PCB restano coerenti:
 
@@ -146,13 +146,13 @@ File in [`kicad/`](kicad/), generati da script a partire da un'unica tabella di 
 | `esporta_jlc.py` | Gerber + fori (zip), BOM e CPL nel formato JLC, render, PDF dello schema in `jlc/` |
 | `lib/` | simboli, impronte e modelli 3D scaricati da LCSC con `easyeda2kicad` |
 
-**Scheda:** 17,5 × **20,5 mm** (1 mm più della stima: le piazzole della flash sono lunghe 9,5 mm), 4 strati, 0,8 mm. Tag finito ~**19 × 22 × 7,2 mm**.
-- Sopra tutti i componenti (montaggio JLC su un lato); sotto solo piazzole: 2 contatti di ricarica Ø 2,5 mm, 5 piazzole SWD a passo 2 mm (VDD, SWDIO, SWDCLK, RESET, GND, per molle pogo), BAT+/BAT− sul bordo sinistro, MOT+/MOT− sul bordo destro (fili saldati a mano).
+**Scheda:** 17,5 × **22,5 mm** (v0.1 era 20,5: +1 mm per le piazzole reali della flash, +2 mm per protezione dei contatti e reset), 4 strati, 0,8 mm. Tag finito ~**19 × 24 × 7,2 mm**.
+- Sopra tutti i componenti (montaggio JLC su un lato); sotto solo piazzole: 2 contatti di ricarica Ø 2,5 mm sul bordo basso (VIN a sinistra, GND a 4,2 mm), 5 piazzole SWD Ø 1 mm su due file sfalsate (VDD, SWDIO, SWDCLK, RESET, GND, per molle pogo), BAT+/BAT− sul bordo sinistro, MOT+/MOT− sul bordo destro (fili saldati a mano).
 - Antenna sul bordo alto, striscia di 3,8 mm senza rame su tutti gli strati; massa su In1 (piano) e riempimenti di massa sugli altri strati.
 - Regole: piste 0,127 mm (minimo 0,1), distanze 0,1 mm, via 0,5/0,3 mm (nessun sovrapprezzo), foro-rame 0,2 mm; via coperti dal solder mask (anche quelli sotto il modulo).
-- **DRC: 0 errori**, 363 piste, 47 via (dopo le correzioni delle verifiche, vedi [verifiche.md](verifiche.md)). Restano avvisi di sola serigrafia (contorni delle impronte LCSC) e i pin liberi del modulo, che nello schema hanno la crocetta.
+- **DRC: 0 errori**, 401 piste, 55 via (dopo le correzioni delle verifiche, vedi [verifiche.md](verifiche.md)). Restano avvisi di sola serigrafia (contorni delle impronte LCSC) e i pin liberi del modulo, che nello schema hanno la crocetta.
 
-**Pin dell'nRF52840:** QSPI flash P0.17 CS, P0.19 SCK, P0.20/21/22/23 IO0–3 (pin consigliati da Raytac); IMU in SPI P0.15 SCK, P0.13 MOSI, P0.14 MISO, P0.16 CS, INT1 P0.11, INT2 P0.12; pressione I2C P0.26 SDA, P0.27 SCL (pull-up 10 kΩ R5/R6, come da TE); vibratore P0.08 (MOSFET, pull-down 100 kΩ); LED P0.06; stato di carica P0.04; VBUS del modulo collegato ai contatti di ricarica (evento USB = "nella custodia"); VDDH alla batteria, VDD 3,3 V da impostare in `UICR.REGOUT0`.
+**Pin dell'nRF52840:** QSPI flash P0.17 CS, P0.19 SCK, P0.20/21/22/23 IO0–3 (pin consigliati da Raytac); IMU in SPI P0.15 SCK, P0.13 MOSI, P0.14 MISO, P0.16 CS, INT1 P0.11, INT2 P0.12; pressione I2C P0.26 SDA, P0.27 SCL (pull-up 10 kΩ R5/R6, come da TE); vibratore P0.08 (MOSFET, pull-down 100 kΩ); LED P0.06; stato di carica P0.04; contatti di ricarica → TVS SD05 → Schottky B5819WS → caricatore e VBUS del modulo (evento USB = "nella custodia"); reset hardware all'inserimento nella custodia (AO3400A + 100 nF + 1 MΩ su RESET); VDDH alla batteria, VDD 3,3 V da impostare in `UICR.REGOUT0`.
 
 **Per l'ordine JLC** (non ancora fatto): `jlc/swimtag_gerber.zip`, `jlc/bom_jlc.csv`, `jlc/cpl_jlc.csv`. Opzioni: 4 strati, 0,8 mm, **ENIG** (contatti dorati), montaggio *Economic* lato sopra, raggi X per modulo e BGA. Controllare nell'anteprima JLC la rotazione dei componenti (alcune impronte risultano ruotate di 90/180° rispetto alla libreria JLC).
 
