@@ -15,11 +15,11 @@
 
 ### Scheda su misura nRF52840 (`hardware/nrf52840/`)
 14. Budget JLC: 50 € non bastano per 2 tag (minimo ~80 € senza sensore di pressione, ~100 € completo). Quale strada: alzare il budget o rinviare il sensore di pressione?
-15. ~~Modulo~~: MDBT50Q-1MV2. ISP1807 (8 × 8 mm, tag ~12 × 14 × 7 mm, ~+15–20 € sull'ordine tramite Global Sourcing JLC): lo valutiamo?
+15. ~~Modulo~~: MDBT50Q-1MV2 (ISP1807 scartato).
 16. ~~IMU~~: LSM6DSV16X a ±4 g.
 17. ~~Sensore di pressione~~: MS5837-02BA.
 18. Avviso in acqua: proviamo sul prototipo ESP32 vibratore e cicalino (tipo FINIS Tempo Trainer) e scegliamo quello che si sente meglio? Per cosa deve avvisare (fine ripetuta, ritmo, tempo)?
 19. Cella da 15–20 mAh invece di 40 (bastano per 3 h)? (Memoria: 32 MB confermati.)
-20. Misure massime accettabili per il tag (stima con MDBT50Q: ~14 × 19 × 8 mm)?
+20. Forma del tag (`hardware/nrf52840/ingombro.svg`): A lunga ~13 × 28 × 7,2 mm o B compatta ~19 × 21 × 7,2 mm?
 21. Hai una stampante 3D (custodia, attrezzo di programmazione; lo stampo per la resina è rinviato)? Resina o filamento?
 22. Hai un programmatore SWD? Altrimenti un Raspberry Pi Pico (~5 €) col firmware debugprobe.

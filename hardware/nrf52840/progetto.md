@@ -2,7 +2,7 @@
 
 **Stato:** studio del 2026-10-25, nessun acquisto, nessuno schema. Componenti in `bom.md`. Prototipo attuale (ESP32-S3 SuperMini + BMI160) in `../bom.md` e `../schema.md`.
 
-**Obiettivo:** tag da portare sotto la cuffia, ~18 × 26 × 9 mm resinato, con sensore di profondità e vibratore, LiPo ~20 mAh, ricarica a contatto in una custodia tipo AirPods, prodotto e montato da JLCPCB.
+**Obiettivo:** tag da portare sotto la cuffia, ~13 × 28 × 7 mm o ~19 × 21 × 7 mm resinato, con sensore di profondità e vibratore, LiPo ~20 mAh, ricarica a contatto in una custodia tipo AirPods, prodotto e montato da JLCPCB.
 
 ## Schema a blocchi
 
@@ -80,14 +80,18 @@ Con l'ICM-45686 il nuoto scende a ~1,1 mA (~14 h). Ricarica a 15 mA: **~1,5–2 
 
 ## Ingombro stimato
 
-| Parte | Misure |
-|---|---|
-| Scheda (4 strati, 0,8 mm, componenti su un lato) | ~14 × 22 mm; con componenti su due lati ~13 × 18 mm (montaggio JLC più caro) |
-| Altezza componenti | 2,05 mm (modulo); 2,75 mm il sensore di pressione; vibratore Ø 6 × 2–2,7 mm accanto alla cella |
-| Cella 20 mAh | ~4 × 10 × 12 mm o ~3 × 10 × 15 mm |
-| **Tag finito** (scheda + cella e vibratore sovrapposti + ~1 mm di resina per lato) | **~18 × 26 × 9 mm, ~6 g** |
+Pianta in scala 1:1 in [`ingombro.svg`](ingombro.svg) (rigenerabile con `python genera_ingombro.py`). Vincolo principale dal foglio Raytac: **antenna sul bordo della scheda** e striscia di **3,8 mm senza rame su tutti gli strati**, larga quanto la scheda. Sopra al modulo, fuori da quella striscia, ci sta esattamente una cella da ~3 × 10 × 12 mm.
 
-Confronto: il prototipo attuale (SuperMini 18 × 22 mm + modulo BMI160 + LiPo da 300–500 mAh) è parecchie volte più grande.
+| Disposizione | Scheda | Tag finito (0,8 mm di resina sui lati) | Note |
+|---|---|---|---|
+| **A · lunga** (un solo lato) | 11,5 × 26,5 mm | **~13 × 28 × 7,2 mm** | modulo in alto, sotto la flash con il vibratore sopra, in fondo IMU, pressione, caricatore, LED |
+| **B · compatta** (un solo lato) | 17,5 × 19,5 mm | **~19 × 21 × 7,2 mm** | flash e vibratore a fianco del modulo, pressione e passivi in basso |
+| C · due lati (non disegnata) | ~11,5 × 19 mm | ~13 × 21 × 10 mm | componenti anche sotto il modulo: più corta ma più spessa (il sensore di pressione da 2,75 mm finisce sotto), montaggio JLC più caro, poco posto per il vibratore |
+
+Spessore di A e B: resina sotto 0,5 (copre le piazzole SWD) + PCB 0,8 + modulo 2,05 + biadesivo 0,2 + cella 3,0 + resina sopra 0,6 ≈ **7,2 mm**; il vibratore (2,7 mm) sta sopra la flash (0,75 mm) senza aumentare lo spessore. Peso stimato ~4–5 g.
+Contatti di ricarica: due piazzole tonde Ø 2,5 mm sul lato sotto, a filo della resina; piazzole SWD sul lato sotto, annegate. Il sensore di pressione resta scoperto verso l'alto (O-ring).
+
+Confronto: una moneta da 2 € è Ø 25,75 mm; il prototipo attuale (SuperMini 18 × 22 mm + modulo BMI160 + LiPo da 300–500 mAh) è parecchie volte più grande.
 
 ## Sigillatura in resina
 
@@ -139,7 +143,7 @@ Confronto: il prototipo attuale (SuperMini 18 × 22 mm + modulo BMI160 + LiPo da
 - **Modulo Raytac MDBT50Q-1MV2** e **IMU a ±4 g**: confermati.
 - **Autonomia richiesta: 3 ore.** Al nuoto servono ~4–5 mAh (3 h × ~1,4 mA) più qualche giorno di attesa (~2 mAh a settimana). Basta una cella da **15–20 mAh**: la 40 mAh non serve e aumenta l'ingombro, che è il vincolo principale. Si tiene la 20 mAh solo se il vibratore la richiede (picchi: 20 mAh × 2 C = 40 mA).
 - **Memoria:** 3 h a 50 Hz sono ~8,4 MB. 32 MB = 3–4 allenamenti senza scaricare; **16 MB (W25Q128JV, WSON 6 × 5 mm invece di 8 × 6)** = un allenamento e mezzo, con meno ingombro. Da decidere.
-- **Ingombro:** il modulo da solo occupa 10,5 × 15,5 mm, quindi la scheda non scende sotto ~12 × 17 mm (componenti sui due lati). Con cella da 15 mAh il tag finito è ~14 × 19 × 8 mm. Per scendere davvero serve l'**ISP1807 (8 × 8 mm)**: scheda ~10 × 12 mm, tag ~12 × 14 × 7 mm, ~+3 $ a pezzo e fornitura tramite il *Global Sourcing* di JLC (non è su LCSC).
+- **Ingombro:** vedi la sezione *Ingombro stimato* (A ~13 × 28 × 7,2 mm, B ~19 × 21 × 7,2 mm). ISP1807 scartato dall'utente.
 - **Feedback in acqua:** il vibratore è l'unico avviso mentre si nuota, ma va provato: sotto la cuffia il tag è premuto sul cranio, che trasmette bene le vibrazioni. Alternativa da provare insieme: un **cicalino** piezo o magnetico (come il FINIS Tempo Trainer, un metronomo che si mette sotto la cuffia e si sente bene in acqua). Prova sul prototipo ESP32 con entrambi prima di fissare lo schema; sulla scheda si può lasciare l'impronta e montarlo o no.
 - **Budget: 50 € per la sola parte JLC** (PCB + montaggio + componenti + spedizione). JLC monta **almeno 2 schede** (minimo del montaggio economico, da riverificare):
 
@@ -169,7 +173,7 @@ Confronto: il prototipo attuale (SuperMini 18 × 22 mm + modulo BMI160 + LiPo da
 | Proposta | Motivo |
 |---|---|
 | Flash **32 MB W25Q256JV** (**confermato dall'utente**) | 3–4 allenamenti da 3 h senza scaricare |
-| Modulo **Raytac MDBT50Q-1MV2** (**confermato dall'utente**); ISP1807 se l'ingombro non basta | certificato, montabile da JLC |
+| Modulo **Raytac MDBT50Q-1MV2** (**confermato dall'utente**); ISP1807 scartato dall'utente | certificato, montabile da JLC |
 | IMU **LSM6DSV16X** a **±4 g** (**confermato dall'utente**), ICM-45686 di riserva | rumore 3 volte inferiore al BMI160, fondo scala cambiabile via firmware |
 | VDDH dalla LiPo, VDD a 3,0 V da UICR, batteria con VDDHDIV5 | meno componenti, zero perdite di partitori |
 | Caricatore **BQ25100** a 15 mA | fatto per celle piccole, protetto fino a 28 V sull'ingresso |
