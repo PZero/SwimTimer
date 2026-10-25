@@ -2,7 +2,7 @@
 
 **Stato:** studio del 2026-10-25, nessun acquisto, nessuno schema. Componenti in `bom.md`. Prototipo attuale (ESP32-S3 SuperMini + BMI160) in `../bom.md` e `../schema.md`.
 
-**Obiettivo:** tag da portare sotto la cuffia, ~16 × 24 × 9 mm resinato, LiPo ~20 mAh, ricarica a contatto in una custodia tipo AirPods, prodotto e montato da JLCPCB.
+**Obiettivo:** tag da portare sotto la cuffia, ~18 × 26 × 9 mm resinato, con sensore di profondità e vibratore, LiPo ~20 mAh, ricarica a contatto in una custodia tipo AirPods, prodotto e montato da JLCPCB.
 
 ## Schema a blocchi
 
@@ -19,8 +19,9 @@
                                                           SAADC: VDDHDIV5 = misura batteria
                          VDD 3,0 V ─┬─ LSM6DSV16X  (SPI, INT1/INT2: dati pronti, risveglio)
                                     ├─ W25Q256JV   (QSPI, 32 MB)
-                                    ├─ MS5837-02BA (I2C, facolt.)
+                                    ├─ MS5837-02BA (I2C, profondità)
                                     └─ LED RGB 1010 (GPIO in assorbimento)
+                         VDDH ──[2×47 µF]── vibratore Ø 6 mm ── N-MOSFET ← GPIO (PWM)
                          SWD: piazzole di programmazione
 ```
 
@@ -57,7 +58,7 @@ Anche Zephyr ha già i driver: `st,lsm6dsv16x`, `invensense,icm45686`, `meas,ms5
 | 100 Hz | ~5,5 MB | ~5,5 h |
 | 50 Hz + pressione a 5 Hz | ~2,9 MB | ~10,5 h |
 
-32 MB coincidono con l'autonomia della batteria (~12–14 h di registrazione): 64 MB (W25Q512JV, stesso package 8 × 6) non servirebbero finché la cella è da 20 mAh. Scaricamento via BLE: una sessione di 1 h (~3 MB) in 30–60 s; la memoria piena in 5–10 min.
+32 MB coincidono con l'autonomia della batteria (~12 h di registrazione): 64 MB (W25Q512JV, stesso package 8 × 6) non servirebbero finché la cella è da 20 mAh. Scaricamento via BLE: una sessione di 1 h (~3 MB) in 30–60 s; la memoria piena in 5–10 min.
 Trucco per i consumi: **cancellare la flash mentre è in custodia** (la cancellazione è la parte più costosa delle scritture), così in acqua si scrive soltanto.
 
 ## Bilancio dei consumi (stima, cella 20 mAh, ~16 mAh utilizzabili)
@@ -70,20 +71,21 @@ Trucco per i consumi: **cancellare la flash mentre è in custodia** (la cancella
 | Flash (solo scrittura, pre-cancellata) | ~0,04 mA | 1 µA | 1 µA |
 | Pressione 5 Hz | ~0,06 mA | — | 0,1 µA |
 | LED a impulsi | ~0,05 mA | — | — |
+| Vibratore (~100 impulsi da 200 ms per ora, PWM 50 %) | ~0,2 mA medi | — | — |
 | PCM della cella + caricatore | ~3 µA | ~3 µA | ~3 µA |
-| **Totale** | **~1,15 mA** | **~12 µA** | **~8 µA** |
-| **Autonomia** | **~14 h** (circa 10 allenamenti da 1–1,5 h) | ~55 giorni | ~80 giorni (poi interviene il PCM) |
+| **Totale** | **~1,35 mA** | **~12 µA** | **~8 µA** |
+| **Autonomia** | **~12 h** (circa 8–10 allenamenti da 1–1,5 h) | ~55 giorni | ~80 giorni (poi interviene il PCM) |
 
-Con l'ICM-45686 il nuoto scende a ~0,9 mA (~17 h). Ricarica a 15 mA: **~1,5–2 h** da vuota. Questi numeri vanno **misurati** sulla XIAO (Nordic PPK2 o un multimetro con shunt) prima di fissare la cella.
+Con l'ICM-45686 il nuoto scende a ~1,1 mA (~14 h). Ricarica a 15 mA: **~1,5–2 h** da vuota. Questi numeri vanno **misurati** sulla XIAO (Nordic PPK2 o un multimetro con shunt) prima di fissare la cella.
 
 ## Ingombro stimato
 
 | Parte | Misure |
 |---|---|
 | Scheda (4 strati, 0,8 mm, componenti su un lato) | ~14 × 22 mm; con componenti su due lati ~13 × 18 mm (montaggio JLC più caro) |
-| Altezza componenti | 2,05 mm (modulo); 2,75 mm il sensore di pressione |
+| Altezza componenti | 2,05 mm (modulo); 2,75 mm il sensore di pressione; vibratore Ø 6 × 2–2,7 mm accanto alla cella |
 | Cella 20 mAh | ~4 × 10 × 12 mm o ~3 × 10 × 15 mm |
-| **Tag finito** (scheda + cella sovrapposte + ~1 mm di resina per lato) | **~16 × 24 × 9 mm, ~5 g** |
+| **Tag finito** (scheda + cella e vibratore sovrapposti + ~1 mm di resina per lato) | **~18 × 26 × 9 mm, ~6 g** |
 
 Confronto: il prototipo attuale (SuperMini 18 × 22 mm + modulo BMI160 + LiPo da 300–500 mAh) è parecchie volte più grande.
 
@@ -92,6 +94,7 @@ Confronto: il prototipo attuale (SuperMini 18 × 22 mm + modulo BMI160 + LiPo da
 - Guscio stampato in 3D (o stampo in silicone) riempito di **resina epossidica o poliuretanica a basso ritiro**; colata sotto vuoto o con degasaggio per evitare bolle sui componenti BGA.
 - **Restano fuori dalla resina**: le piazzole di ricarica (a filo della superficie) e la porta del sensore di pressione (il gel del MS5837 deve toccare l'acqua: guarnizione o O-ring intorno al cappuccio, mai resina sopra).
 - LED visibile attraverso una resina trasparente o una finestrella.
+- Vibratore incollato rigido al guscio prima della colata (la resina rigida trasmette bene la vibrazione; una morbida la smorza).
 - Niente pulsanti: accensione/spegnimento dalla custodia e dai gesti (doppio/triplo tocco già usati nella pagina).
 - La resina sopra l'antenna sposta un po' la frequenza: provare la portata **dopo** la colata.
 
@@ -103,7 +106,7 @@ Confronto: il prototipo attuale (SuperMini 18 × 22 mm + modulo BMI160 + LiPo da
 | **Antenna** sotto la cuffia, vicino alla testa e all'acqua | media | il BLE in acqua non va comunque (già noto): trasmettere solo fuori dall'acqua/al muro; antenna sul bordo della scheda, zona libera da rame e componenti come da foglio Raytac; prova di portata dopo la resina |
 | **Montaggio** (DSBGA 0,4 mm, LGA, modulo con piazzole sotto) | media | JLC li monta con raggi X; nessun componente 0201 fuori dai *basic*; ordinare 5 pezzi e provarne 2 prima di resinare |
 | **Carica a corrente bassa** (15 mA) | bassa/media | BQ25100 è fatto apposta (da 10 mA); attenzione al **timer di sicurezza fisso di 10 h** e alla soglia di terminazione (PRETERM); niente caricatori tipo TP4056 (minimo pratico ~50 mA) |
-| **Picchi di corrente** su cella da 20 mAh (max 1–2 C = 20–40 mA) | media | condensatore di riserva 22–47 µF su VDD; niente vibratore o solo impulsi brevi |
+| **Picchi di corrente** su cella da 20 mAh (max 1–2 C = 20–40 mA), soprattutto il **vibratore** (50–80 mA) | alta | vibratore in PWM ~50 % a impulsi brevi, 2 × 47 µF su VDDH, niente radio/flash durante l'impulso, cella ≥ 2 C; soglia di spegnimento del vibratore sotto ~3,6 V; provarlo sulla XIAO prima del PCB |
 | **Disponibilità componenti** (modulo e IMU *extended*, stock variabile) | media | verificare stock il giorno dell'ordine; riserva E73 per il modulo e ICM-45686 per l'IMU già nel progetto |
 | **Primo flash e recupero** senza USB | media | piazzole SWD raggiungibili prima della resina; MCUboot con immagine di riserva; programmatore J-Link EDU Mini o Raspberry Pi Pico come *debugprobe* |
 | **Porting del firmware** da Arduino/ESP32 a Zephyr | media | passo intermedio con la XIAO (sotto); algoritmi già indipendenti dall'hardware |
@@ -117,7 +120,7 @@ nRF52840 + LSM6DS3TR-C + 2 MB QSPI + caricatore BQ25101, 21 × 17,5 mm, già sup
 - Portare: lettura IMU con FIFO, servizio GATT compatibile con la pagina `tools/`, annuncio BLE per il display, registrazione su flash, sonno con risveglio dall'IMU, misura della batteria.
 - MCUboot + aggiornamento via BLE (SMP): da aggiungere alla pagina web (esistono librerie JavaScript per mcumgr su Web Bluetooth).
 - **Misurare i consumi reali** e confermare frequenza e fondo scala dall'analisi delle registrazioni.
-- Facoltativo: modulo MS5837 su I2C per provare la profondità.
+- Provare sulla XIAO anche un modulo MS5837 su I2C (profondità) e un vibratore con MOSFET alimentato da una cella da 20 mAh, misurando la caduta di tensione.
 
 **(b) Schema e PCB (KiCad)** — solo dopo (a) e conferma dell'utente
 - Schema e layout 4 strati, regole e librerie JLC; simbolo/impronta MDBT50Q dal foglio Raytac.
@@ -141,7 +144,7 @@ nRF52840 + LSM6DS3TR-C + 2 MB QSPI + caricatore BQ25101, 21 × 17,5 mm, già sup
 | IMU **LSM6DSV16X** a **±4 g**, ICM-45686 di riserva | rumore 3 volte inferiore al BMI160, fondo scala cambiabile via firmware |
 | VDDH dalla LiPo, VDD a 3,0 V da UICR, batteria con VDDHDIV5 | meno componenti, zero perdite di partitori |
 | Caricatore **BQ25100** a 15 mA | fatto per celle piccole, protetto fino a 28 V sull'ingresso |
-| Sensore di pressione **MS5837-02BA** | fase subacquea, uscita dall'acqua, BLE spento sott'acqua |
-| Niente vibratore nella prima versione | picchi oltre la corrente della cella |
+| Sensore di pressione **MS5837-02BA** (**deciso dall'utente** il 2026-10-25) | fase subacquea, uscita dall'acqua, BLE spento sott'acqua |
+| **Vibratore** Ø 6 mm in PWM (**deciso dall'utente** il 2026-10-25) | avviso tattile in acqua; picchi gestiti con PWM e condensatori |
 | Firmware su **Zephyr / nRF Connect SDK** con MCUboot e DFU via BLE | driver pronti, stesso stack di SlimeVR, aggiornamento senza aprire il tag |
 | Prima la **XIAO nRF52840 Sense** | porting del firmware e misure dei consumi prima di spendere per il PCB |

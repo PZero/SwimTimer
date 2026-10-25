@@ -11,7 +11,9 @@ Prezzi indicativi in USD per pezzo a piccoli lotti (5–10 schede); codici LCSC/
 | U2 | IMU 6 assi | **ST LSM6DSV16X** (FIFO 4,5 KB, FSM + MLC + SFLP sul sensore) | C5267406 (LSM6DSV16XTR, a stock) | LGA-14, 2,5 × 3 × 0,83 mm | 0,65 mA acc+giro alte prestazioni; 2,6 µA standby | 2,5–3,5 $ |
 | U3 | Memoria dati | **Winbond W25Q256JVEIQ**, NOR QSPI **32 MB** (scelta dell'utente) | C97522 (a stock) | WSON-8 8 × 6 mm | ~15 mA in scrittura; 1 µA in power-down | 2,5–3,5 $ |
 | U4 | Caricatore | **TI BQ25100YFPR** (lineare, 10–250 mA, ingresso fino a 28 V, OVP 6,5 V, perdita sulla batteria 75 nA) — riserva BQ25101YFPR | BQ25101YFPR = C478468; BQ25100YFPR da cercare (⚠ **non** il BQ25100**A**, C206119, che carica a 4,3 V) | DSBGA-6, 1,6 × 0,9 mm, passo 0,4 mm | Iq < 1 µA a ingresso assente | 1–2,5 $ |
-| U5 | Pressione/profondità (facolt., consigliato) | **TE MS5837-02BA** (0–2 bar, risoluzione ~0,2 mm d'acqua) | C2887129 (JLC) | 3,3 × 3,3 × 2,75 mm, cappuccio metallico con gel | 1,25 mA solo durante la conversione; 0,1 µA a riposo | 5–8 $ |
+| U5 | Pressione/profondità (**deciso** 2026-10-25) | **TE MS5837-02BA** (0–2 bar, risoluzione ~0,2 mm d'acqua) | C2887129 (JLC) | 3,3 × 3,3 × 2,75 mm, cappuccio metallico con gel | 1,25 mA solo durante la conversione; 0,1 µA a riposo | 5–8 $ |
+| M1 | Vibratore (**deciso** 2026-10-25) | motore a moneta Ø 6 mm × 2–2,7 mm, 3 V, il più basso consumo disponibile (codice da scegliere su LCSC) | — | Ø 6 mm | 50–80 mA mentre vibra; limitato a ~30–40 mA in PWM | 0,5–1 $ |
+| Q1/D4 | Pilotaggio vibratore | N-MOSFET logico (SOT-723/SOT-523, Vgs(th) < 1,5 V) + diodo di ricircolo + 10 Ω in serie al gate | — | — | — | 0,1 $ |
 | D1 | LED di stato | LED RGB 1010 a anodo comune (codice da scegliere tra i *basic* JLC) | — | 1,0 × 1,0 mm | 1–2 mA per colore, a impulsi | 0,1 $ |
 | BT1 | Batteria | LiPo 3,7 V **~20 mAh con PCM** (es. 401012 ≈ 4 × 10 × 12 mm o 301015 ≈ 3 × 10 × 15 mm; misure da verificare col fornitore) | fuori JLC (AliExpress/fornitori celle) | saldata a filo o linguette | autoscarica ~2–3 %/mese | 2–4 $ |
 | J1–J3 | Ricarica a contatto | 2 piazzole dorate (VIN, GND) + 1 facoltativa; nella custodia molle pogo e magneti | piazzole sulla scheda; pogo nella custodia | Ø 2–2,5 mm ciascuna | — | — |
@@ -26,7 +28,7 @@ Prezzi indicativi in USD per pezzo a piccoli lotti (5–10 schede); codici LCSC/
 | R1 | ISET del caricatore | per **15 mA** (formula nel datasheet BQ2510x) | 0,75 C per la cella da 20 mAh |
 | R2 | PRETERM | precarica/terminazione ~2–3 mA | |
 | R3/R4 | Rilevamento custodia | partitore 1 MΩ / 1 MΩ da VIN a GPIO | sveglia da System OFF quando VIN sparisce/compare; nessuna tensione di batteria sulle piazzole |
-| C | Disaccoppiamenti | 100 nF ogni integrato, 4,7 µF su VDDH, **22–47 µF** di riserva su VDD | la cella da 20 mAh regge 1–2 C: i picchi (radio, scrittura flash) vanno coperti dal condensatore |
+| C | Disaccoppiamenti | 100 nF ogni integrato, 4,7 µF su VDDH, **22–47 µF** di riserva su VDD, **2 × 47 µF** su VDDH vicino al vibratore | la cella da 20 mAh regge 1–2 C: i picchi (radio, flash, vibratore) vanno coperti dai condensatori |
 | L | DC/DC dell'nRF | già nel modulo MDBT50Q (REG1) | verificare sul foglio Raytac se serve anche l'induttanza di REG0 |
 | NTC | Temperatura cella (facolt.) | 10 kΩ sul pin TS, oppure resistenza fissa | in acqua la temperatura non è un problema; in custodia al sole sì |
 
@@ -34,9 +36,10 @@ Prezzi indicativi in USD per pezzo a piccoli lotti (5–10 schede); codici LCSC/
 
 | Componente | Proposta | Pro | Contro |
 |---|---|---|---|
-| Micro vibratore | motore a moneta Ø 4–6 mm + MOSFET + diodo | avviso tattile in acqua (fine ripetuta, ritmo) | 60–80 mA di picco: oltre la corrente massima di una cella da 20 mAh; ingombro |
 | Protezione sulla scheda | TI BQ2970 + doppio MOSFET | se la cella non avesse il PCM | altri 2 componenti; meglio comprare la cella col PCM |
 | 32 kHz esterno | quarzo 32,768 kHz (se non già nel modulo) | ~1 µA in meno rispetto all'oscillatore RC | ingombro; il RC interno basta per il prototipo |
+
+**Vibratore con la cella da 20 mAh:** la cella regge 20–40 mA continui, il motore ne chiede 50–80. Accorgimenti: alimentato da VDDH tramite MOSFET in **PWM (~50 %)**, impulsi brevi (100–300 ms), condensatori di riserva su VDDH, nessuna scrittura in flash né trasmissione durante l'impulso, cella scelta con **scarica ≥ 2 C** (meglio ancora 30–40 mA h se lo spessore lo consente). Il consumo medio è trascurabile: 100 impulsi da 200 ms ≈ 0,3 mAh per allenamento.
 
 ## Alternative valutate per il modulo
 
@@ -67,7 +70,7 @@ Proposta di impostazione: **±4 g** (rumore invariato, nessuna saturazione a spi
 | Voce | Stima |
 |---|---|
 | Componenti (modulo, IMU, flash, caricatore, passivi, LED) | 16–22 $ |
-| + sensore di pressione | 5–8 $ |
+| Sensore di pressione + vibratore e pilotaggio | 6–9 $ |
 | Cella LiPo 20 mAh con PCM | 2–4 $ |
 | PCB 4 strati 0,8 mm + montaggio JLC (spese fisse ~25–40 $ divise sul lotto, componenti *extended* ~3 $ l'uno, raggi X) | 6–12 $ |
 | **Totale tag** | **~30–45 $ al pezzo** (spedizione e IVA escluse; ordine di 5 pezzi ~150–250 $ tutto compreso) |
