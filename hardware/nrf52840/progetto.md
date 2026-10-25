@@ -48,7 +48,7 @@ Fonti: [SlimeVR-Tracker-nRF](https://github.com/SlimeVR/SlimeVR-Tracker-nRF) (fi
 | Bootloader | UF2 (Adafruit) su USB | **diverso**: niente USB nel tag sigillato → MCUboot + aggiornamento via BLE (SMP/mcumgr) |
 | Radio | ESB proprietario verso un dongle | **diverso**: BLE verso display e pagina web |
 
-Anche Zephyr ha già i driver: `st,lsm6dsv16x`, `invensense,icm45686`, `meas,ms5837`, `nordic,qspi-nor`. La scheda **Seeed XIAO nRF52840 Sense** è già supportata (`xiao_ble/nrf52840/sense`) e ha un caricatore della stessa famiglia (BQ25101).
+Anche Zephyr ha già i driver: `st,lsm6dsv16x`, `invensense,icm45686`, `meas,ms5837`, `nordic,qspi-nor`.
 
 ## Memoria: 32 MB
 
@@ -76,7 +76,7 @@ Trucco per i consumi: **cancellare la flash mentre è in custodia** (la cancella
 | **Totale** | **~1,35 mA** | **~12 µA** | **~8 µA** |
 | **Autonomia** | **~12 h** (circa 8–10 allenamenti da 1–1,5 h) | ~55 giorni | ~80 giorni (poi interviene il PCM) |
 
-Con l'ICM-45686 il nuoto scende a ~1,1 mA (~14 h). Ricarica a 15 mA: **~1,5–2 h** da vuota. Questi numeri vanno **misurati** sulla XIAO (Nordic PPK2 o un multimetro con shunt) prima di fissare la cella.
+Con l'ICM-45686 il nuoto scende a ~1,1 mA (~14 h). Ricarica a 15 mA: **~1,5–2 h** da vuota. Questi numeri vanno **misurati** sui primi tag montati (Nordic PPK2 o un multimetro con shunt) prima di fissare la cella.
 
 ## Ingombro stimato
 
@@ -110,22 +110,18 @@ Confronto: il prototipo attuale (SuperMini 18 × 22 mm + modulo BMI160 + LiPo da
 | **Picchi di corrente** su cella da 20 mAh (max 1–2 C = 20–40 mA), soprattutto il **vibratore** (50–80 mA) | alta | vibratore in PWM ~50 % a impulsi brevi, 2 × 47 µF su VDDH, niente radio/flash durante l'impulso, cella ≥ 2 C; soglia di spegnimento del vibratore sotto ~3,6 V; provarlo sulla XIAO prima del PCB |
 | **Disponibilità componenti** (modulo e IMU *extended*, stock variabile) | media | verificare stock il giorno dell'ordine; riserva E73 per il modulo e ICM-45686 per l'IMU già nel progetto |
 | **Primo flash e recupero**: dopo la resina l'SWD non è più raggiungibile | alta | programmare e collaudare (radio, IMU, flash, carica) **prima** della colata; da lì solo aggiornamenti via BLE con MCUboot: bootloader non aggiornabile, immagine nuova provata e confermata solo se il BLE funziona (altrimenti torna alla precedente), immagine di riserva nella flash esterna; programmatore J-Link EDU Mini o Raspberry Pi Pico come *debugprobe* con pinza pogo |
-| **Porting del firmware** da Arduino/ESP32 a Zephyr | media | passo intermedio con la XIAO (sotto); algoritmi già indipendenti dall'hardware |
+| **Porting del firmware** da Arduino/ESP32 a Zephyr | media | algoritmi già indipendenti dall'hardware e messi a punto sul prototipo ESP32; il porting si fa su un tag montato e **non resinato**, collegato all'attrezzo di programmazione |
 | **Sensore di pressione** con porta esposta | media | O-ring, prova di tenuta in vasca prima di resinare le altre schede |
 
 ## Piano a tappe
 
-**(a) Passo intermedio — Seeed XIAO nRF52840 Sense (~15 $)**
-nRF52840 + LSM6DS3TR-C + 2 MB QSPI + caricatore BQ25101, 21 × 17,5 mm, già supportata da Zephyr.
-- Ambiente nRF Connect SDK (VS Code + estensione nRF Connect), progetto `firmware/tag-nrf/` con overlay per la XIAO.
-- Portare: lettura IMU con FIFO, servizio GATT compatibile con la pagina `tools/`, annuncio BLE per il display, registrazione su flash, sonno con risveglio dall'IMU, misura della batteria.
-- MCUboot + aggiornamento via BLE (SMP): da aggiungere alla pagina web (esistono librerie JavaScript per mcumgr su Web Bluetooth).
-- **Misurare i consumi reali** e confermare frequenza e fondo scala dall'analisi delle registrazioni.
-- Provare sulla XIAO anche un modulo MS5837 su I2C (profondità) e un vibratore con MOSFET alimentato da una cella da 20 mAh, misurando la caduta di tensione.
+**(a) Prototipo: resta l'ESP32-S3 SuperMini + BMI160** (decisione dell'utente 2026-10-25)
+- Su di esso si mettono a punto gli algoritmi (registrazioni e video) e si prova l'avviso in acqua: vibratore Ø 6 mm e cicalino con un MOSFET su un GPIO, sotto la cuffia.
+- Niente scheda di sviluppo nRF intermedia: il firmware Zephyr nasce direttamente sui primi tag definitivi.
 
-**(b) Schema e PCB (KiCad)** — solo dopo (a) e conferma dell'utente
+**(b) Schema e PCB (KiCad)** — dopo conferma dell'utente
 - Schema e layout 4 strati, regole e librerie JLC; simbolo/impronta MDBT50Q dal foglio Raytac.
-- Overlay Zephyr della scheda definitiva (stesso firmware della XIAO, solo i pin cambiano).
+- Firmware `firmware/tag-nrf/` su nRF Connect SDK (VS Code + estensione nRF Connect) con overlay della scheda: lettura IMU con FIFO, servizio GATT compatibile con la pagina `tools/`, annuncio BLE per il display, registrazione su flash, sonno con risveglio dall'IMU, misura della batteria, MCUboot + aggiornamento via BLE (SMP, da aggiungere alla pagina web).
 - Revisione dello schema prima dell'ordine (consumi a riposo, piazzole SWD, zona antenna).
 
 **(c) Ordine prototipi** — 5 pezzi montati da JLC (~150–250 $ con spedizione e IVA)
@@ -144,19 +140,22 @@ nRF52840 + LSM6DS3TR-C + 2 MB QSPI + caricatore BQ25101, 21 × 17,5 mm, già sup
 - **Autonomia richiesta: 3 ore.** Al nuoto servono ~4–5 mAh (3 h × ~1,4 mA) più qualche giorno di attesa (~2 mAh a settimana). Basta una cella da **15–20 mAh**: la 40 mAh non serve e aumenta l'ingombro, che è il vincolo principale. Si tiene la 20 mAh solo se il vibratore la richiede (picchi: 20 mAh × 2 C = 40 mA).
 - **Memoria:** 3 h a 50 Hz sono ~8,4 MB. 32 MB = 3–4 allenamenti senza scaricare; **16 MB (W25Q128JV, WSON 6 × 5 mm invece di 8 × 6)** = un allenamento e mezzo, con meno ingombro. Da decidere.
 - **Ingombro:** il modulo da solo occupa 10,5 × 15,5 mm, quindi la scheda non scende sotto ~12 × 17 mm (componenti sui due lati). Con cella da 15 mAh il tag finito è ~14 × 19 × 8 mm. Per scendere davvero serve l'**ISP1807 (8 × 8 mm)**: scheda ~10 × 12 mm, tag ~12 × 14 × 7 mm, ~+3 $ a pezzo e fornitura tramite il *Global Sourcing* di JLC (non è su LCSC).
-- **Feedback in acqua:** il vibratore è l'unico avviso mentre si nuota, ma va provato: sotto la cuffia il tag è premuto sul cranio, che trasmette bene le vibrazioni. Alternativa da provare insieme: un **cicalino** piezo o magnetico (come il FINIS Tempo Trainer, un metronomo che si mette sotto la cuffia e si sente bene in acqua). Prova su XIAO con entrambi prima di fissare lo schema; sulla scheda si può lasciare l'impronta e montarlo o no.
-- **Budget: 50 € comprensivi di tutto per 1–2 prototipi.** Con la scheda su misura non ci si sta:
+- **Feedback in acqua:** il vibratore è l'unico avviso mentre si nuota, ma va provato: sotto la cuffia il tag è premuto sul cranio, che trasmette bene le vibrazioni. Alternativa da provare insieme: un **cicalino** piezo o magnetico (come il FINIS Tempo Trainer, un metronomo che si mette sotto la cuffia e si sente bene in acqua). Prova sul prototipo ESP32 con entrambi prima di fissare lo schema; sulla scheda si può lasciare l'impronta e montarlo o no.
+- **Budget: 50 € per la sola parte JLC** (PCB + montaggio + componenti + spedizione). JLC monta **almeno 2 schede** (minimo del montaggio economico, da riverificare):
 
-| Voce (2 tag montati da JLC, stima) | Costo |
-|---|---|
-| PCB 4 strati, 5 pezzi | ~8 $ |
-| Spese fisse del montaggio (impianto, stencil, ~7 componenti *extended* a ~3 $) | ~30 $ |
-| Componenti per 2 tag (modulo 10, IMU 3, flash 3, caricatore 2, pressione 6, vibratore e passivi 2) | ~52 $ |
-| Spedizione + IVA 22 % | ~35 $ |
-| Celle, molle pogo, resina, Raspberry Pi Pico come programmatore | ~20–30 € |
-| **Totale** | **~130–150 €** (senza sensore di pressione ~110 €) |
+| Voce JLC (2 tag con MDBT50Q, stima) | Con sensore di pressione | Senza |
+|---|---|---|
+| PCB 4 strati, 5 pezzi | ~8 $ | ~8 $ |
+| Spese fisse (impianto ~8 $, stencil ~1,5 $, ~5 componenti *extended* a ~3 $) | ~25 $ | ~22 $ |
+| Componenti per 2 tag | ~50 $ | ~38 $ |
+| Spedizione economica | ~8 $ | ~8 $ |
+| IVA 22 % | ~20 $ | ~17 $ |
+| **Totale** | **~110 $ ≈ 95–100 €** | **~93 $ ≈ 80 €** |
 
-  **Con 50 € ci sta la tappa (a):** XIAO nRF52840 Sense (~16 €), cella 20 mAh (~3 €), modulo MS5837 (~10 €), vibratore e cicalino (~3 €), spedizioni. La XIAO può già andare **in vasca**: si programma via USB, si resina con 2 contatti sul pin 5V (che alimenta il suo caricatore) e poi si aggiorna via BLE. Il primo ordine JLC, con un solo progetto e 2 tag, va fatto **senza pannello** (il pannello conviene dal lotto successivo).
+  **50 € non bastano** per 2 tag con questi componenti: il modulo da solo costa ~10 $ a tag e il minimo è 2 tag. Leve per ridurre: sensore di pressione non montato al primo giro (impronta pronta; ~−15 €), solo componenti *basic* per i passivi, vibratore saldato a mano (i fili non servono a JLC), eventuali buoni sconto per nuovi clienti del montaggio. Realisticamente **~80 € il minimo**, ~100 € completo.
+- **ISP1807 (8 × 8 mm) come opzione:** sì. Non è su LCSC, ma JLC lo può comprare per noi con il servizio **Global Sourcing** (lo prende da DigiKey/Mouser, lo mette nella nostra libreria e lo monta), oppure glielo si spedisce noi (*consigned parts*). Contro: prezzo più alto (DigiKey ~12,5 $; tramite JLC alcuni utenti riportano ricarichi fino al +50 %), 1–3 settimane in più di attesa, piazzole LGA fini (montaggio con raggi X). Costo in più sull'ordine di 2 tag: **~+15–20 €**. Da verificare sul datasheet Insight SiP prima di sceglierlo: piedini VDDH e QSPI disponibili (servono per alimentazione dalla LiPo e flash da 32 MB).
+- **Memoria: 32 MB confermati** (W25Q256JV).
+- **Stampo per la resina:** rinviato.
 - **Da progettare (elettronica + oggetto 3D):** custodia di ricarica, attrezzo di programmazione, stampo per la resina:
 
 | Oggetto | Elettronica | Parte 3D |
@@ -169,15 +168,16 @@ nRF52840 + LSM6DS3TR-C + 2 MB QSPI + caricatore BQ25101, 21 × 17,5 mm, già sup
 
 | Proposta | Motivo |
 |---|---|
-| Flash **32 MB W25Q256JV** (indicata dall'utente) o 16 MB W25Q128JV più piccola | 3 h di nuoto = ~8,4 MB |
+| Flash **32 MB W25Q256JV** (**confermato dall'utente**) | 3–4 allenamenti da 3 h senza scaricare |
 | Modulo **Raytac MDBT50Q-1MV2** (**confermato dall'utente**); ISP1807 se l'ingombro non basta | certificato, montabile da JLC |
 | IMU **LSM6DSV16X** a **±4 g** (**confermato dall'utente**), ICM-45686 di riserva | rumore 3 volte inferiore al BMI160, fondo scala cambiabile via firmware |
 | VDDH dalla LiPo, VDD a 3,0 V da UICR, batteria con VDDHDIV5 | meno componenti, zero perdite di partitori |
 | Caricatore **BQ25100** a 15 mA | fatto per celle piccole, protetto fino a 28 V sull'ingresso |
 | Sensore di pressione **MS5837-02BA** (**deciso dall'utente** il 2026-10-25) | fase subacquea, uscita dall'acqua, BLE spento sott'acqua |
-| **Vibratore** Ø 6 mm in PWM oppure cicalino, dopo la prova sulla XIAO | unico avviso in acqua; va sentito sotto la cuffia |
+| **Vibratore** Ø 6 mm in PWM oppure cicalino, dopo la prova sul prototipo ESP32 | unico avviso in acqua; va sentito sotto la cuffia |
 | Cella **15–20 mAh** (non 40) | 3 h di autonomia richieste; l'ingombro è il vincolo principale |
 | Firmware su **Zephyr / nRF Connect SDK** con MCUboot e DFU via BLE | driver pronti, stesso stack di SlimeVR, aggiornamento senza aprire il tag |
 | Piazzole SWD interne, sotto la resina (**deciso dall'utente** il 2026-10-25) | si programmano una volta prima della colata; all'esterno solo i contatti di ricarica |
 | Primo ordine: 2 tag senza pannello; **pannello con mouse bites** (KiKit) dal lotto successivo | budget; il pannello conviene solo con molti tag |
-| Prima la **XIAO nRF52840 Sense** | porting del firmware e misure dei consumi prima di spendere per il PCB |
+| Nessuna scheda nRF intermedia (**deciso dall'utente**): prototipo ESP32 per gli algoritmi, poi direttamente il tag definitivo | il prototipo è già montato e funzionante |
+| Budget JLC: ~80 € senza sensore di pressione, ~100 € completo (obiettivo dell'utente 50 €) | il minimo di 2 tag e il costo del modulo non permettono di scendere a 50 € |
