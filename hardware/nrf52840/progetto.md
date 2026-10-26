@@ -10,14 +10,14 @@
  custodia (5 V, molle pogo + magneti)
    │ VIN   GND
    ▼
- [TVS] → [Schottky] ──┬──► BQ25100 (15 mA, 4,2 V) ──► LiPo 20 mAh (con PCM)
+ [TVS] → [Schottky] ──┬──► BQ25101 (13,5 mA, 4,2 V) ──► LiPo 20 mAh (con PCM)
                       │        │ /CHG → GPIO               │ BAT
                       └─ 1M/1M → GPIO "in custodia"         ▼
                                                     VDDH  nRF52840 (MDBT50Q)
-                                                          REG0 LDO → VDD 3,0 V (UICR.REGOUT0)
+                                                          REG0 LDO → VDD 3,3 V (UICR.REGOUT0)
                                                           REG1 DC/DC → core
                                                           SAADC: VDDHDIV5 = misura batteria
-                         VDD 3,0 V ─┬─ LSM6DSV16X  (SPI, INT1/INT2: dati pronti, risveglio)
+                         VDD 3,3 V ─┬─ LSM6DSV16X  (SPI, INT1/INT2: dati pronti, risveglio)
                                     ├─ W25Q256JV   (QSPI, 32 MB)
                                     ├─ MS5837-02BA (I2C, profondità)
                                     └─ LED RGB 1010 (GPIO in assorbimento)
@@ -26,7 +26,7 @@
 ```
 
 Note di progetto:
-- **VDDH direttamente dalla LiPo** (modo "alta tensione" dell'nRF52840): niente regolatore esterno. ⚠ In questo modo VDD esce a **1,8 V di serie**: il firmware (o il primo flash) deve scrivere `UICR.REGOUT0 = 3,0 V`, altrimenti la flash a 3 V non parte. VDD a 3,0 V permette di usare la batteria fino a ~3,3 V.
+- **VDDH direttamente dalla LiPo** (modo "alta tensione" dell'nRF52840): niente regolatore esterno. ⚠ In questo modo VDD esce a **1,8 V di serie**: il firmware (o il primo flash) deve scrivere `UICR.REGOUT0 = 3,3 V`, altrimenti la flash a 3 V non parte. VDD a 3,3 V (deciso in v0.1 per il LED e la flash) permette di usare la batteria fino a ~3,5 V.
 - **Batteria con VDDHDIV5** sul SAADC: nessun partitore esterno, nessuna perdita a riposo (SlimeVR usa un partitore con interruttore; qui non serve).
 - **IMU su SPI** (8 MHz, meno tempo di CPU sveglia rispetto all'I2C) con FIFO: l'nRF si sveglia ~3 volte al secondo, legge un blocco e torna a dormire.
 - **Le piazzole non portano mai la tensione della batteria**: senza custodia VIN è tirato a massa dal partitore → niente elettrolisi in acqua tra i contatti.
@@ -76,7 +76,7 @@ Trucco per i consumi: **cancellare la flash mentre è in custodia** (la cancella
 | **Totale** | **~1,35 mA** | **~12 µA** | **~8 µA** |
 | **Autonomia** | **~12 h** (circa 8–10 allenamenti da 1–1,5 h) | ~55 giorni | ~80 giorni (poi interviene il PCM) |
 
-Con l'ICM-45686 il nuoto scende a ~1,1 mA (~14 h). Ricarica a 15 mA: **~1,5–2 h** da vuota. Questi numeri vanno **misurati** sui primi tag montati (Nordic PPK2 o un multimetro con shunt) prima di fissare la cella.
+Con l'ICM-45686 il nuoto scende a ~1,1 mA (~14 h). Ricarica a 13,5 mA: **~1,5–2 h** da vuota. Questi numeri vanno **misurati** sui primi tag montati (Nordic PPK2 o un multimetro con shunt) prima di fissare la cella.
 
 ## Ingombro stimato
 
@@ -125,7 +125,7 @@ Confronto: una moneta da 2 € è Ø 25,75 mm; il prototipo attuale (SuperMini 1
 | **Corrosione dei contatti nel cloro** | alta | nessuna tensione sulle piazzole fuori dalla custodia; oro spesso (ENIG ha solo 0,05–0,1 µm: si consuma) → meglio inserti dorati o in acciaio inox sulla resina, saldati alla scheda; molle pogo e magneti nella custodia; risciacquo con acqua dolce |
 | **Antenna** sotto la cuffia, vicino alla testa e all'acqua | media | il BLE in acqua non va comunque (già noto): trasmettere solo fuori dall'acqua/al muro; antenna sul bordo della scheda, zona libera da rame e componenti come da foglio Raytac; prova di portata dopo la resina |
 | **Montaggio** (DSBGA 0,4 mm, LGA, modulo con piazzole sotto) | media | JLC li monta con raggi X; nessun componente 0201 fuori dai *basic*; ordinare 5 pezzi e provarne 2 prima di resinare |
-| **Carica a corrente bassa** (15 mA) | bassa/media | BQ25100 è fatto apposta (da 10 mA); attenzione al **timer di sicurezza fisso di 10 h** e alla soglia di terminazione (PRETERM); niente caricatori tipo TP4056 (minimo pratico ~50 mA) |
+| **Carica a corrente bassa** (13,5 mA) | bassa/media | il BQ2510x è fatto apposta (da 10 mA); attenzione al **timer di sicurezza fisso di 10 h** e alla soglia di terminazione (PRETERM); niente caricatori tipo TP4056 (minimo pratico ~50 mA) |
 | **Picchi di corrente** su cella da 20 mAh (max 1–2 C = 20–40 mA), soprattutto il **vibratore** (50–80 mA) | alta | vibratore in PWM ~50 % a impulsi brevi, 2 × 47 µF su VDDH, niente radio/flash durante l'impulso, cella ≥ 2 C; soglia di spegnimento del vibratore sotto ~3,6 V; provarlo sul prototipo ESP32 prima del PCB |
 | **Disponibilità componenti** (modulo e IMU *extended*, stock variabile) | media | verificare stock il giorno dell'ordine; riserva E73 per il modulo e ICM-45686 per l'IMU già nel progetto |
 | **Primo flash e recupero**: dopo la resina l'SWD non è più raggiungibile | alta | programmare e collaudare (radio, IMU, flash, carica) **prima** della colata; da lì solo aggiornamenti via BLE con MCUboot: bootloader non aggiornabile, immagine nuova provata e confermata solo se il BLE funziona (altrimenti torna alla precedente), immagine di riserva nella flash esterna; programmatore J-Link EDU Mini o Raspberry Pi Pico come *debugprobe* con pinza pogo |
@@ -172,7 +172,7 @@ File in [`kicad/`](kicad/), generati da script a partire da un'unica tabella di 
 **(c) Ordine prototipi** — 5 pezzi montati da JLC (~150–250 $ con spedizione e IVA)
 - **Pannello**: più tag sulla stessa scheda (proposta 2 × 3 = 6 tag, ~70 × 80 mm con i bordi), staccati con **mouse bites** (fori di rottura su linguette da 2–3 mm, dove non c'è la zona dell'antenna); il V-cut no, perché taglia da bordo a bordo e su schede così piccole è poco preciso. Bordi di servizio da 5 mm con fiducial e fori di riferimento (servono comunque a JLC per montare schede sotto i 20 mm). Pannello generato con **KiKit** (plugin di KiCad). Prezzo: JLC fa pagare il pannello per le sue misure (fascia fino a 100 × 100 mm) e lo stesso progetto ripetuto è ammesso; più progetti *diversi* sullo stesso pannello pagano un supplemento.
 - Il risparmio vale per PCB e spese fisse, **non per i componenti**, che restano a tag. Proposta: 5 pannelli prodotti, **2 montati** = 12 tag (~12 × 25 $ di componenti + spese fisse), i 3 pannelli nudi di scorta.
-- Collaudo a banco: carica a 15 mA, consumi, portata BLE, scrittura flash.
+- Collaudo a banco: carica a 13,5 mA, consumi, portata BLE, scrittura flash.
 - Resinare 1–2 pezzi, prova in vasca; gli altri restano aperti per le modifiche.
 
 **(d) Custodia di ricarica e attrezzo di programmazione** — da progettare noi (elettronica + parti 3D stampate con la Bambu Lab A1 mini, piano 180 × 180 mm)
@@ -216,8 +216,8 @@ File in [`kicad/`](kicad/), generati da script a partire da un'unica tabella di 
 | Flash **32 MB W25Q256JV** (**confermato dall'utente**) | 3–4 allenamenti da 3 h senza scaricare |
 | Modulo **Raytac MDBT50Q-1MV2** (**confermato dall'utente**); ISP1807 scartato dall'utente | certificato, montabile da JLC |
 | IMU **LSM6DSV16X** a **±4 g** (**confermato dall'utente**), ICM-45686 di riserva | rumore 3 volte inferiore al BMI160, fondo scala cambiabile via firmware |
-| VDDH dalla LiPo, VDD a 3,0 V da UICR, batteria con VDDHDIV5 | meno componenti, zero perdite di partitori |
-| Caricatore **BQ25100** a 15 mA | fatto per celle piccole, protetto fino a 28 V sull'ingresso |
+| VDDH dalla LiPo, VDD a 3,3 V da UICR, batteria con VDDHDIV5 | meno componenti, zero perdite di partitori |
+| Caricatore **BQ25101** a 13,5 mA (deciso in v0.1) | fatto per celle piccole, protetto fino a 28 V sull'ingresso |
 | Sensore di pressione **MS5837-02BA** (**deciso dall'utente** il 2026-10-25) | fase subacquea, uscita dall'acqua, BLE spento sott'acqua |
 | **Vibratore** Ø 6 mm in PWM come avviso principale; cicalino MLT-5020 solo se la prova sul prototipo ESP32 lo richiede | vale anche per i non udenti, discreto; volume/intensità regolabili in PWM |
 | Cella **15–20 mAh** (non 40) | 3 h di autonomia richieste; l'ingombro è il vincolo principale |

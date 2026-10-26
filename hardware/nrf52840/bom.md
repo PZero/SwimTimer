@@ -27,7 +27,7 @@ Prezzi indicativi in USD per pezzo a piccoli lotti (5–10 schede); codici LCSC/
 |---|---|---|---|
 | D2 | ESD/TVS su VIN | TVS unidirezionale 5 V (SOD-523/0201, tra i *basic* JLC) | i contatti sono esposti |
 | D3 | Inversione di polarità su VIN | Schottky in serie (SOD-523) **o** P-MOSFET | la custodia con magneti è già polarizzata: Schottky basta (caduta 0,3 V su 5 V) |
-| R1 | ISET del caricatore | per **15 mA** (formula nel datasheet BQ2510x) | 0,75 C per la cella da 20 mAh |
+| R1 | ISET del caricatore | 10 kΩ → **13,5 mA** (K_ISET 135 AΩ, BQ2510x) | ~0,7 C per la cella da 20 mAh |
 | R2 | PRETERM | precarica/terminazione ~2–3 mA | |
 | R3/R4 | Rilevamento custodia | partitore 1 MΩ / 1 MΩ da VIN a GPIO | sveglia da System OFF quando VIN sparisce/compare; nessuna tensione di batteria sulle piazzole |
 | C | Disaccoppiamenti | 100 nF ogni integrato, 4,7 µF su VDDH, **22–47 µF** di riserva su VDD, **2 × 47 µF** su VDDH vicino al vibratore | la cella da 20 mAh regge 1–2 C: i picchi (radio, flash, vibratore) vanno coperti dai condensatori |
