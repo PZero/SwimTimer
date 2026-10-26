@@ -49,3 +49,4 @@
 | 2026-10-25 | Correzione in carica della percentuale da 0,15 a 0,05 V | Misurato col tester: 3,84 V a riposo, 3,87 V in carica; con 0,15 V la pagina segnava 29% invece di ~65% |
 | 2026-10-26 | Card batteria della pagina con grafico di GPIO 1, GPIO 2, tensione stimata a riposo e livello target in % | Distinguere a colpo d'occhio partitori, batteria vera e carica mancante; il valore in carica falsava la percentuale |
 | 2026-10-26 | GitHub Pages attivo (Source: GitHub Actions) | Pagina e firmware raggiungibili da iPhone (Bluefy) e aggiornamento "all'ultima" dalla pagina |
+| 2026-10-26 | Il progetto della scheda nRF52840 vive nel repository privato `PZero/SwimTimer-nrf52840`; `SwimTimer` resta pubblico | Hardware della miniaturizzazione riservato; rendere privato tutto spegnerebbe GitHub Pages (piano gratuito), che serve pagina e firmware |

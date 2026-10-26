@@ -1,6 +1,6 @@
 # Stato del progetto
 
-**Ultimo aggiornamento:** 2026-10-26 — Fase 1: il tag registra sessioni da solo (tap), si aggiorna via Bluetooth e ha una pagina di analisi pubblicata su GitHub Pages. Diagnosi in corso: a sola batteria il tag non parte. Lezioni del prototipo raccolte per la scheda nRF52840.
+**Ultimo aggiornamento:** 2026-10-26 (sera) — Fase 1: il tag registra sessioni da solo (tap), si aggiorna via Bluetooth e ha una pagina di analisi pubblicata su GitHub Pages. Diagnosi in corso: a sola batteria il tag non parte. Lezioni del prototipo raccolte per la scheda nRF52840.
 
 ## Fatto
 - Repository pubblico `PZero/SwimTimer`; template, agenti, comandi; analisi in `docs/IDEA.md`.
@@ -15,7 +15,7 @@
   - Card batteria nuova: grafico 1–10 min di GPIO 1, GPIO 2 e tensione stimata a riposo, livello target in % con quanto manca; correzione in carica 0,05 V (misurata).
 - **Display** LilyGO T-RGB (pace clock a 4 lancette, sonno e risveglio): invariato.
 - `docs/RICERCA-ALGORITMI.md` (algoritmi) e `docs/LEZIONI-APPRESE.md` (13 lezioni del prototipo per la scheda miniaturizzata).
-- Scheda nRF52840 v0.2 (ramo `claude/scheda-nrf52840-08642d`, non unito): 17,5 × 22,5 mm, piste complete, DRC 0 errori. Confrontata con le lezioni: mancano alimentazione commutata del sensore, misuratore di carica, spegnimento vero, etichette +/− della batteria; 3 voci coperte in parte.
+- Scheda nRF52840 v0.2, nel repository **privato** `PZero/SwimTimer-nrf52840` (ramo `claude/scheda-nrf52840-08642d`; mai su questo repository pubblico): 17,5 × 22,5 mm, piste complete, DRC 0 errori. Confrontata con le lezioni: mancano alimentazione commutata del sensore, misuratore di carica, spegnimento vero, etichette +/− della batteria; 3 voci coperte in parte.
 
 ## Prossimi passi
 1. Capire perché a sola batteria il tag non parte: misurare il 3V3 dopo l'accensione con l'interruttore; prova "senza riavvio" (collegato via Bluetooth con USB, poi staccare l'USB).
