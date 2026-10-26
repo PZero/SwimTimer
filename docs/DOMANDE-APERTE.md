@@ -14,13 +14,8 @@
 13. Quale accelerometro colleghi al connettore I2C del display per il quadrante sempre dritto (un altro BMI160)?
 
 ### Scheda su misura nRF52840 (`hardware/nrf52840/`)
-14. Budget JLC: 50 € non bastano per 2 tag (minimo ~80 € senza sensore di pressione, ~100 € completo). Quale strada: alzare il budget o rinviare il sensore di pressione?
-15. ~~Modulo~~: MDBT50Q-1MV2 (ISP1807 scartato).
-16. ~~IMU~~: LSM6DSV16X a ±4 g.
-17. ~~Sensore di pressione~~: MS5837-02BA.
-18. Avviso in acqua: ok alla prova sul prototipo ESP32 con 2 vibratori e 1 cicalino (~5 € di componenti)? Per cosa deve avvisare (fine ripetuta, ritmo, tempo)?
-19. ~~Cella~~: 15–20 mAh; memoria 32 MB.
-20. ~~Forma del tag~~: disposizione B compatta, ~19 × 21 × 7,2 mm.
-21. ~~Stampante 3D~~: Bambu Lab A1 mini.
-22. ~~Programmatore~~: da costruire (Raspberry Pi Pico con debugprobe + culla stampata con molle pogo), come la custodia di ricarica.
-23. ~~Protezione dei contatti~~: aggiunta in v0.2 (TVS + Schottky) insieme al reset all'inserimento. Resta: caricare i file nell'anteprima JLC (rotazioni, stock, prezzo).
+Risolte: modulo MDBT50Q-1MV2, IMU LSM6DSV16X ±4 g, sensore di pressione, cella 15–20 mAh con 32 MB, forma B compatta, stampante Bambu Lab A1 mini, programmatore da costruire, protezione dei contatti e reset all'inserimento (v0.2).
+14. Budget JLC: 50 € non bastano per 2 tag (~80 € senza sensore di pressione, ~100 € completo). Alzi il budget o rinvii il sensore di pressione?
+18. Avviso in acqua: provi vibratore e cicalino sul prototipo ESP32 (~5 €)? Per cosa deve avvisare (fine ripetuta, ritmo, tempo)?
+23. Carichi tu i file di `kicad/jlc/` nell'anteprima JLC (rotazioni, stock, prezzo)?
+24. Modifiche v0.3 dalle lezioni apprese: sensori alimentati da GPIO (reset senza dissaldare), MAX17048 per la batteria, + e − in serigrafia, spegnimento vero (interruttore di carico o reed)? Quali?

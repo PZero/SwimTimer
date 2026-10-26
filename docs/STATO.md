@@ -1,22 +1,30 @@
 # Stato del progetto
 
-**Ultimo aggiornamento:** 2026-10-24 — Fase 1: tag e display funzionanti sul tavolo, pace clock a 4 lancette, sonno e risveglio del display verificati
+**Ultimo aggiornamento:** 2026-10-26 — Fase 1 (prototipo ESP32 sul tavolo) + progetto della scheda su misura nRF52840: PCB v0.2 sbrogliato, pronto per l'anteprima JLC (ramo `claude/scheda-nrf52840-08642d`, da unire al ramo principale).
 
 ## Fatto
-- Repository pubblico `PZero/SwimTimer`; template, agenti, comandi; analisi in `docs/IDEA.md`.
-- **Tag** (ESP32-S3 SuperMini + BMI160, arduino-cli, core esp32 3.3.12): dati via USB, servizio GATT BLE per la pagina e annuncio BLE con l'ultimo campione per il display; seriale non bloccante; sonno profondo dopo 2 min fermo (solo senza PC e senza pagina collegata), risveglio dal BMI160 su INT1.
-- **Pagina** `tools/assi.html`: 3 assi con grafici, collegamento USB o Bluetooth (verificata anche via BLE).
-- **Display** LilyGO T-RGB 2,8" (GT911), PlatformIO + core Arduino 2.0.17 + driver LilyGO originale (`firmware/display-prova`): pace clock con 4 lancette continue (circa 15 immagini/s), partenza = colpo secco, arrivo = tag vicino e fermo 3 s, pallini verde/rosso e tempo per 3 s, tocco = azzera, tensione e % batteria.
-- **Sonno del display** dopo 5 min senza tag né tocchi; risveglio al tocco o col tasto BOOT (verificato). Corretto il bug per cui ricadeva subito in sonno: il task BLE aggiornava `visto` dopo `ora`, la sottrazione senza segno traboccava; ora i confronti sono con segno. All'avvio il display mostra per 2 s il motivo (accensione, tocco, BOOT, errore, tensione bassa).
+- **Prototipo** (invariato, dettagli in `hardware/bom.md`, `hardware/schema.md`): tag ESP32-S3 SuperMini + BMI160 con BLE e sonno profondo; display LilyGO T-RGB 2,8" con pace clock a 4 lancette, sonno e risveglio verificati; pagina `tools/assi.html`.
+- **Scheda su misura nRF52840** (`hardware/nrf52840/`, solo documenti e KiCad, nessun acquisto):
+  - progetto, consumi, rischi, piano a tappe: `progetto.md`; distinta con codici LCSC: `bom.md`; verifiche sui datasheet: `verifiche.md`; ingombro in scala: `ingombro.svg`.
+  - **PCB v0.2** in `kicad/`: 17,5 × 22,5 mm, 4 strati 0,8 mm, tag finito ~19 × 24 × 7,2 mm; modulo Raytac MDBT50Q-1MV2, IMU LSM6DSV16X (±4 g), flash 32 MB, caricatore BQ25101 (13,5 mA), sensore di profondità MS5837, vibratore con MOSFET, TVS + Schottky sui contatti di ricarica, reset all'inserimento nella custodia, piazzole SWD sotto la resina.
+  - Schema e PCB generati da script (`dati_scheda.py` è l'unica fonte), sbrogliati con Freerouting 2.5.0 (Java 25 installato a fianco del 21): **DRC 0 errori**, netlist 30/30.
+  - File per JLC in `kicad/jlc/`: Gerber (zip), `bom_jlc.csv`, `cpl_jlc.csv`, render, PDF dello schema.
+  - Confronto con `docs/LEZIONI-APPRESE.md` (documento nella cartella principale, non su questo ramo): lacune riportate alla sessione principale, **nessuna modifica fatta**.
 
 ## Prossimi passi
-1. Far funzionare il display a batteria (vedi problemi aperti).
-2. Provare il pace clock con partenza/arrivo veri; provare sonno e risveglio del tag senza PC.
-3. Quadrante sempre dritto: accelerometro sul connettore I2C del display (SDA 8, SCL 48, 0x68), ruotando il disegno.
-4. Partitore 2×100 kΩ sul tag (BAT+ → GPIO 1 → GND) per la batteria; poi registrazione e prova in vasca; tarare soglia RSSI e calma.
+1. Decidere le modifiche **v0.3** dalle lezioni apprese: sensori alimentati da GPIO (reset senza dissaldare, pull-up sul lato commutato), misuratore di carica MAX17048, + e − serigrafati sulla batteria, eventuale spegnimento vero (interruttore di carico/reed).
+2. Caricare `kicad/jlc/` nell'anteprima JLC (account dell'utente): rotazioni, stock dei 7 componenti extended, prezzo (stima 80–100 €, non 50).
+3. Ordinare 2 tag (senza pannello); poi firmware Zephyr/nRF Connect SDK con MCUboot e aggiornamento via BLE.
+4. Progettare custodia di ricarica (con fusibile ripristinabile) e attrezzo di programmazione (Raspberry Pi Pico + pogo), stampati con la Bambu Lab A1 mini; stampo per la resina più avanti.
+5. Prototipo ESP32: prova di vibratore e cicalino sotto la cuffia (sessione principale).
 
 ## Problemi aperti
-- **Display a batteria non si accende** (nemmeno il LED) staccando l'USB: verificare polarità del connettore, tensione col tester, ricarica di un'ora con USB (protezione della LiPo forse scattata). Il firmware non richiede altro.
-- Il BLE non attraversa l'acqua: la logica usa l'accelerometro, il BLE serve per vicinanza e invio.
-- Custodia stagna e metodo di spegnimento del tag da definire.
-- Nessun test automatico.
+- Budget: l'utente vuole 50 € per JLC, servono ~80 € (senza sensore di pressione) o ~100 €.
+- Datasheet ST su st.com non raggiungibile: pin dell'IMU verificati sulla nota AN5763 (da ricontrollare se serve).
+- Modulo Raytac, TVS e Schottky senza modello 3D nei render.
+- Prototipo: display a batteria che non si accende (vedi `docs/LEZIONI-APPRESE.md`); BLE non attraversa l'acqua; custodia stagna da definire.
+- Nessun test automatico di firmware; per l'hardware: `kicad/verifica_netlist.py` e DRC con `kicad-cli`.
+- `docs/STATO.md`, `DECISIONI.md`, `DOMANDE-APERTE.md` possono entrare in conflitto con le versioni della sessione principale: unire a mano.
+
+## Decisioni in attesa dell'utente
+- Modifiche v0.3 (sopra), budget JLC, per cosa deve avvisare il vibratore, protezione/fusibile della custodia di ricarica.

@@ -11,6 +11,7 @@ Tempi automatici in piscina: un tag indossato dal nuotatore e un display a bordo
 - [Funzionalità](#funzionalità)
 - [Architettura](#architettura)
 - [Hardware](#hardware)
+- [Scheda su misura nRF52840](#scheda-su-misura-nrf52840)
 - [Firmware](#firmware)
 - [Costruzione e assemblaggio](#costruzione-e-assemblaggio)
 - [Uso in vasca](#uso-in-vasca)
@@ -136,6 +137,65 @@ Lo schema dettagliato è in [`hardware/schema.md`](hardware/schema.md).
 ### Impermeabilità
 Da definire. Ipotesi: involucro sigillato con resina o guscio, da provare in vasca con sacchetto stagno.
 
+## Scheda su misura nRF52840
+
+**Obiettivo.** Sostituire il prototipo ESP32 con un tag miniaturizzato da portare sotto la cuffia. Ricarica a contatto in una custodia tipo AirPods. Scheda prodotta e montata da JLCPCB. Stato: progetto KiCad pronto, **nessun acquisto fatto**.
+
+Documenti (non duplicati qui):
+- [`hardware/nrf52840/progetto.md`](hardware/nrf52840/progetto.md): schema a blocchi, consumi, rischi, piano a tappe.
+- [`hardware/nrf52840/bom.md`](hardware/nrf52840/bom.md): distinta con codici LCSC e alternative valutate.
+- [`hardware/nrf52840/verifiche.md`](hardware/nrf52840/verifiche.md): controlli sui datasheet e correzioni.
+- [`hardware/nrf52840/ingombro.svg`](hardware/nrf52840/ingombro.svg): pianta in scala 1:1.
+
+### Componenti scelti
+
+| Funzione | Componente | Nota |
+|---|---|---|
+| Microcontrollore e BLE | Raytac MDBT50Q-1MV2 (nRF52840) | modulo certificato, antenna sul bordo |
+| IMU 6 assi | ST LSM6DSV16X | fondo scala ±4 g, circa 3 volte meno rumore del BMI160 |
+| Memoria dati | Winbond W25Q256JV, NOR da 32 MB | 3–4 allenamenti da 3 h senza scaricare |
+| Caricatore | TI BQ25101 | carica a 13,5 mA per una cella da 15–20 mAh |
+| Profondità | TE MS5837-02BA | sensore di pressione con porta esposta (O-ring) |
+| Avviso in acqua | vibratore a moneta con MOSFET | da provare sul prototipo ESP32 |
+| Protezione dei contatti | TVS SD05 e Schottky B5819WS | contatti di ricarica esposti |
+| Reset in custodia | rete 100 nF, MOSFET, 1 MΩ | reset all'inserimento, nessun terzo contatto in acqua |
+| Segnalazione | LED rosso | |
+
+Autonomia richiesta: 3 ore di nuoto. Consumi stimati e autonomia: da misurare sui primi tag (vedi `progetto.md`).
+
+### Dimensioni
+- Scheda: 17,5 × 22,5 mm, 4 strati, 0,8 mm.
+- Tag finito (con resina): circa 19 × 24 × 7,2 mm.
+- Componenti sul lato sopra; sotto solo piazzole (ricarica, SWD).
+
+### Flusso di lavoro dei file KiCad
+In [`hardware/nrf52840/kicad/`](hardware/nrf52840/kicad/), schema e PCB sono generati da script. `dati_scheda.py` è l'unica fonte dei dati.
+
+| Script | Funzione |
+|---|---|
+| `dati_scheda.py` | componenti, codici LCSC, collegamenti, posizioni (si modifica solo questo) |
+| `genera_schema.py` | scrive lo schema |
+| `genera_pcb.py` | scrive il PCB |
+| `sbroglia.py` | sbroglio con Freerouting 2.5.0 (richiede Java 25) |
+| `verifica_netlist.py` | confronta la netlist con i dati |
+| `esporta_jlc.py` | esporta i file per JLC |
+
+I file per l'ordine sono in `hardware/nrf52840/kicad/jlc/`: Gerber (zip), `bom_jlc.csv`, `cpl_jlc.csv`, render e PDF dello schema.
+
+### Stato della scheda
+- DRC: 0 errori. Netlist verificata (30/30).
+- Nessun acquisto fatto.
+- Da fare: anteprima JLC (rotazioni, stock dei componenti *extended*) e decisione sulle modifiche v0.3.
+- Il modulo Raytac, il TVS e lo Schottky non hanno modello 3D nei render.
+- Budget realistico JLC per 2 tag: circa 80–100 € (l'obiettivo di 50 € non è raggiungibile con questi componenti).
+
+### Piano a tappe
+1. Prototipo ESP32 per mettere a punto algoritmi e avviso in acqua.
+2. Anteprima JLC e ordine di 2 tag, senza pannello.
+3. Firmware su Zephyr / nRF Connect SDK, con MCUboot e aggiornamento via BLE.
+4. Custodia di ricarica e attrezzo di programmazione, stampati con Bambu Lab A1 mini.
+5. Stampo per la resina: più avanti.
+
 ## Firmware
 
 Il repository contiene due firmware di prova e una pagina di controllo. Il firmware di registrazione in memoria non è ancora scritto.
@@ -254,6 +314,8 @@ Installazione, avvio, test e deploy: da definire.
 SwimTimer/
 ├── docs/                    idea, stato, decisioni, domande aperte, requisiti, design
 ├── hardware/                distinta componenti (bom.md), schema (schema.md); involucro da creare
+│   └── nrf52840/            scheda su misura: progetto.md, bom.md, verifiche.md, ingombro.svg
+│       └── kicad/           script, progetto KiCad e file per JLC (jlc/)
 ├── firmware/
 │   ├── test-collegamenti/   tag: test del BMI160, uscita USB, servizio GATT e annuncio BLE
 │   └── display-prova/       display T-RGB: ricezione degli annunci, corona e cronometro di prova
@@ -279,13 +341,20 @@ Prossimi passi:
 4. Involucro impermeabile e fissaggio al nuotatore, con custodia del display.
 5. App di accompagnamento, se confermata.
 
+Scheda su misura nRF52840 (dettagli in [`hardware/nrf52840/progetto.md`](hardware/nrf52840/progetto.md)):
+1. Decidere le modifiche v0.3 (sensori alimentati da GPIO, misuratore di carica MAX17048, polarità serigrafata, eventuale spegnimento vero).
+2. Anteprima JLC e ordine di 2 tag (budget ~80–100 €).
+3. Firmware Zephyr / nRF Connect SDK con MCUboot e aggiornamento via BLE.
+4. Custodia di ricarica e attrezzo di programmazione (stampa 3D); stampo per la resina più avanti.
+
 Problemi aperti (dettagli in [`docs/STATO.md`](docs/STATO.md)):
 - il BLE non attraversa l'acqua: la logica usa l'accelerometro, il BLE serve per vicinanza e invio;
 - il display a batteria, senza USB, non si accende: da verificare polarità e tensione;
 - protezione della batteria e metodo di spegnimento del tag da definire;
 - capacità della LiPo del tag e autonomia da definire;
 - la compilazione è lenta perché le librerie sono in OneDrive: valutare lo spostamento;
-- nessun test automatico.
+- nessun test automatico;
+- scheda nRF52840: budget JLC (~80–100 € contro i 50 € desiderati) e modifiche v0.3 da decidere.
 
 Decisioni: [`docs/DECISIONI.md`](docs/DECISIONI.md). Modifiche: [`CHANGELOG.md`](CHANGELOG.md).
 

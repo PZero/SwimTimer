@@ -36,3 +36,8 @@
 | 2026-10-25 | PCB del tag v0.1: 17,5 × 20,5 mm, 4 strati 0,8 mm, generato da script KiCad e sbrogliato con Freerouting; avviso solo con vibratore | Schema e PCB coerenti da un'unica tabella; 1 mm in più per le piazzole reali della flash |
 | 2026-10-25 | Caricatore BQ25101 (disponibile su LCSC) al posto del BQ25100; niente TVS né diodo su VIN, un LED rosso | Spazio sulla scheda; polarità garantita dai magneti della custodia |
 | 2026-10-25 | PCB v0.2: protezione dei contatti (TVS SD05 + Schottky B5819WS) e reset hardware all'inserimento nella custodia; scheda 17,5 × 22,5 mm | Richiesta dell'utente; un terzo contatto RESET esposto in acqua rischierebbe corrosione e reset spontanei |
+| 2026-10-25 | Nessuna scheda nRF intermedia: il prototipo resta l'ESP32 SuperMini, poi direttamente il tag definitivo | Il prototipo è già montato; la scheda è da progettare comunque |
+| 2026-10-25 | Primo ordine JLC: 2 tag senza pannello; pannello con mouse bites (KiKit) dal lotto successivo | Budget: il pannello conviene solo con molti tag |
+| 2026-10-25 | Reset del tag all'inserimento nella custodia (nessun terzo contatto esposto); watchdog nel firmware per i blocchi in acqua | Un contatto RESET in acqua rischia corrosione e reset spontanei |
+| 2026-10-25 | Sbroglio automatico con Freerouting 2.5.0 (Java 25, jar verificato col checksum di GitHub) | Scheda di 17,5 × 22,5 mm con BGA a passo 0,4 mm: a mano troppo lungo |
+| 2026-10-25 | Verifiche sui datasheet: due 100 nF sull'IMU, pull-up I2C 10 kΩ, 10 µF sull'uscita del caricatore, condensatori del modulo vicini a VDD e VDDH | Indicazioni di ST (AN5763), TE, TI e Raytac; vedi `hardware/nrf52840/verifiche.md` |

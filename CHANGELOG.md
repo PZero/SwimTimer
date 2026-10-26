@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-10-25 / 2026-10-26
+- Scheda su misura nRF52840 (`hardware/nrf52840/`): studio dei progetti SlimeVR, distinta (`bom.md`), progetto (`progetto.md`) e ingombro in scala (`ingombro.svg`).
+- Progetto KiCad generato da script (`kicad/`, `dati_scheda.py` come unica fonte): v0.1, poi v0.2 con scheda 17,5 × 22,5 mm a 4 strati.
+- Sbroglio automatico con Freerouting 2.5.0 (Java 25): DRC 0 errori.
+- Verifiche sui datasheet (ST AN5763, TE MS5837, TI BQ25101, Raytac) con 4 correzioni, registrate in `verifiche.md`.
+- Protezione dei contatti di ricarica (TVS SD05 e Schottky B5819WS) e reset all'inserimento nella custodia.
+- File per JLC in `kicad/jlc/`: Gerber (zip), BOM, CPL, render, PDF dello schema.
+- Documenti aggiornati: `docs/STATO.md`, `docs/DECISIONI.md`, `docs/DOMANDE-APERTE.md`.
+- README: nuova sezione sulla scheda nRF52840, mappa delle cartelle e roadmap.
+
 ## 2026-10-24
 - Impostazione del progetto: struttura, agenti, comandi `/stato` e `/fine-sessione`, documenti iniziali.
 - Analisi dell'idea iniziale (tag BLE + display a bordo vasca) in `docs/IDEA.md`.
