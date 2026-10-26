@@ -13,6 +13,7 @@ Tempi automatici in piscina: un tag indossato dal nuotatore e un display a bordo
 - [Hardware](#hardware)
 - [Firmware](#firmware)
 - [Pagina di analisi](#pagina-di-analisi)
+- [Lezioni apprese dal prototipo](#lezioni-apprese-dal-prototipo)
 - [Aggiornamento del firmware e versioni](#aggiornamento-del-firmware-e-versioni)
 - [Compilazione automatica e GitHub Pages](#compilazione-automatica-e-github-pages)
 - [Costruzione e assemblaggio](#costruzione-e-assemblaggio)
@@ -243,14 +244,16 @@ Test automatici: da definire (`pio test` non è ancora impostato).
 
 ## Pagina di analisi
 
-`tools/index.html` è una pagina HTML unica, senza installazione. Dopo l'attivazione di GitHub Pages (vedi sotto) sarà raggiungibile su https://pzero.github.io/SwimTimer/. In locale basta aprire il file in un browser compatibile.
+`tools/index.html` è una pagina HTML unica, senza installazione. È pubblicata su https://pzero.github.io/SwimTimer/ (con il firmware 0.4.3 per l'aggiornamento via Bluetooth). In locale basta aprire il file in un browser compatibile.
 
 **Collegamento**
 - **Bluetooth** (Web Bluetooth): Chrome o Edge su desktop e Android; su iPhone il browser Bluefy. Cerca il dispositivo `SwimTag`.
 - **USB** (Web Serial): Chrome o Edge su desktop.
 
 **Scheda "Dal vivo"**
-- Batteria del tag (tensione e percentuale).
+- Card **Batteria** con grafico (finestra da 1 a 10 min) di GPIO 1 (partitore batteria), GPIO 2 (partitore 5V) e tensione stimata a riposo.
+- Livello target in % impostabile, con quanto manca (% e V).
+- Etichette "misurata" e "A riposo (stima)": in carica la tensione sale; la correzione è 0,05 V (misurata col tester: 3,84 V a riposo, 3,87 V in carica).
 - Orientamento 3D reale e corretto.
 - Radar con la scia degli ultimi 15 s.
 - Interpretazione: calibrazione automatica, posture, movimenti della testa, passi, impulsi.
@@ -263,10 +266,14 @@ Test automatici: da definire (`pio test` non è ancora impostato).
 **Altre funzioni**
 - Finestra **Firmware**: aggiornamento via Bluetooth (vedi sotto).
 - Finestra **LED**: significato dei colori del LED RGB del tag.
-- **Demo**: dati simulati, senza tag.
+- **Demo**: dati simulati, senza tag (simula anche il partitore 5V).
 - Una schermata senza scorrimento sugli schermi larghi.
 
 `tools/assi.html` resta la vecchia pagina semplice, con i grafici dei 3 assi via USB o Bluetooth.
+
+## Lezioni apprese dal prototipo
+
+[`docs/LEZIONI-APPRESE.md`](docs/LEZIONI-APPRESE.md) raccoglie 13 lezioni dal prototipo da portare nella scheda con nRF52840: alimentazione commutata del sensore, misura della batteria con e senza carica, tap riconosciuto in hardware, FIFO, spegnimento vero, protezioni, punti di test e SWD. Rispetto alla v0.2 della scheda mancano: alimentazione commutata del sensore, misuratore di carica, spegnimento vero, etichette +/−.
 
 ## Aggiornamento del firmware e versioni
 
@@ -288,7 +295,7 @@ Il workflow [`.github/workflows/pages.yml`](.github/workflows/pages.yml) parte a
 3. Controlla che il binario contenga il marcatore di versione.
 4. Pubblica su GitHub Pages la cartella `tools/` più `firmware/tag.bin` e `firmware/tag.json` (versione, build, dimensione, CRC32).
 
-**Attivazione (una sola volta, da fare):** Settings, Pages, Source: GitHub Actions. Dopo l'attivazione il link sarà https://pzero.github.io/SwimTimer/. Il workflow non è ancora stato eseguito.
+**Attivazione:** fatta (Settings, Pages, Source: GitHub Actions). Pagina online su https://pzero.github.io/SwimTimer/ con il firmware 0.4.3 pubblicato.
 
 ## Costruzione e assemblaggio
 
@@ -333,7 +340,7 @@ Installazione, avvio, test e deploy: da definire.
 
 ```
 SwimTimer/
-├── docs/                    idea, stato, decisioni, domande aperte, requisiti, design, ricerca sugli algoritmi
+├── docs/                    idea, stato, decisioni, domande aperte, requisiti, design, ricerca sugli algoritmi, lezioni apprese
 ├── hardware/                distinta componenti (bom.md), schema (schema.md); involucro da creare
 ├── firmware/
 │   ├── test-collegamenti/   tag (0.4.3): registrazione, tap, BLE/USB, aggiornamento via Bluetooth; partitions.csv
@@ -356,13 +363,14 @@ Esclusi da git (vedi `.gitignore`): file con segreti (`.env`, chiavi, account di
 
 Stato del firmware del tag:
 - Da 0.4.0 a 0.4.3 compilano.
-- La 0.4.3 corregge il fondo scala del BMI160 (restava a ±2 g mentre la pagina leggeva ±16 g: da fermo si vedevano 8 g invece di 1 g). Non è ancora provata sul tag (fondo scala, LED, sblocco I2C).
+- La 0.4.3 corregge il fondo scala del BMI160 (restava a ±2 g mentre la pagina leggeva ±16 g). Una 0.4.4 è stata provata e scartata: la versione in uso resta la 0.4.3.
+- Prototipo: batteria sostituita e interruttore generale montato; partitore verificato col tester.
 - Aggiornamento via Bluetooth e doppio tap sono stati provati sul tag con versioni di prova.
 - Frequenza reale in registrazione: circa 44 Hz.
 
 Prossimi passi:
-1. Caricare la 0.4.3 via Bluetooth; verificare fondo scala (da fermo circa 1 g), partitori, LED, tap e triplo tap con scaricamento.
-2. Attivare GitHub Pages (Settings, Pages, Source: GitHub Actions).
+1. Risolvere l'avvio a sola batteria; poi verificare fondo scala (da fermo circa 1 g), LED, tap e triplo tap con scaricamento.
+2. (fatto) GitHub Pages attivato.
 3. Leggere i campioni dalla FIFO del BMI160 per recuperare i 100 Hz.
 4. Registrare sessioni con video (battito di mani per sincronizzare) e mettere a punto gli algoritmi seguendo la ricerca; poi tradurli in C.
 5. Prova in vasca: tarare soglia tap, RSSI e calma; quadrante sempre dritto sul display (accelerometro sul connettore I2C, SDA 8, SCL 48).
@@ -374,8 +382,8 @@ Problemi aperti (dettagli in [`docs/STATO.md`](docs/STATO.md)):
 - il BLE non attraversa l'acqua: la logica usa l'accelerometro, il BLE serve per vicinanza e invio;
 - il display a batteria, senza USB, non si accende: da verificare polarità e tensione;
 - riavvii spontanei del tag osservati (ora ne è riportato il motivo); un crash a fine registrazione via Bluetooth, corretto nella 0.4.0, da riverificare;
-- il BMI160 si è bloccato una volta con SDA a 0 V: sblocco automatico nella 0.4.3, non provato;
-- batteria del tag letta a 3,5 V (quasi scarica, circa 2%): da verificare con il tester;
+- il BMI160 è andato in latch-up dopo uno spegnimento brusco (3V3 a 0 V, ripartiva solo staccando GND): sul prototipo si usa l'interruttore; nella scheda serve l'alimentazione commutata del sensore;
+- **a sola batteria il tag non parte** (LED rosso acceso, niente lampo blu né Bluetooth): diagnosi in corso;
 - vibrazione sospesa in attesa di un modulo con transistor (GPIO 5 libero);
 - brevetti e libertà di operare da verificare (vedi sotto);
 - capacità della LiPo, autonomia, protezione e spegnimento del tag, custodia stagna: da definire;
