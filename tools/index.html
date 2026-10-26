@@ -133,6 +133,13 @@
 
   /* Grafici */
   .grafico { width: 100%; height: 200px; display: block; }
+  .grafico-bat { width: 100%; height: 90px; display: block; }
+  .target-bat { font-size: 11px; color: var(--tenue); display: flex; align-items: center; gap: 4px; }
+  .target-bat input { width: 52px; font: inherit; font-family: "JetBrains Mono", monospace; padding: 2px 4px; border: 1px solid var(--bordo); border-radius: 6px; background: var(--card-2); color: var(--testo); }
+  .legenda-bat { display: flex; flex-wrap: wrap; gap: 2px 10px; font-size: 10.5px; color: var(--tenue); }
+  .legenda-bat i { display: inline-block; width: 10px; height: 3px; border-radius: 2px; margin-right: 4px; vertical-align: middle; }
+  .legenda-bat i.tratteggio { background: repeating-linear-gradient(90deg, var(--attenzione) 0 3px, transparent 3px 5px); }
+  .legenda-bat b { color: var(--testo); font-weight: 500; }
   .legenda { display: flex; gap: 14px; font-size: 12px; color: var(--tenue); }
   .legenda span { display: inline-flex; align-items: center; gap: 6px; }
   .legenda i { width: 10px; height: 3px; border-radius: 2px; display: inline-block; }
@@ -269,9 +276,17 @@
     <div class="kpi">
     <!-- Indicatori -->
     <section class="scheda indicatore" aria-label="Batteria">
-      <div class="riga"><span class="etichetta">Batteria</span><span class="mono" id="batV" style="color:var(--tenue)">– V</span></div>
-      <div class="valore mono" id="batPerc">–</div>
-      <div class="barra"><div id="batBarra"></div></div>
+      <div class="riga"><span class="etichetta">Batteria</span><span class="mono" style="color:var(--tenue)"><small>misurata </small><span id="batV">– V</span></span></div>
+      <div class="riga"><div class="valore mono" id="batPerc">–</div>
+        <label class="target-bat">Target <input id="batTarget" type="number" min="5" max="100" step="5" value="100">%</label></div>
+      <div class="nota mono" id="batMancante" style="font-size:11px;min-height:0"></div>
+      <canvas class="grafico-bat" id="graficoBat" aria-label="Andamento dei partitori e della batteria stimata"></canvas>
+      <div class="legenda-bat mono">
+        <span><i style="background:var(--ok)"></i>A riposo (stima) <b id="legBat">–</b></span>
+        <span><i style="background:var(--z)"></i>GPIO 1 <b id="legG1">–</b></span>
+        <span><i style="background:var(--tenue)"></i>GPIO 2 <b id="legG2">–</b></span>
+        <span><i class="tratteggio"></i>Target <b id="legTarget">–</b></span>
+      </div>
       <div class="nota" id="batNota">In attesa dei dati del tag</div>
       <div class="nota mono" id="partitori" style="font-size:11px;color:var(--debole);min-height:0"></div>
     </section>
@@ -859,6 +874,64 @@ function percentuale(v) {
   }
   return 0;
 }
+// Inversa della curva: tensione a riposo corrispondente a una percentuale
+function tensionePer(p) {
+  for (let i = 1; i < CURVA_LIPO.length; i++) {
+    const [v1, p1] = CURVA_LIPO[i - 1], [v2, p2] = CURVA_LIPO[i];
+    if (p >= p2) return v2 + (v1 - v2) * (p - p2) / (p1 - p2);
+  }
+  return CURVA_LIPO[CURVA_LIPO.length - 1][0];
+}
+// In carica la tensione ai morsetti è gonfiata dalla corrente: misurati +0,03-0,05 V col tester (3,84 V a riposo, 3,87 V in carica)
+const vRiposo = s => s.usb ? s.v - 0.05 : s.v;
+// Storico per il grafico della batteria: [ms, GPIO 1 (V), GPIO 2 (V o null), batteria stimata (V)]
+const FINESTRA_BAT_MS = 10 * 60 * 1000;
+let storiaBat = [];
+let targetBat = Number(pref.get('targetBat', 100)) || 100;
+$('batTarget').value = targetBat;
+$('batTarget').addEventListener('change', () => {
+  targetBat = limita(Number($('batTarget').value) || 100, 5, 100);
+  $('batTarget').value = targetBat;
+  pref.set('targetBat', targetBat);
+  aggiornaStato(); disegnaBat();
+});
+function disegnaBat() {
+  const { ctx, w, h } = preparaCanvas($('graficoBat'));
+  const sx = 30, dx = w - 4, alto = 4, basso = h - 14, vt = tensionePer(targetBat);
+  const fine = storiaBat.length ? storiaBat[storiaBat.length - 1][0] : performance.now();
+  // Asse in volt da 0 a 5,2: GPIO (~2 V), batteria (3-4,2 V) e target nello stesso grafico
+  const lo = 0, hi = 5.2;
+  const y = v => basso - (v - lo) / (hi - lo) * (basso - alto);
+  // Finestra da 1 a 10 minuti: si allarga con lo storico, così i primi dati non restano schiacciati a destra
+  const minuti = Math.min(10, Math.max(1, Math.ceil(storiaBat.length ? (fine - storiaBat[0][0]) / 60000 : 1)));
+  const x = t => sx + (t - (fine - minuti * 60000)) / (minuti * 60000) * (dx - sx);
+  ctx.font = '9.5px "JetBrains Mono", monospace'; ctx.textAlign = 'right';
+  for (const v of [0, 1, 2, 3, 4, 5]) {
+    const yy = Math.round(y(v)) + .5;
+    ctx.strokeStyle = C.griglia; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(sx, yy); ctx.lineTo(dx, yy); ctx.stroke();
+    ctx.fillStyle = C.debole; ctx.fillText(v + ' V', sx - 4, yy + 3);
+  }
+  ctx.textAlign = 'center';
+  const passo = minuti > 5 ? 2 : 1;
+  for (let m = passo; m <= minuti; m += passo) ctx.fillText(`−${m}′`, x(fine - m * 60000), h - 2);
+  ctx.textAlign = 'right'; ctx.fillText('ora', dx, h - 2);
+  ctx.strokeStyle = C.attenzione; ctx.lineWidth = 1.2; ctx.setLineDash([4, 3]);
+  ctx.beginPath(); ctx.moveTo(sx, y(vt)); ctx.lineTo(dx, y(vt)); ctx.stroke();
+  ctx.setLineDash([]);
+  [[1, C.z], [2, C.tenue], [3, C.ok]].forEach(([c, colore]) => {
+    ctx.strokeStyle = colore; ctx.lineWidth = c === 3 ? 1.8 : 1.3; ctx.lineJoin = 'round'; ctx.beginPath();
+    let su = false;
+    for (const r of storiaBat) {
+      if (r[c] === null) { su = false; continue; }
+      su ? ctx.lineTo(x(r[0]), y(r[c])) : ctx.moveTo(x(r[0]), y(r[c]));
+      su = true;
+    }
+    ctx.stroke();
+  });
+}
+window.addEventListener('resize', disegnaBat);
+disegnaBat();
 let statoTag = null, vbatFilt = null;
 // Unità per g dei valori grezzi: il firmware a ±16 g lo segnala con il bit4 dello stato
 const lsbAcc = () => statoTag && statoTag.g16 ? 2048 : 16384;
@@ -869,7 +942,11 @@ function nuovoStato(mv, flag, causa, millis, liberi = null, nfile = null, secReg
   const registrava = statoTag && statoTag.reg, segnalata = statoTag && statoTag.causaSegnalata && statoTag.causa === causa;
   const vbus = mvVbus === null ? null : mvVbus / 1000;
   statoTag = { v: vbatFilt, vbus, pc: !!(flag & 1), usb: vbus === null ? !!(flag & 1) : vbus > 4, sensore: !!(flag & 2), reg: !!(flag & 4), g16: !!(flag & 16), causa, causaSegnalata: segnalata, millis, liberi, nfile, secReg, ricevuto: performance.now() };
+  const ora = statoTag.ricevuto;
+  storiaBat.push([ora, v / 2, vbus === null ? null : vbus / 2, vRiposo(statoTag)]);
+  while (storiaBat.length && storiaBat[0][0] < ora - FINESTRA_BAT_MS) storiaBat.shift();
   aggiornaStato();
+  disegnaBat();
   if (A && !offline) A.fondoScala = fondoScala();
   if (statoTag.reg && !registrava) eventoTag('Registrazione avviata sul tag');
   if (registrava && !statoTag.reg) {
@@ -896,20 +973,28 @@ function aggiornaStato() {
   const s = statoTag;
   if (!s) return;
   $('batNota').title = verificaPartitori(s);
+  const f = v => v.toFixed(2).replace('.', ',') + ' V', vt = tensionePer(targetBat);
+  $('legG1').textContent = f(s.v / 2);
+  $('legG2').textContent = s.vbus === null ? 'n.d.' : f(s.vbus / 2);
+  $('legTarget').textContent = f(vt);
   if (s.v < 2.5) {
     $('batV').textContent = s.v.toFixed(2) + ' V';
     $('batPerc').textContent = '–';
-    $('batBarra').style.width = '0';
+    $('batMancante').textContent = '';
+    $('legBat').textContent = '–';
     $('batNota').textContent = 'Partitore non montato (BAT+ → 100 kΩ → GPIO 1 → 100 kΩ → GND)';
     $('partitori').textContent = verificaPartitori(s);
   } else {
-    // In carica la tensione ai morsetti è gonfiata dalla corrente: stima corretta di circa 0,15 V
-    const p = percentuale(s.usb ? s.v - 0.15 : s.v);
+    const vr = vRiposo(s), p = percentuale(vr);
     $('batV').textContent = s.v.toFixed(2) + ' V';
     $('batPerc').innerHTML = `${Math.round(p)}<small>%</small>`;
-    const b = $('batBarra');
-    b.style.width = p.toFixed(0) + '%';
-    b.style.background = p < 15 ? 'var(--errore)' : p < 35 ? 'var(--attenzione)' : 'var(--ok)';
+    $('batPerc').style.color = p < 15 ? 'var(--errore)' : p < 35 ? 'var(--attenzione)' : '';
+    $('legBat').textContent = f(vr);
+    const manca = targetBat - p;
+    $('batMancante').textContent = manca > 0.5
+      ? `Al target ${targetBat}%: mancano ${Math.round(manca)}% (+${(vt - vr).toFixed(2).replace('.', ',')} V)`
+      : `Target ${targetBat}% raggiunto`;
+    $('batMancante').style.color = manca > 0.5 ? 'var(--attenzione)' : 'var(--ok)';
     $('batNota').textContent = (s.usb ? (s.vbus === null ? 'PC collegato: probabilmente in carica, valore stimato' : '⚡ In carica: valore stimato')
       : s.v < 3.4 ? 'Batteria quasi scarica: ricaricare' : 'Lettura dal partitore su GPIO 1') + (s.vbus === null ? '' : ` · USB ${s.vbus.toFixed(2).replace('.', ',')} V`);
     $('partitori').textContent = verificaPartitori(s);
@@ -933,7 +1018,7 @@ let sorgente = null; // { nome, chiudi() }
 function iniziaSorgente(nome, hz, chiudi, invia) {
   sorgente = { nome, chiudi, invia };
   nuovaAnalisi(hz);
-  statoTag = null; vbatFilt = null;
+  statoTag = null; vbatFilt = null; storiaBat = []; disegnaBat();
   $('pillola').className = 'pillola attivo';
   $('stato').textContent = 'Collegato · ' + nome;
   $('sorgente').textContent = nome;
@@ -1144,7 +1229,7 @@ $('demo').addEventListener('click', () => {
   };
   const unisci = parti => { const u = new Uint8Array(parti.length * 16); parti.forEach((p, i) => u.set(p, i * 16)); return u; };
   const statoDemo = () => nuovoStato(3920 + Math.round(rumore(8)), 2 | (reg ? 4 : 0), 0, Math.round(t * 1000),
-    3000000 - [...file.values()].reduce((s, f) => s + f.length, 0), file.size, reg ? Math.round(t - reg.t0) : 0);
+    3000000 - [...file.values()].reduce((s, f) => s + f.length, 0), file.size, reg ? Math.round(t - reg.t0) : 0, 4950 + Math.round(rumore(20)));
   const invia = testo => {
     const [cmd, nome, off] = testo.split(',');
     setTimeout(() => {
