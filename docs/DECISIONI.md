@@ -44,3 +44,8 @@
 | 2026-10-25 | Fondo scala ±16 g impostato a sensori accesi e riletto (fino a 5 tentativi) | Con il BMI160 sospeso le scritture si perdevano: ±2 g sul sensore, ±16 g nella pagina, 8 g da fermo |
 | 2026-10-25 | La pagina avvisa se da fermo il modulo non vale circa 1 g | Scale incoerenti tra tag e pagina falsano calibrazione, tap ed eventi |
 | 2026-10-25 | Vibrazione sospesa (serve un modulo con transistor; GPIO 5 libero) | Nessun modulo trovato da saldare; riscontro per ora dal LED |
+| 2026-10-25 | Latch-up del BMI160: sul prototipo interruttore generale per spegnere tutto; firmware 0.4.4 (sensore alimentato da GPIO 5) scartato. Sulla nRF52840 load switch o P-MOSFET sul sensore | Dopo uno spegnimento brusco il sensore si sblocca solo togliendogli tensione; sul prototipo basta l'interruttore in fase di test |
+| 2026-10-25 | Lezioni apprese dal prototipo in `docs/LEZIONI-APPRESE.md`, da applicare alla scheda nRF52840 | Confronto con la v0.2: mancano alimentazione commutata del sensore, misuratore di carica, spegnimento vero, etichette +/− |
+| 2026-10-25 | Correzione in carica della percentuale da 0,15 a 0,05 V | Misurato col tester: 3,84 V a riposo, 3,87 V in carica; con 0,15 V la pagina segnava 29% invece di ~65% |
+| 2026-10-26 | Card batteria della pagina con grafico di GPIO 1, GPIO 2, tensione stimata a riposo e livello target in % | Distinguere a colpo d'occhio partitori, batteria vera e carica mancante; il valore in carica falsava la percentuale |
+| 2026-10-26 | GitHub Pages attivo (Source: GitHub Actions) | Pagina e firmware raggiungibili da iPhone (Bluefy) e aggiornamento "all'ultima" dalla pagina |
