@@ -100,7 +100,7 @@ COMPONENTI = [
     ("C8", "Device:C", "100n", C0402, "C1525", {1: "VIN_D", 2: "RST_G"}, POS["C8"]),
     ("R7", "Device:R", "1M", R0402, "C26083", {1: "RST_G", 2: "GND"}, POS["R7"]),
     # Lato sotto (solo piazzole, non montate da JLC): contatti di ricarica Ø 2,5 mm (VIN, GND) a 4,2 mm, a filo della resina;
-    # Tag-Connect TC2030-NL per SWD (annegato); piazzole di prova; vibratore (fili saldati a mano sulle piazzole MOT+/MOT-)
+    # Tag-Connect TC2030-NL per SWD (annegato); piazzole di prova; vibratore NON montato sui tag di collaudo (2026-11-01): MOT+/MOT- restano come piazzole di prova del pilotaggio, nessun filo
     ("TP1", "Connector:TestPoint", "VIN", "TestPoint:TestPoint_Pad_D2.5mm", "", {1: "VIN"}, POS["TP1"]),
     ("TP2", "Connector:TestPoint", "GND", "TestPoint:TestPoint_Pad_D2.5mm", "", {1: "GND"}, POS["TP2"]),
     # Tag-Connect TC2030-NL (pinout standard ARM SWD: 1 VREF, 2 SWDIO, 3 nRESET, 4 SWCLK, 5 GND, 6 SWO non usato)

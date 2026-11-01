@@ -218,3 +218,15 @@ Impronta presa dalla libreria KiCad 10 (`Connector:Tag-Connect_TC2030-IDC-NL_2x0
 | Controllo DRC | | 0 errori, 0 non connessi, parità schema/PCB 0 | ✅ |
 | Piazzole di prova | Ø 0,8 (4) e Ø 1 mm (3), nomi in serigrafia sotto | CHG_N, SENS_ON, VDD_SENS, FG_ALRT, VBAT, VDD, GND | ✅ |
 | Contatti di ricarica | Ø 2,5 mm a 4,2 mm tra i centri (1,7 mm tra i bordi) | TP1 VIN (x = 15,2), TP2 GND (x = 19,4), y = 28,0 | ✅ servirà base a più posti |
+
+
+## Vibratore SMD per il montaggio JLC (2026-11-01)
+
+| Codice | Componente | Montaggio JLC | Esito |
+|---|---|---|---|
+| C2942345 | LEADER LBM0625A3217F, moneta Ø 6 mm, 3 V 80 mA | Wave Soldering, solo Standard | scartato |
+| C2992359 | LEADER LCM04084521-B1 | Wave Soldering | scartato |
+| C41348533 | LEADER LD-SM-430, 4 × 3 × 11 mm | SMT | troppo alto |
+| C2836756 | KOTL Z4TH3B0791626, cilindrico 3 V 90 mA | SMT | stock e misure non verificati (LCSC: "Part not found") |
+
+Fonte: pagine jlcpcb.com/partdetail. I motori SMD non sono sigillati: niente lavaggio dopo la rifusione. Decisione: vibratore non montato sui tag di collaudo.

@@ -18,4 +18,5 @@ Risolte: modulo MDBT50Q-1MV2, IMU LSM6DSV16X ±4 g, sensore di pressione, cella 
 14. Budget JLC: 50 € non bastano per 2 tag (~80 € senza sensore di pressione, ~100 € completo). Alzi il budget o rinvii il sensore di pressione?
 18. Avviso in acqua: provi vibratore e cicalino sul prototipo ESP32 (~5 €)? Per cosa deve avvisare (fine ripetuta, ritmo, tempo)?
 23. Carichi tu i file di `kicad/jlc/` nell'anteprima JLC (rotazioni, stock, prezzo)?
-24. Modifiche v0.3 dalle lezioni apprese: sensori alimentati da GPIO (reset senza dissaldare), MAX17048 per la batteria, + e − in serigrafia, spegnimento vero (interruttore di carico o reed)? Quali?
+25. Programmazione del tag v0.3: cavo Tag-Connect TC2030-NL (~40 $) con J-Link EDU Mini (si adatta a 1,8 V) o Raspberry Pi Pico + traslatore di livello?
+26. Cella Ampul 401012 con spina JST SH 1,0 mm: la vende così o serve un'altra cella equivalente?
