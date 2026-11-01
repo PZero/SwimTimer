@@ -12,7 +12,7 @@
   - Confronto con `docs/LEZIONI-APPRESE.md` (documento nella cartella principale, non su questo ramo): lacune riportate alla sessione principale, **nessuna modifica fatta**.
 
 ## Prossimi passi
-1. **v0.3** (piano approvato il 2026-11-01): cella 401015 ~40 mAh decisa; poi decisioni sulle lezioni apprese: sensori alimentati da GPIO (reset senza dissaldare, pull-up sul lato commutato), misuratore di carica MAX17048, + e − serigrafati sulla batteria, eventuale spegnimento vero (interruttore di carico/reed).
+1. **v0.3** (piano approvato il 2026-11-01): cella Ampul 401012 (4 × 10 × 12 mm, 40 mAh) decisa, 2–3 celle da comprare per misurarla; poi decisioni sulle lezioni apprese: sensori alimentati da GPIO (reset senza dissaldare, pull-up sul lato commutato), misuratore di carica MAX17048, + e − serigrafati sulla batteria, eventuale spegnimento vero (interruttore di carico/reed).
 2. Caricare `kicad/jlc/` nell'anteprima JLC (account dell'utente): rotazioni, stock dei 7 componenti extended, prezzo (stima 80–100 €, non 50).
 3. Ordinare 2 tag (senza pannello); poi firmware Zephyr/nRF Connect SDK con MCUboot e aggiornamento via BLE.
 4. Progettare custodia di ricarica (con fusibile ripristinabile) e attrezzo di programmazione (Raspberry Pi Pico + pogo), stampati con la Bambu Lab A1 mini; stampo per la resina più avanti.
