@@ -15,8 +15,8 @@
 
 ### Scheda su misura nRF52840 (`hardware/nrf52840/`)
 Risolte: modulo MDBT50Q-1MV2, IMU LSM6DSV16X ±4 g, sensore di pressione, cella 15–20 mAh con 32 MB, forma B compatta, stampante Bambu Lab A1 mini, programmatore da costruire, protezione dei contatti e reset all'inserimento (v0.2).
-14. Budget JLC: 50 € non bastano per 2 tag (~80 € senza sensore di pressione, ~100 € completo). Alzi il budget o rinvii il sensore di pressione?
+14. Budget JLC: 50 € non bastano; il tag di collaudo v0.3 costa ~120–130 $ per 2 tag (IVA e spedizione escluse) più cella e cavo Tag-Connect. Confermi?
 18. Avviso in acqua: provi vibratore e cicalino sul prototipo ESP32 (~5 €)? Per cosa deve avvisare (fine ripetuta, ritmo, tempo)?
-23. Carichi tu i file di `kicad/jlc/` nell'anteprima JLC (rotazioni, stock, prezzo)?
+23. Carichi tu i file di `kicad/jlc/v0.3_swimtag_collaudo/` nell'anteprima JLC (rotazioni, stock, prezzo)?
 25. Programmazione del tag v0.3: cavo Tag-Connect TC2030-NL (~40 $) con J-Link EDU Mini (si adatta a 1,8 V) o Raspberry Pi Pico + traslatore di livello?
 26. Cella Ampul 401012 con spina JST SH 1,0 mm: la vende così o serve un'altra cella equivalente?

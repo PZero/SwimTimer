@@ -139,34 +139,57 @@ Da definire. Ipotesi: involucro sigillato con resina o guscio, da provare in vas
 
 ## Scheda su misura nRF52840
 
-**Obiettivo.** Sostituire il prototipo ESP32 con un tag miniaturizzato da portare sotto la cuffia. Ricarica a contatto in una custodia tipo AirPods. Scheda prodotta e montata da JLCPCB. Stato: progetto KiCad pronto, **nessun acquisto fatto**.
+**Obiettivo.** Sostituire il prototipo ESP32 con un tag miniaturizzato da portare sotto la cuffia. Ricarica a contatto in una custodia tipo AirPods. Scheda prodotta e montata da JLCPCB. Stato: **tag v0.3 di collaudo (variante 1c)** pronto per l'anteprima JLC, **nessun acquisto fatto**.
 
 Documenti (non duplicati qui):
 - [`hardware/nrf52840/progetto.md`](hardware/nrf52840/progetto.md): schema a blocchi, consumi, rischi, piano a tappe.
 - [`hardware/nrf52840/bom.md`](hardware/nrf52840/bom.md): distinta con codici LCSC e alternative valutate.
 - [`hardware/nrf52840/verifiche.md`](hardware/nrf52840/verifiche.md): controlli sui datasheet e correzioni.
-- [`hardware/nrf52840/ingombro.svg`](hardware/nrf52840/ingombro.svg): pianta in scala 1:1.
+- [`hardware/nrf52840/ingombro.svg`](hardware/nrf52840/ingombro.svg): pianta in scala 1:1, generata dal PCB reale (`genera_ingombro.py`).
+- [`hardware/nrf52840/SwimTag_v0.3_collaudo.pdf`](hardware/nrf52840/SwimTag_v0.3_collaudo.pdf): PDF di progetto, 14 pagine.
 
-### Componenti scelti
+### Componenti scelti (v0.3 collaudo)
 
 | Funzione | Componente | Nota |
 |---|---|---|
-| Microcontrollore e BLE | Raytac MDBT50Q-1MV2 (nRF52840) | modulo certificato, antenna sul bordo |
+| Microcontrollore e BLE | Ebyte E73 (nRF52840) | modulo certificato; sostituisce il Raytac MDBT50Q (stock 0) |
 | IMU 6 assi | ST LSM6DSV16X | fondo scala ±4 g, circa 3 volte meno rumore del BMI160 |
 | Memoria dati | Winbond W25Q256JV, NOR da 32 MB | 3–4 allenamenti da 3 h senza scaricare |
-| Caricatore | TI BQ25101 | carica a 13,5 mA per una cella da 15–20 mAh |
 | Profondità | TE MS5837-02BA | sensore di pressione con porta esposta (O-ring) |
-| Avviso in acqua | vibratore a moneta con MOSFET | da provare sul prototipo ESP32 |
+| Alimentazione sensori | interruttore di carico TPS22916C | i sensori si spengono quando non servono |
+| Cella | Ampul 401012, 40 mAh, PCM, 1 C | su connettore JST SH |
+| Caricatore | TI BQ25101 | pin TS pilotato da GPIO |
+| Misuratore di carica | MAX17048 | su secondo bus I2C, separato dai sensori |
+| Condensatori | 2 × 47 µF | |
+| Collegamento cella | resistenza 0 Ω tra cella e circuito | separazione per le misure di collaudo |
+| Programmazione | Tag-Connect TC2030-NL (SWD) | VDD usato solo come riferimento |
+| Avviso in acqua | pilotaggio MOSFET e piazzole MOT+/MOT− | **vibratore non montato** sui 2 tag di collaudo |
 | Protezione dei contatti | TVS SD05 e Schottky B5819WS | contatti di ricarica esposti |
 | Reset in custodia | rete 100 nF, MOSFET, 1 MΩ | reset all'inserimento, nessun terzo contatto in acqua |
 | Segnalazione | LED rosso | |
+| Collaudo | piazzole di prova | accesso ai segnali principali |
+
+Contatti di ricarica a 4,2 mm, per una futura base a più posti.
+
+**Vibratore.** Nessun motore SMD è montabile da JLC a rifusione: sui 2 tag di collaudo restano solo il pilotaggio e le piazzole MOT+/MOT−, per il montaggio a mano.
 
 Autonomia richiesta: 3 ore di nuoto. Consumi stimati e autonomia: da misurare sui primi tag (vedi `progetto.md`).
 
 ### Dimensioni
-- Scheda: 17,5 × 22,5 mm, 4 strati, 0,8 mm.
-- Tag finito (con resina): circa 19 × 24 × 7,2 mm.
-- Componenti sul lato sopra; sotto solo piazzole (ricarica, SWD).
+- Scheda: 26 × 30 mm, 4 strati, 0,8 mm.
+- Tag finito (con resina): circa 29 × 33 × 9,2 mm.
+- Tutti i componenti su una sola faccia (variante 1c).
+
+### Immagini
+Render del tag: [`render_3d.png`](hardware/nrf52840/kicad/jlc/v0.3_swimtag_collaudo/render_3d.png), [`render_sopra.png`](hardware/nrf52840/kicad/jlc/v0.3_swimtag_collaudo/render_sopra.png), [`render_sotto.png`](hardware/nrf52840/kicad/jlc/v0.3_swimtag_collaudo/render_sotto.png).
+
+Otto wallpaper tecnici PNG 1170 × 2532, generati dal PCB reale, in [`hardware/nrf52840/wallpaper/png/`](hardware/nrf52840/wallpaper/png/): `01_pianta`, `02_strati`, `03_macro_modulo`, `04_lato_sotto`, `05_sezione`, `06_iso_sopra`, `07_iso_sotto`, `08_foratura`.
+
+| Script (in `hardware/nrf52840/wallpaper/`) | Funzione |
+|---|---|
+| `info_pcb.py` | estrae i dati dal PCB |
+| `genera_wallpaper.py` | genera gli 8 PNG |
+| `genera_pdf.py` | genera il PDF di progetto (14 pagine) |
 
 ### Flusso di lavoro dei file KiCad
 In [`hardware/nrf52840/kicad/`](hardware/nrf52840/kicad/), schema e PCB sono generati da script. `dati_scheda.py` è l'unica fonte dei dati.
@@ -180,18 +203,18 @@ In [`hardware/nrf52840/kicad/`](hardware/nrf52840/kicad/), schema e PCB sono gen
 | `verifica_netlist.py` | confronta la netlist con i dati |
 | `esporta_jlc.py` | esporta i file per JLC |
 
-I file per l'ordine sono in `hardware/nrf52840/kicad/jlc/`: Gerber (zip), `bom_jlc.csv`, `cpl_jlc.csv`, render e PDF dello schema.
+I file per l'ordine sono in [`hardware/nrf52840/kicad/jlc/v0.3_swimtag_collaudo/`](hardware/nrf52840/kicad/jlc/v0.3_swimtag_collaudo/): Gerber (zip e cartella), `bom_jlc.csv`, `cpl_jlc.csv`, render e `schema.pdf`.
 
 ### Stato della scheda
-- DRC: 0 errori. Netlist verificata (30/30).
+- Netlist 36/36, DRC 0 errori, 609 piste, 80 via.
 - Nessun acquisto fatto.
-- Da fare: anteprima JLC (rotazioni, stock dei componenti *extended*) e decisione sulle modifiche v0.3.
-- Il modulo Raytac, il TVS e lo Schottky non hanno modello 3D nei render.
-- Budget realistico JLC per 2 tag: circa 80–100 € (l'obiettivo di 50 € non è raggiungibile con questi componenti).
+- Da fare: anteprima JLC (rotazioni, stock dei componenti *extended*).
+- Costo stimato per 2 tag JLC: circa 120–130 $, più cella e cavo Tag-Connect (non ancora ordinati).
+- Il modulo E73, il TVS e lo Schottky possono non avere modello 3D nei render.
 
 ### Piano a tappe
 1. Prototipo ESP32 per mettere a punto algoritmi e avviso in acqua.
-2. Anteprima JLC e ordine di 2 tag, senza pannello.
+2. Anteprima JLC e ordine di 2 tag di collaudo, senza pannello.
 3. Firmware su Zephyr / nRF Connect SDK, con MCUboot e aggiornamento via BLE.
 4. Custodia di ricarica e attrezzo di programmazione, stampati con Bambu Lab A1 mini.
 5. Stampo per la resina: più avanti.
@@ -314,7 +337,7 @@ Installazione, avvio, test e deploy: da definire.
 SwimTimer/
 ├── docs/                    idea, stato, decisioni, domande aperte, requisiti, design
 ├── hardware/                distinta componenti (bom.md), schema (schema.md); involucro da creare
-│   └── nrf52840/            scheda su misura: progetto.md, bom.md, verifiche.md, ingombro.svg
+│   └── nrf52840/            scheda su misura: progetto.md, bom.md, verifiche.md, ingombro.svg, PDF, wallpaper/
 │       └── kicad/           script, progetto KiCad e file per JLC (jlc/)
 ├── firmware/
 │   ├── test-collegamenti/   tag: test del BMI160, uscita USB, servizio GATT e annuncio BLE
@@ -342,8 +365,8 @@ Prossimi passi:
 5. App di accompagnamento, se confermata.
 
 Scheda su misura nRF52840 (dettagli in [`hardware/nrf52840/progetto.md`](hardware/nrf52840/progetto.md)):
-1. Decidere le modifiche v0.3 (sensori alimentati da GPIO, misuratore di carica MAX17048, polarità serigrafata, eventuale spegnimento vero).
-2. Anteprima JLC e ordine di 2 tag (budget ~80–100 €).
+1. Anteprima JLC e ordine di 2 tag v0.3 di collaudo (~120–130 $ più cella e cavo Tag-Connect).
+2. Montaggio a mano del vibratore e prime misure di consumo.
 3. Firmware Zephyr / nRF Connect SDK con MCUboot e aggiornamento via BLE.
 4. Custodia di ricarica e attrezzo di programmazione (stampa 3D); stampo per la resina più avanti.
 
@@ -354,7 +377,7 @@ Problemi aperti (dettagli in [`docs/STATO.md`](docs/STATO.md)):
 - capacità della LiPo del tag e autonomia da definire;
 - la compilazione è lenta perché le librerie sono in OneDrive: valutare lo spostamento;
 - nessun test automatico;
-- scheda nRF52840: budget JLC (~80–100 € contro i 50 € desiderati) e modifiche v0.3 da decidere.
+- scheda nRF52840: budget JLC (~120–130 $ per 2 tag di collaudo contro i 50 € desiderati); vibratore non montabile da JLC.
 
 Decisioni: [`docs/DECISIONI.md`](docs/DECISIONI.md). Modifiche: [`CHANGELOG.md`](CHANGELOG.md).
 
