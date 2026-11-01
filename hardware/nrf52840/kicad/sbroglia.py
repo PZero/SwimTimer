@@ -14,10 +14,10 @@ from pathlib import Path
 import pcbnew
 
 import genera_pcb
-from dati_scheda import SCHEDA_H, SCHEDA_L
+from dati_scheda import NOME, SCHEDA_H_TOT as SCHEDA_H, SCHEDA_L
 
 QUI = Path(__file__).parent
-PCB = QUI / "swimtag.kicad_pcb"
+PCB = QUI / f"{NOME}.kicad_pcb"
 LAVORO = QUI / "sbroglio"
 
 

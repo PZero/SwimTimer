@@ -1,6 +1,6 @@
 # Tag su misura nRF52840 — progetto (proposta)
 
-**Stato:** studio del 2026-10-25, nessun acquisto, nessuno schema. Componenti in `bom.md`. Prototipo attuale (ESP32-S3 SuperMini + BMI160) in `../bom.md` e `../schema.md`.
+**Stato:** studio del 2026-10-25 (schema e PCB v0.2 fatti; v0.3 in corso, vedi sotto), nessun acquisto. Componenti in `bom.md`. Prototipo attuale (ESP32-S3 SuperMini + BMI160) in `../bom.md` e `../schema.md`.
 
 **Obiettivo:** tag da portare sotto la cuffia, ~19 × 21 × 7,2 mm resinato (disposizione B), con sensore di profondità e vibratore, LiPo ~20 mAh, ricarica a contatto in una custodia tipo AirPods, prodotto e montato da JLCPCB.
 
@@ -20,7 +20,7 @@
                          VDD 3,3 V ─┬─ LSM6DSV16X  (SPI, INT1/INT2: dati pronti, risveglio)
                                     ├─ W25Q256JV   (QSPI, 32 MB)
                                     ├─ MS5837-02BA (I2C, profondità)
-                                    └─ LED RGB 1010 (GPIO in assorbimento)
+                                    └─ LED rosso 0603 (anodo sulla batteria, GPIO in assorbimento)
                          VDDH ──[2×47 µF]── vibratore Ø 6 mm ── N-MOSFET ← GPIO (PWM)
                          SWD: piazzole interne per il primo avvio (sotto la resina)
 ```
@@ -157,6 +157,42 @@ File in [`kicad/`](kicad/), generati da script a partire da un'unica tabella di 
 **Per l'ordine JLC** (non ancora fatto): `jlc/swimtag_gerber.zip`, `jlc/bom_jlc.csv`, `jlc/cpl_jlc.csv`. Opzioni: 4 strati, 0,8 mm, **ENIG** (contatti dorati), montaggio *Economic* lato sopra, raggi X per modulo e BGA. Controllare nell'anteprima JLC la rotazione dei componenti (alcune impronte risultano ruotate di 90/180° rispetto alla libreria JLC).
 
 **Verifiche sui datasheet:** fatte il 2026-10-25, registro in [verifiche.md](verifiche.md) (4 correzioni: due 100 nF sull'IMU, pull-up I2C, 10 µF sull'uscita del caricatore, condensatori del modulo avvicinati). Restano: anteprima JLC (rotazioni e stock) e la protezione dei contatti. Il modulo Raytac non ha modello 3D (nei render si vedono solo le piazzole).
+
+## v0.3 (in corso, 2026-11-01) — solo variante "collaudo"
+
+> **Modulo sostituito il 2026-11-01: Raytac MDBT50Q-1MV2 → Ebyte E73-2G4M08S1C (LCSC C356849).** Il Raytac è a **stock 0** su JLC e LCSC (decisione dell'utente). Il resto della v0.3 è invariato; cambiano pin del modulo, impronta, zona antenna, misure della scheda (ora **19,0 × 46,0 mm**) e spessore. Verifiche sul foglio Ebyte in [verifiche.md](verifiche.md) (ultima sezione). Il testo sotto sul "foglio Raytac" vale solo come storia; il disegno `ingombro.svg` e `genera_ingombro.py` sono ancora quelli del Raytac (v0.2).
+
+Schema generato e verificato anche dopo il cambio di modulo (`kicad/swimtag_collaudo.kicad_sch`, 36 reti, `verifica_netlist.py` 0 differenze, ERC 0 errori); **PCB non sbrogliato**: `kicad/swimtag_collaudo.kicad_pcb` è solo un posizionamento di prova per stimare l'ingombro (render in `kicad/prova/`). I file v0.2 (`swimtag.kicad_sch/pcb`, `jlc/`) restano come storico. La variante *definitiva* è prevista in `dati_scheda.py` (`SWIMTAG_VARIANTE`) ma non ancora implementata.
+
+| Cambio | Come | Pin / rete |
+|---|---|---|
+| Batteria Ampul 401012 (40 mAh, PCM) | connettore **JST SH 1,0 mm laterale SM02B-SRSS-TB (J1)**, montato da JLC; serigrafia + (BAT) e − (GND) | rete `BAT` |
+| Sensori commutati | **TPS22916C (U6)**: VDD → `VDD_SENS`; alimenta IMU (Vdd e Vdd_IO), MS5837, pull-up I2C R5/R6 e i loro 100 nF. La flash resta su VDD | ON = `SENS_ON` pad 6 (P1.13); pull-down 1 MΩ (R8) |
+| Misuratore di carica | **MAX17048 (U7)** sul VBAT lato sistema, 100 nF, secondo bus I2C con pull-up 10 kΩ (R9/R10) su VDD sempre acceso | SDA2 pad 34 (P0.22), SCL2 pad 35 (P0.24), ALRT pad 4 (P0.28) |
+| Sospensione carica | pin TS del BQ25101 a un GPIO, R2 10 kΩ resta | `TS` pad 2 (P1.10) |
+| Condensatori | 2 × 47 µF 0805 (C10, C11) su VBAT; 10 µF su VDDH (C7) e 10 µF sull'uscita del caricatore lato batteria (C12) | |
+| Corrente | **J3** (1×2, 1,27 mm) tra `BAT` (cella e caricatore) e `VBAT` (circuito) + ponticello da 1,27 mm; tolto il ponticello il tester va in serie | la carica non passa dal ponticello |
+| Collaudo | **J2** 2×12, 1,27 mm, ad angolo retto sul bordo basso: i pin escono dalla resina verso il basso | tabella sotto |
+| Misure | scheda **19,0 × 46,0 mm** con l'E73 (con il Raytac 17,5 × 34,5; v0.2: 17,5 × 22,5), vedi sotto | |
+
+**Pin del modulo scelti (E73, rete → pad → GPIO).** Fonte: foglio Ebyte cap. 3 e Nordic PS. SPI, I2C e QSPI solo su pin non "bassa frequenza"; sui pin lenti (colonna sinistra, pad 2-10) solo segnali statici.
+- Alimentazione e sistema: VDD 19, VDDH (`VBAT`) 23, VBUS (`VIN_D`) 27, GND 5/21/24, RESET P0.18 26, SWDIO 37, SWDCLK 39.
+- Lenti: TS 2 (P1.10), CHG_N 3 (P0.03), FG_ALRT 4 (P0.28), SENS_ON 6 (P1.13), IMU_INT2 7 (P0.02), IMU_INT1 8 (P0.29), LED 9 (P0.31), MOT_PWM 10 (P0.30, **PWM ≤ 10 kHz**).
+- QSPI (qualsiasi GPIO, registri PSEL): CS 12 (P0.26), IO1 14 (P0.06), IO2 15 (P0.05), IO3 16 (P0.08), SCK 17 (P1.09), IO0 18 (P0.04); i pin consigliati da Nordic non sono esposti tutti (P0.19, 21, 23 mancano).
+- IMU in SPI: SCK 20 (P0.12), MOSI 22 (P0.07), MISO 28 (P0.15), CS 30 (P0.17). I2C sensori: SDA 32 (P0.20), SCL 33 (P0.13). I2C misuratore: SDA 34 (P0.22), SCL 35 (P0.24).
+- Liberi: P1.11, XL1/XL2 (11, 13, per un eventuale quarzo), DCCH, USB D±, P1.00, P1.02, P1.04, P1.06, NFC.
+
+**Header J2 (pin 1 a destra, file dispari/pari):** 1 VDD (=VREF per il programmatore) · 2 SWDIO · 3 GND · 4 SWDCLK · 5 RESET · 6 GND · 7 VBAT · 8 VDD_SENS · 9 CHG_N · 10 TS · 11 SENS_ON · 12 FG_ALRT · 13 I2C_SDA · 14 I2C_SCL · 15 FG_SDA · 16 FG_SCL · 17 GND · 18 IMU_SCK · 19 IMU_MOSI · 20 IMU_MISO · 21 IMU_CS · 22 GND · 23 IMU_INT1 · 24 IMU_INT2. BAT e VBAT sono anche su J3.
+
+**Ingombro (collaudo, E73, da posizionamento di prova senza sbroglio; render in `kicad/prova/`):**
+- **Scheda 19,0 × 46,0 mm** (Raytac: 17,5 × 34,5). Il modulo E73 (13 × 18 mm, antenna sul bordo alto) occupa i primi 18 mm; flash (9,5 × 6,1 mm), IMU, caricatore, sensori, JST, 2 × 47 µF e J2 stanno tutti sotto, sul solo lato sopra (montaggio JLC su un lato). Larghezza 19 mm per avere 2 mm di margine ai lati dei pad e far passare le piste dei pin laterali. Nessuna sovrapposizione di ingombri (controllo DRC delle zone dei componenti), ma lo spazio per lo sbroglio è stato stimato con 0,2 mm tra le zone dei componenti: potrebbe servire ancora 1-2 mm.
+- Zona antenna: striscia di **3,7 mm** senza rame su tutti gli strati (dal bordo al pad 1/43 del modulo); la cella 401012 (4 × 10 × 12 mm) sta sopra il modulo tra y = 5 e 17 mm, cioè ≥ 1,3 mm oltre la striscia; il modulo è alto 3,0 mm, la cella ci poggia sopra.
+- **Tag finito:** resina +~1,5 mm per lato → **~22 × 49 mm**; con la spina della cella a sinistra (+~5 mm), i pin di J3 a destra (+~3 mm) e quelli di J2 sotto (+~3 mm): **~30 × 52 mm** nel punto più largo e più lungo. **Spessore ~9,2 mm** (scheda 0,8 + modulo 3,0 + cella 4,0 + resina ~1,4), cioè ~1 mm più della versione Raytac (8,2 mm).
+- Cambio rispetto al Raytac: la scheda cresce di +1,5 mm in larghezza e +11,5 mm in altezza, il tag finito di ~+4 × +13 mm. La variante *definitiva*, senza striscia di J2/J3, dovrebbe scendere a circa 19 × 38 mm.
+- Possibili riduzioni (decisioni dell'utente): flash 16 MB (WSON 6 × 5 mm) al posto di quella da 32 MB (WSON 8 × 6 mm) = −1 mm; componenti anche sul lato sotto (JLC montaggio doppia faccia più caro) = −8 mm circa.
+- Non risolto: il 47 µF vicino al modulo/vibratore e C12 vicino al BQ25101 sono lontani dove servono (da avvicinare allo sbroglio). I contatti di ricarica (TP1/TP2) sono sul lato sotto, sotto la flash; le piazzole SWD e quelle del vibratore sul lato sotto.
+
+**Pendenze dello sbroglio:** impronta MAX17048 (KiCad TDFN-8 2×2, EP 0,8 × 1,2) da confrontare con quella LCSC; il PCB v0.2 sbrogliato non va riusato; `esporta_jlc.py` ora scrive in `jlc/v0.3_<variante>/` e include anche i componenti a foro passante nel CPL.
 
 ## Piano a tappe
 

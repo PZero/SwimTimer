@@ -3,13 +3,34 @@
 **Stato:** proposta del 2026-10-25, **niente acquistato**. Da confermare con l'utente (vedi `docs/DOMANDE-APERTE.md`).
 > **Aggiornamento 2026-10-25 — PCB v0.1 disegnato** (`kicad/`): la distinta effettiva per JLC è [`kicad/jlc/bom_jlc.csv`](kicad/jlc/bom_jlc.csv). Rispetto a questa proposta: caricatore **BQ25101YFPR** (C478468, carica a 13,5 mA con ISET 10 kΩ, TS a massa con 10 kΩ); niente TVS né Schottky su VIN; un solo LED rosso 0603 (C2286) invece dell'RGB; MOSFET AO3400A (C20917) con diodo 1N4148WS (C2128) per il vibratore; pull-up I2C 10 kΩ (R5/R6); 10 µF sulla batteria invece di 2 × 22 µF (limite del BQ25101); niente cicalino. Verifiche in [verifiche.md](verifiche.md). Componenti *extended*: modulo, IMU, flash, caricatore, pressione, TVS SD05 (C85201), Schottky B5819WS (C22624); gli altri sono *basic*. In v0.2 aggiunti protezione dei contatti e reset all'inserimento (AO3400A, 100 nF, 1 MΩ).
 
+> **Aggiornamento 2026-11-01 — v0.3 collaudo** (`kicad/dati_scheda.py`; la distinta esportata sarà `kicad/jlc/v0.3_swimtag_collaudo/bom_jlc.csv` allo sbroglio). Stock e tipo (basic/extended) letti il 2026-11-01 dall'API JLCPCB; **riverificare prima dell'ordine**.
+>
+> | Rif. | Componente | LCSC | Tipo | Stock | $ / pezzo | Note |
+> |---|---|---|---|---|---|---|
+> | U6 | TI TPS22916CYFPR, interruttore di carico 2 A, QOD 150 Ω, smart pull-down su ON | C2680319 | extended | 1646 | 0,40 | DSBGA-4 0,78 mm, passo 0,4 |
+> | U7 | MAX17048G+T10, misuratore di carica | C2682616 | extended | 24741 | 2,10 | TDFN-8 2 × 2 mm |
+> | J1 | JST SM02B-SRSS-TB(LF)(SN), SH 1,0 mm, ingresso laterale | C160402 | extended | 74535 | 0,13 | scelto sul PicoBlade 1,25 (stesso prezzo, più piccolo); nessun connettore è *basic* |
+> | J2 | 1271WR-2x12P, header 1,27 mm 2 × 12, angolo retto, foro passante | C7470112 | extended | 493 | 0,20 | THT, saldatura a onda JLC; alternativa verticale C7470094 (935, 0,12) |
+> | J3 | HX PZ1.27-1x2P WZ, 1 × 2 angolo retto | C22438188 | extended | 1190 | 0,03 | ponticello (shunt 1,27 mm, C150949, 0,04 $) da comprare a parte: non è montabile da JLC |
+> | C10, C11 | 47 µF 6,3 V X5R 0805 (Samsung CL21A476MQYNNNE) | C16780 | **basic** | 1,0 M | 0,10 | a 4,2 V la capacità reale scende a circa 15–20 µF ciascuno |
+> | C9 / C12 / R8–R10 | 100 nF / 10 µF / 1 MΩ / 10 kΩ | C1525 / C15525 / C26083 / C25744 | basic | milioni | < 0,03 | già in uso |
+> | U5 | **MS583702BA01-50** (= MS5837-02BA01, stesso chip e stesso package del C2887129, che è a **stock 0**) | **C5785272** | extended | 1079 | 4,70 | cambiato il codice, nessun cambio di schema né di dati |
+>
+> **Modulo cambiato il 2026-11-01 (decisione dell'utente): Raytac MDBT50Q-1MV2 (C5118826) sostituito da Ebyte E73-2G4M08S1C.** Il Raytac era a stock 0 su JLC e LCSC (listino 19 $; alternative scartate: *Global Sourcing* JLC ~10 $ + ricarico e settimane in più, oppure attendere il riassortimento).
+>
+> | Rif. | Componente | LCSC | Tipo | Stock | $ / pezzo | Note |
+> |---|---|---|---|---|---|---|
+> | **U1** | **Ebyte E73-2G4M08S1C** (nRF52840-QIAA, antenna ceramica, 13,0 × 18,0 × 3,0 mm, 43 pad a 1,27 mm: perimetrali a mezzo foro + 15 interni LGA, rifusione) | **C356849** | extended | **572** (API JLC 2026-11-01) | **7,70** (1-9 pz; 7,54 da 10) | VDDH, VDD, VBUS, SWD e RESET esposti, DC/DC REG1 con induttori sul modulo, nessun quarzo a 32 kHz (verifiche in [verifiche.md](verifiche.md)). Costa meno del Raytac ma è 2,5 mm più largo, 2,5 mm più lungo e quasi 1 mm più alto (3,0 contro 2,05 mm): scheda e tag più grandi, vedi `progetto.md`. Certificazione dichiarata dal produttore (FCC ID 2ALPH-E73 in etichetta): non darla per scontata per un uso commerciale |
+>
+> **Costi in più per tag (v0.3 collaudo rispetto alla v0.2):** U6 + U7 + J1 + J2 + J3 + 2 × 47 µF + passivi ≈ **3,2 $**; MS5837 a 4,70 $ invece di 5–8 $. **Spese fisse in più:** 5 componenti *extended* nuovi (U6, U7, J1, J2, J3) × ~3 $ di caricamento = **~15 $**, oltre all'eventuale supplemento per i componenti a foro passante (da chiedere a JLC). Totale per l'ordine di 2 tag: circa **+22 $** (IVA esclusa). Il PCB resta nella stessa fascia di prezzo (< 100 × 100 mm).
+
 Prezzi indicativi in USD per pezzo a piccoli lotti (5–10 schede); codici LCSC/JLCPCB da riverificare al momento dell'ordine (stock e prezzi cambiano ogni settimana). Progetto e motivazioni in `progetto.md`.
 
 ## Componenti principali
 
 | # | Funzione | Proposta | Codice LCSC / JLC | Package e ingombro | Consumo tipico | Costo indic. |
 |---|---|---|---|---|---|---|
-| U1 | MCU + BLE | **Raytac MDBT50Q-1MV2** (nRF52840, antenna chip, FCC/CE/TELEC) | C5118826 (JLC, *extended*, richiede raggi X) | SMD-61, 10,5 × 15,5 × 2,05 mm | 0,4 µA System OFF; ~5 mA in TX 0 dBm | 9–11 $ |
+| U1 | MCU + BLE | ~~Raytac MDBT50Q-1MV2~~ (stock 0) → **Ebyte E73-2G4M08S1C** (nRF52840, antenna ceramica) dal 2026-11-01 | C356849 (JLC, *extended*, 572 pz) | 13,0 × 18,0 × 3,0 mm, 43 pad | 0,4 µA System OFF; ~5 mA in TX 0 dBm (stesso chip) | 7,70 $ |
 | U2 | IMU 6 assi | **ST LSM6DSV16X** (FIFO 4,5 KB, FSM + MLC + SFLP sul sensore) | C5267406 (LSM6DSV16XTR, a stock) | LGA-14, 2,5 × 3 × 0,83 mm | 0,65 mA acc+giro alte prestazioni; 2,6 µA standby | 2,5–3,5 $ |
 | U3 | Memoria dati | **Winbond W25Q256JVEIQ**, NOR QSPI **32 MB** (scelta dell'utente) | C97522 (a stock) | WSON-8 8 × 6 mm | ~15 mA in scrittura; 1 µA in power-down | 2,5–3,5 $ |
 | U4 | Caricatore | **TI BQ25100YFPR** (lineare, 10–250 mA, ingresso fino a 28 V, OVP 6,5 V, perdita sulla batteria 75 nA) — riserva BQ25101YFPR | BQ25101YFPR = C478468; BQ25100YFPR da cercare (⚠ **non** il BQ25100**A**, C206119, che carica a 4,3 V) | DSBGA-6, 1,6 × 0,9 mm, passo 0,4 mm | Iq < 1 µA a ingresso assente | 1–2,5 $ |
@@ -47,8 +68,8 @@ Prezzi indicativi in USD per pezzo a piccoli lotti (5–10 schede); codici LCSC/
 
 | Modulo | Ingombro | Antenna | Certificazione | LCSC/JLC | Costo | Giudizio |
 |---|---|---|---|---|---|---|
-| **Raytac MDBT50Q-1MV2** | 10,5 × 15,5 × 2,05 mm | chip | FCC/CE/TELEC | C5118826, extended | 9–11 $ | **proposto**: compatto, certificato, montabile da JLC |
-| Ebyte E73-2G4M08S1C | 13 × 18 × 2 mm | PCB | CE/FCC (dichiarate dal produttore) | C356849, stock variabile | 5,5–7,5 $ | usato da SlimeVR r3 e nRFMicro; più grande, più economico; buona riserva |
+| Raytac MDBT50Q-1MV2 | 10,5 × 15,5 × 2,05 mm | chip | FCC/CE/TELEC | C5118826, extended | 9–11 $ | era il proposto; **a stock 0 il 2026-11-01**, sostituito |
+| **Ebyte E73-2G4M08S1C** | 13,0 × 18,0 × 3,0 mm | ceramica | CE/FCC (dichiarate dal produttore) | **C356849, extended, 572 pz** | 7,70 $ | **scelto il 2026-11-01** (decisione dell'utente): a magazzino JLC, meno caro; usato da SlimeVR r3 e nRFMicro; più grande (scheda +~11,5 mm in altezza, +1,5 in larghezza) |
 | Holyiot YJ-18010 | 18 × 13,5 × 1,6 mm | ceramica | — | non su LCSC | ~6 $ | scartato: non montabile da JLC senza fornitura a parte |
 | Insight SiP ISP1807-LR | **8 × 8 × 1 mm** (quarzi e DC/DC dentro) | integrata | FCC/CE | non su LCSC (DigiKey ~12,5 $) | 10–13 $ | candidato per la **seconda versione** ultra piccola; LGA a passo fine, fornitura a parte (*consigned parts*) |
 | nRF52840-QIAA nudo | aQFN-73 7 × 7 mm + antenna chip + quarzi | da progettare | nessuna | C1851953 | ~4 $ + RF | scartato per ora: progetto RF, via-in-pad, taratura dell'antenna |

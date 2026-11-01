@@ -70,7 +70,7 @@ Il datasheet su st.com non era raggiungibile (né da riga di comando né dal bro
 - **In uso**: tensione → percentuale con la curva della LiPo (precisione ~±10 %, migliore a riposo che durante i picchi del vibratore o della radio: misurare a radio ferma).
 - **In carica**: la tensione letta è più alta della reale (corrente di carica × resistenza interna, poi 4,2 V fissi nella fase finale) → si mostra "in carica" dal pin /CHG (P0.04) e la tensione solo come indicazione; carica finita quando /CHG torna alto (terminazione a 1,35 mA).
 - Nel sonno profondo (System OFF) non si misura: la lettura si fa al risveglio.
-- Per una percentuale più precisa servirebbe un *fuel gauge* (es. MAX17048, 0,9 × 1,7 mm): non previsto in v0.2.
+- v0.3: aggiunto il *fuel gauge* MAX17048 (vedi sotto); il canale VDDHDIV5 resta come controllo incrociato.
 
 ## Note per il firmware (nate dalle verifiche)
 - Scrivere `UICR.REGOUT0 = 3,3 V` al primo avvio (di serie VDD esce a 1,8 V e la flash non partirebbe).
@@ -82,3 +82,122 @@ Il datasheet su st.com non era raggiungibile (né da riga di comando né dal bro
 ## Ancora da fare prima di confermare l'ordine
 - ⏳ Caricare Gerber, BOM e CPL nell'anteprima JLC: controllare rotazioni e stock dei 5 componenti *extended*.
 - ✅ Protezione dei contatti e reset all'inserimento aggiunti (v0.2).
+
+
+---
+
+# Verifiche v0.3 (2026-11-01) — variante collaudo
+
+Datasheet letti in locale: TI TPS22916 SLVSDO5F (dic. 2021), TI BQ25101 SLUSBV8C, Maxim MAX17048 rev 7 (11/2016), Raytac MDBT50Q spec (cap. 2.4 e 2.5; modulo poi sostituito dall'Ebyte E73, vedi in fondo), TE MS5837-02BA (tabella d'ordine), JST SH. Stock e tipo basic/extended: API JLCPCB del 2026-11-01.
+
+## TPS22916C (U6, interruttore dei sensori) — TI SLVSDO5F
+| Voce | Datasheet | Scheda | Esito |
+|---|---|---|---|
+| Pin YFP (DSBGA-4) | A1 VOUT, A2 VIN, B1 GND, B2 ON; vista dall'alto: ON/GND sopra, VIN/VOUT sotto | impronta `DSBGA-4_L0.78-W0.78-P0.40` costruita così, passo 0,4 | ✅ (impronta da controllare in anteprima JLC) |
+| Variante C | attivo alto, **QOD 150 Ω** a spento, salita lenta (tON 1,7 ms a 3,6 V) | scarica rapida di VDD_SENS richiesta | ✅ |
+| Soglie ON | VIH ≥ 1 V, VIL ≤ 0,35 V; perdita su ON ±10 nA | GPIO a 3,3 V | ✅ |
+| Pull-down su ON | **"smart pull-down" 750 kΩ** interno, attivo finché ON è basso | R8 1 MΩ esterno richiesto: ridondante, costa 3,3 µA a sensori accesi | ⚠️ tenuto per richiesta; si può non montare |
+| Corrente a spento | 10 nA tip., 100 nA max; da acceso Iq 0,5 µA | — | ✅ |
+| Rds(on) | 70 mΩ a 3,6 V | IMU + MS5837 ≈ 1,5 mA → 0,1 mV | ✅ |
+| VIN | 1–5,5 V, blocco della corrente inversa | VDD 3,3 V | ✅ |
+
+**Nessun pin dei sensori va a VDD sempre acceso** (controllo sulla netlist): IMU pin 5 (Vdd_IO) e 8 (Vdd), MS5837 pin 2, R5/R6 e i tre 100 nF sono su `VDD_SENS`; su `VDD` restano solo modulo, flash, ingresso di U6 e pull-up del secondo I2C. Pin 10/11 dell'IMU liberi (ST: "leave unconnected" ammesso), SDx/SCx a GND.
+
+⚠️ **Conseguenze per il firmware (sensori spenti):**
+- I GPIO verso IMU e MS5837 non devono restare alti: con VDD_SENS a 0 un pin a 3,3 V alimenterebbe il sensore dal diodo ESD. Prima di spegnere: SCK, MOSI, CS, SDA, SCL a **uscita bassa** (o ingresso scollegato); MISO, INT1, INT2 come **ingressi senza pull-up**.
+- Spento, l'IMU perde la configurazione (FIFO, ODR, FSM): va riprogrammato a ogni accensione; MS5837: reset e lettura PROM ogni volta, almeno 3 ms dopo l'accensione (tON 1,7 ms + avvio).
+- **Il risveglio dall'IMU (INT) non funziona a sensori spenti.** Per la sveglia al movimento in System OFF bisogna lasciare VDD_SENS acceso con l'IMU a basso consumo (pochi µA), oppure risvegliare da timer / VBUS. Scelta di firmware, non cambia l'hardware.
+
+## MAX17048 (U7) — Maxim rev 7
+| Voce | Datasheet | Scheda | Esito |
+|---|---|---|---|
+| Pin TDFN-8 | 1 CTG a massa, 2 CELL (sul MAX17048 "non collegato internamente"), 3 VDD (batteria +, 100 nF), 4 GND, 5 ALRT (open-drain), 6 QSTRT (a massa se non usato), 7 SCL, 8 SDA, EP a GND | CTG, QSTRT, GND, EP a massa; **VDD e CELL a VBAT**, C9 100 nF | ✅ |
+| Alimentazione | VDD 2,5–4,5 V, misura direttamente la cella | VBAT 3,0–4,2 V | ✅ |
+| I2C | indirizzo 0x36, SDA/SCL tolleranti a 5,5 V, VIH ≥ 1,4 V, open-drain: servono pull-up | R9, R10 10 kΩ su **VDD** (sempre acceso), bus separato da quello dell'MS5837 | ✅ |
+| ALRT | open-drain, attivo basso, si cancella via I2C | P0.07, pull-up interno nRF | ✅ |
+| Consumi | hibernate 3 µA (automatico), attivo 23 µA, **sleep < 1 µA (0,5 tip.)** | — | ✅ |
+| **Sleep con linee basse** | sleep se MODE.EnSleep = 1 e SDA e SCL **bassi per più di 2,5 s**; sveglia al primo fronte in salita; in alternativa CONFIG.SLEEP = 1 via I2C (si esce solo scrivendo SLEEP = 0) | con i pull-up da 10 kΩ, tenere le linee basse costa **330 µA per linea** (3,3 V / 10 kΩ): molto peggio del risparmio di 2–3 µA | ⚠️ **non usare le linee basse**; per dormire usare CONFIG.SLEEP via I2C, oppure restare in hibernate (3 µA, preciso). In sleep il MAX non vede carica e scarica: svegliarlo prima di caricare |
+| Inserimento batteria | debounce delle prime misure ("può stare lato sistema") | lato sistema (VBAT, dopo J3) | ✅; senza ponticello il MAX non è alimentato |
+
+La percentuale è solo indicativa con una cella da 40 mAh e i picchi del vibratore (1,25 C): leggerla a riposo.
+
+## BQ25101 (U4) — pin TS comandato da GPIO e corrente di carica — TI SLUSBV8C
+| Voce | Datasheet | Scheda | Esito |
+|---|---|---|---|
+| TS basso | "Pulling pin low disables the IC": carica disabilitata sotto 0,125 V (riabilitata sopra 0,175 V), corrente di polarizzazione ridotta a 30 µA, timer azzerato; al rilascio parte un nuovo ciclo con rilevamento batteria e /CHG si riarma | **GPIO P0.25 sul nodo TS**, R2 10 kΩ resta | ✅ **fattibile in modo pulito** |
+| TS normale | 50 µA nel 10 kΩ → 0,5 V: zona normale 10–45 °C | GPIO come ingresso scollegato (nessun carico): misura invariata | ✅ |
+| TS alto o flottante | **TTDM**: timer e terminazione disattivati | un GPIO a livello alto, anche per errore, disattiverebbe terminazione e timer | ⚠️ **firmware: P0.25 solo come open-drain a massa (S0D1)**, mai uscita alta |
+| Fermarsi verso l'80 % | il BQ25101 non ha una soglia propria: carica fino a 4,2 V fissi | l'MCU legge il SOC dal MAX17048 e porta TS a massa; sospeso, il caricatore assorbe solo 75 nA dalla cella | ✅ |
+| Verifica batteria collegata | rilevamento batteria all'uscita da TS basso, ripetuto finché la batteria manca | VCELL dal MAX17048 + rilascio di TS e osservazione di /CHG | ✅ (prova da fare a banco) |
+| ISET | I = 135 AΩ / R: 10 kΩ → 13,5 mA = **0,34 C** su 40 mAh; 6,8 kΩ → ~19,9 mA = 0,5 C | R1 = 10 kΩ invariato | ✅ consigliati 13,5 mA (carica completa in ~3 h, terminazione a 1,35 mA, più dolce per una cella da 4 mm) |
+| Condensatore OUT | "expected range 1–10 µF" | C12 10 µF su BAT; i 2 × 47 µF stanno su **VBAT, a valle di J3**: con il ponticello inserito il caricatore li vede in parallelo alla cella | ⚠️ fuori dall'intervallo TI: il rischio riguarda solo la batteria assente (rilevamento batteria più lento o falsato); con la cella collegata domina la sua impedenza. Da provare a banco |
+
+## Condensatori, connettore batteria, ponticello
+| Voce | Esito |
+|---|---|
+| 2 × 47 µF X5R 6,3 V a 4,2 V: capacità reale ~15–20 µF ciascuno (perdita da polarizzazione in c.c.) | ⚠️ ~35 µF effettivi: bastano per il vibratore in PWM; se serve di più, 1206 o 10 V |
+| J3 tra BAT e VBAT: la carica **non** passa dal ponticello (BQ25101, C12 e J1 su BAT) → si misura solo l'assorbimento del circuito, MAX17048 compreso | ✅ |
+| Polarità di J1 non protetta (scelta dell'utente): le celle con spina JST sono vendute spesso con i fili **invertiti** rispetto alla serigrafia | ⚠️ controllare con il tester il piedino + prima di collegare |
+| J1 SM02B-SRSS-TB: 1,0 mm, ingresso laterale, altezza 2,9 mm, impronta 5,9 × 6,6 mm | ✅ la cella deve avere una spina SH 1,0 mm a 2 poli |
+
+## Pin del modulo (foglio Raytac cap. 2.4/2.5)
+- Pin "GPIO vicini alla radio, standard drive, solo bassa frequenza": 3–14, 50, 52, 54, 56–61 → **non usati**.
+- Scelti: SENS_ON P0.05 (21), FG_ALRT P0.07 (23), FG_SCL P1.08 (25), FG_SDA P1.09 (26), TS P0.25 (49): tutti "General-purpose I/O". Il secondo I2C a 400 kHz sta quindi su pin normali. Liberi: 47 (P1.00) e 48 (P0.24); P0.00/P0.01 tenuti per un eventuale quarzo a 32 kHz.
+
+## Connettori e pin di collaudo
+| Voce | Esito |
+|---|---|
+| JLC monta componenti a foro passante anche nel montaggio *Economic* (lato singolo; SMD a rifusione, THT a onda; fori non usati protetti), pagina JLC "PCBA Capabilities" | ✅ da confermare nell'anteprima d'ordine |
+| Saldatura a onda sul lato sotto, dove stanno i contatti di ricarica dorati e le piazzole SWD | ⏳ rischio da chiarire con JLC prima dell'ordine (protezione o controllo manuale) |
+| J2 ad angolo retto C7470112: isolante 2 mm, pin 3 mm: sporgono ~5 mm dal bordo, 2–3 mm fuori dalla resina. La versione verticale (C7470094: isolante 1 mm + pin 4 mm = 5 mm sopra la scheda) **non uscirebbe** dalla resina (~8 mm) | ✅ angolo retto |
+| J3 C22438188 (1×2, angolo retto) + ponticello C150949, da comprare a parte | ✅ |
+| Stock a 0 per il modulo Raytac (C5118826) e per l'MS5837-02BA (C2887129). MS5837 sostituito con C5785272 (TE MS583702BA01-50 = MS5837-02BA01, tabella d'ordine del datasheet, stesso package) | 🔧 MS5837 / ⚠️ modulo: decisione dell'utente |
+
+---
+
+# Verifiche v0.3, modulo Ebyte E73-2G4M08S1C (2026-11-01)
+
+Il Raytac MDBT50Q-1MV2 è a stock 0 (JLC e LCSC): su decisione dell'utente U1 passa all'**Ebyte E73-2G4M08S1C** (LCSC C356849). Fonti: *E73-2G4M08S1C User Manual v1.9* (Ebyte; copia inglese e specifica cinese del distributore con lo schema del modulo, cap. 3 e 5.1), pagine online Nordic nRF52840 Product Specification (*Pin assignments*, *QSPI*), simbolo/impronta/modello 3D da LCSC con easyeda2kicad. Le sezioni "MDBT50Q" più sopra valgono solo come storia.
+
+| Voce | Foglio Ebyte / Nordic | Scheda | Esito |
+|---|---|---|---|
+| VDDH esposto | pad 23 "VDH" = VDDH; schema del modulo: VDDH separato da VDD, 4,7 µF a bordo | pad 23 = `VBAT` (cella direttamente) + C7 10 µF | ✅ |
+| VDD esposto | pad 19; il foglio dà 1,7-5,5 V e "3,3 V per la massima potenza". Con VDDH alimentato, VDD è l'uscita di REG0 (REGOUT0 = 3,3 V da UICR, già in progetto) | pad 19 = `VDD` + C1 10 µF; i due pad sono distinti e sul modulo non sono uniti | ✅ misurare VDD = 3,3 V sul primo tag |
+| VBUS esposto | pad 27 "VBS" = VBUS, ingresso USB 5 V | pad 27 = `VIN_D` (dal caricatore), solo evento "in custodia" | ✅ |
+| Pin QSPI | nessun pin fisso nel foglio Ebyte; nel Nordic PS la QSPI ha registri PSEL.SCK/CSN/IO0-3 su **qualsiasi GPIO**. I pin consigliati (P0.17, 19, 20, 21, 22, 23) sul modulo sono esposti solo P0.17, P0.20, P0.22 | QSPI su 6 pad della fila bassa (P0.26, P0.06, P0.05, P0.08, P1.09, P0.04), GPIO in *high drive* (consiglio Nordic) | ✅ ⚠️ SCK a 8-16 MHz, non 32 MHz (fuori dai pin consigliati, nessuna garanzia Nordic) |
+| SWDIO, SWDCLK, RESET | pad 37 SWDIO, 39 SWDCLK, 26 P0.18/RESET | stesse piazzole di collaudo; RESET richiede `UICR.PSELRESET` = P0.18 (come col Raytac) | ✅ |
+| DC/DC REG1 | schema del modulo: **L1 15 nH e L2 10 µH sul modulo**, quindi DC/DC REG1 utilizzabile; DCCH (pad 25) senza induttore = REG0 in LDO | DCCH non collegato | ✅ |
+| Quarzo 32,768 kHz | **assente** (nello schema c'è solo il 32 MHz); XL1/XL2 = P0.00/P0.01 sui pad 11 e 13 | pad 11 e 13 liberi; RC interno come prima | ✅ |
+| Condensatori esterni | lo schema del modulo ha già 4,7 µF su VDD, VDDH, DECUSB e i condensatori DEC; il foglio non chiede altro | restano C1 10 µF (VDD), C7 10 µF (VDDH), C5 10 µF (VBUS) | ✅ |
+| Zona libera dell'antenna | **nessuna quota nel foglio**: solo "antenna esposta, lontana da metallo". Dal disegno l'antenna ceramica sta nei 3,97 mm tra il bordo corto e la fila di pad 1/43 | zona vietata su tutti gli strati di 3,7 mm dal bordo (`ANTENNA_H`), larga quanto la scheda; modulo a 0,22 mm dal bordo | ⚠️ valore dedotto dal disegno, da confermare con la prova di portata prima della resina |
+| Dimensioni e pad | 13,0 × 18,0 ± 0,1 mm, altezza 3,0 ± 0,1; pad perimetrali 0,8 × 1,0 mm a passo 1,27 (mezzo foro); pad interni LGA 0,8 × 0,8 a 2,1 mm dal bordo; 43 pad | impronta LCSC: 0,9 × 2,0 (1 mm di fillet fuori dal modulo) e 0,9 × 0,9, stesse posizioni (confrontata con il disegno) | ✅ |
+| Pin "bassa frequenza" | Nordic PS (≤ 10 kHz): P0.02, P0.03, P0.09, P0.10, P0.28-P0.31, P1.01-P1.07, P1.10-P1.15 | SPI, I2C e QSPI solo su pin normali; sui pin lenti solo segnali statici (colonna sinistra) | ✅ |
+| Piste sotto il modulo | il foglio sconsiglia piste ad alta frequenza o di potenza sul lato opposto, sotto il modulo | piani di massa In1/In2 pieni; sotto il modulo solo le uscite dei pad interni | ⚠️ da rivedere allo sbroglio (QSPI corta, via vicino al pad) |
+| Programmazione | solo J-Link (SWD) | piazzole SWD su due file, come prima | ✅ |
+
+**Assegnazione dei pin (v0.3, E73).** Stesse reti di prima, pin cambiati:
+
+| Rete | Pad | GPIO | | Rete | Pad | GPIO |
+|---|---|---|---|---|---|---|
+| TS | 2 | P1.10 | | QSPI_CS | 12 | P0.26 |
+| CHG_N | 3 | P0.03 | | QSPI_IO1 | 14 | P0.06 |
+| FG_ALRT | 4 | P0.28 | | QSPI_IO2 | 15 | P0.05 |
+| SENS_ON | 6 | P1.13 | | QSPI_IO3 | 16 | P0.08 |
+| IMU_INT2 | 7 | P0.02 | | QSPI_SCK | 17 | P1.09 |
+| IMU_INT1 | 8 | P0.29 | | QSPI_IO0 | 18 | P0.04 |
+| LED | 9 | P0.31 | | IMU_SCK | 20 | P0.12 |
+| MOT_PWM | 10 | P0.30 | | IMU_MOSI | 22 | P0.07 |
+| I2C_SDA | 32 | P0.20 | | IMU_MISO | 28 | P0.15 |
+| I2C_SCL | 33 | P0.13 | | IMU_CS | 30 | P0.17 |
+| FG_SDA | 34 | P0.22 | | RESET | 26 | P0.18 |
+| FG_SCL | 35 | P0.24 | | SWDIO / SWDCLK | 37 / 39 | SWD |
+| VDD / VBAT (VDDH) / VIN_D (VBUS) | 19 / 23 / 27 | | | GND | 5, 21, 24 | |
+
+Non usati: P1.11 (1), XL1/XL2 (11, 13: per un eventuale quarzo), DCCH (25), USB D-/D+ (29, 31), P1.00 (36), P1.02 (38), P1.04 (40), P1.06 (42), NFC (41, 43; GPIO solo con `UICR.NFCPINS`). **Per il firmware:** MOT_PWM è su un pin a bassa frequenza, quindi PWM del vibratore **≤ 10 kHz** (1-2 kHz va bene); CHG_N usa il pull-up interno di P0.03; i GPIO della QSPI in *high drive*; i pin della QSPI non sono quelli di default (da dichiarare nell'overlay). I dati inviati all'app non cambiano.
+
+## Intestazioni SMD da 1,27 mm (solo informazione, schema invariato)
+Cercate su JLCPCB (API del 2026-11-01) per evitare la saldatura a onda sul lato dei contatti dorati.
+- **Ad angolo retto, SMD:** Amphenol **20021221-00010C4LF, C180221** (2 × 5 poli; la pagina LCSC dice "Right Angle" e la descrizione JLC "卧贴", cioè montaggio orizzontale; stock 6341, ~1,11 $, extended; profondità 5,5-5,6 mm, altezza da verificare sul disegno Amphenol) e **214012, C780571** (1 × 4 ad angolo retto, stock 245, ~2,68 $). Un 2 × 12 ad angolo retto a magazzino **non c'è**: la serie Amphenol a 12, 20 e 24 poli è a stock 0 (C236048, C240306, C17288418).
+- **Verticali SMD:** XUNPU PH1.27-02-xxPWS, da 2 × 2 a 2 × 20 (C41360874-C41360891, 130-1800 pz, 0,08-0,54 $): perno 4 mm + 1 mm di plastica = ~5 mm. Il 2 × 12 non c'è ma si può usare un 2 × 13 (C41360884, 280 pz, 0,35 $) o due 2 × 6 (C41360878, 788 pz, 0,16 $). Altezza ~5 mm: **non esce da ~8 mm di resina**. Le femmine verticali (C22436132, 2 × 12, H 4,3 mm, 1528 pz, 0,26 $) sono ancora più basse.
+- **Opzioni:** (a) due header ad angolo retto 2 × 5 (C180221) e J2 ridotto a 2 × 10; (b) J2 come file di piazzole per pogo (come l'SWD): nessuna saldatura a onda; (c) tenere il THT C7470112 e chiedere a JLC la protezione dei contatti dorati.
+

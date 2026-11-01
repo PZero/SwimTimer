@@ -12,9 +12,10 @@ from pathlib import Path
 QUI = Path(__file__).parent
 KICAD = Path(os.environ.get("KICAD_DIR", Path.home() / "AppData/Local/Programs/KiCad/10.0"))
 CLI = KICAD / "bin" / "kicad-cli.exe"
-OUT = QUI / "jlc"
-PCB = QUI / "swimtag.kicad_pcb"
-SCH = QUI / "swimtag.kicad_sch"
+from dati_scheda import NOME
+OUT = QUI / "jlc" / f"v0.3_{NOME}"
+PCB = QUI / f"{NOME}.kicad_pcb"
+SCH = QUI / f"{NOME}.kicad_sch"
 STRATI = "F.Cu,In1.Cu,In2.Cu,B.Cu,F.Paste,B.Paste,F.Silkscreen,B.Silkscreen,F.Mask,B.Mask,Edge.Cuts"
 
 
@@ -23,7 +24,7 @@ def cli(*argomenti):
 
 
 def main():
-    OUT.mkdir(exist_ok=True)
+    OUT.mkdir(parents=True, exist_ok=True)
     gerber = OUT / "gerber"
     shutil.rmtree(gerber, ignore_errors=True)
     gerber.mkdir()
@@ -41,7 +42,7 @@ def main():
     # CPL: posizioni dei componenti montati da JLC (solo lato sopra)
     pos = OUT / "pos_kicad.csv"
     cli("pcb", "export", "pos", "--format", "csv", "--units", "mm", "--side", "front",
-        "--exclude-fp-th", "-o", pos, PCB)
+        "-o", pos, PCB)
     with pos.open(encoding="utf-8") as f, (OUT / "cpl_jlc.csv").open("w", newline="", encoding="utf-8") as g:
         w = csv.writer(g)
         w.writerow(["Designator", "Mid X", "Mid Y", "Layer", "Rotation"])

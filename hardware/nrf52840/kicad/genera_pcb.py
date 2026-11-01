@@ -1,4 +1,4 @@
-"""Genera swimtag.kicad_pcb dai dati di dati_scheda.py (componenti piazzati, reti, zone, regole JLC).
+"""Genera swimtag_<variante>.kicad_pcb dai dati di dati_scheda.py (componenti piazzati, reti, zone, regole JLC).
 
 Da eseguire con il Python di KiCad:
   "C:\\Users\\<utente>\\AppData\\Local\\Programs\\KiCad\\10.0\\bin\\python.exe" genera_pcb.py
@@ -9,7 +9,7 @@ from pathlib import Path
 
 import pcbnew
 
-from dati_scheda import ANTENNA_H, COMPONENTI, SCHEDA_H, SCHEDA_L
+from dati_scheda import ANTENNA_H, COMPONENTI, NOME, SCHEDA_H_TOT as SCHEDA_H, SCHEDA_L
 from genera_schema import uid
 
 QUI = Path(__file__).parent
@@ -52,7 +52,7 @@ def zona(board, nome_rete, layer, x0, y0, x1, y1, reti):
 
 def main(solo_piano_interno=False):
     """solo_piano_interno=True: solo il piano di massa In1 (per lo sbroglio con Freerouting)."""
-    board = pcbnew.NewBoard(str(QUI / "swimtag.kicad_pcb"))
+    board = pcbnew.NewBoard(str(QUI / f"{NOME}.kicad_pcb"))
     board.SetCopperLayerCount(4)
     ds = board.GetDesignSettings()
     # regole JLCPCB 4 strati (capacità standard, senza sovrapprezzo)
@@ -118,7 +118,7 @@ def main(solo_piano_interno=False):
     for layer in strati:
         zona(board, "GND", layer, 0.25, 0.25, SCHEDA_L - 0.25, SCHEDA_H - 0.25, reti)
 
-    # zona dell'antenna: niente rame su nessuno strato (foglio Raytac, 3,8 mm dal bordo)
+    # zona dell'antenna: niente rame su nessuno strato (modulo Ebyte E73: dal bordo al pad 1/43, 3,7 mm; vedi ANTENNA_H)
     k = pcbnew.ZONE(board)
     k.SetIsRuleArea(True)
     k.SetLayerSet(pcbnew.LSET.AllCuMask())
@@ -134,7 +134,7 @@ def main(solo_piano_interno=False):
 
     # testo in serigrafia sotto
     t = pcbnew.PCB_TEXT(board)
-    t.SetText("SwimTimer tag v0.2")
+    t.SetText("SwimTimer tag v0.3")
     t.SetLayer(pcbnew.B_SilkS)
     t.SetPosition(punto(SCHEDA_L / 2, 14.0))
     t.SetTextSize(punto(0.8, 0.8))
@@ -143,8 +143,8 @@ def main(solo_piano_interno=False):
     board.Add(t)
 
     pcbnew.ZONE_FILLER(board).Fill(board.Zones())
-    board.Save(str(QUI / "swimtag.kicad_pcb"))
-    print("scritto swimtag.kicad_pcb:", len(COMPONENTI), "componenti,", len(reti), "reti")
+    board.Save(str(QUI / f"{NOME}.kicad_pcb"))
+    print(f"scritto {NOME}.kicad_pcb:", len(COMPONENTI), "componenti,", len(reti), "reti")
 
 
 if __name__ == "__main__":

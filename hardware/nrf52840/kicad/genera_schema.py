@@ -1,4 +1,4 @@
-"""Genera swimtag.kicad_sch dai dati di dati_scheda.py.
+"""Genera swimtag_<variante>.kicad_sch dai dati di dati_scheda.py.
 
 Schema "a etichette": ogni simbolo ha un'etichetta di rete su ogni pin, i pin non usati hanno
 la crocetta di non collegamento. Uso (Python di KiCad o normale):  python genera_schema.py
@@ -8,13 +8,13 @@ import uuid
 import os
 from pathlib import Path
 
-from dati_scheda import COMPONENTI, NC_U1
+from dati_scheda import COMPONENTI, NC_U1, NOME, VARIANTE
 
 QUI = Path(__file__).parent
 KICAD = Path(os.environ.get("KICAD_DIR", Path.home() / "AppData/Local/Programs/KiCad/10.0"))
 SIMBOLI_KICAD = KICAD / "share" / "kicad" / "symbols"
 LIB_LOCALE = QUI / "lib" / "swimtag.kicad_sym"
-PROGETTO = "swimtag"
+PROGETTO = NOME
 NS = uuid.UUID("6f1d3c52-6a47-4c55-9a8e-0d7c1b3a5e01")
 
 
@@ -124,7 +124,7 @@ def main():
     testo = (
         f'(kicad_sch (version 20250114) (generator "genera_schema.py") (generator_version "9.0")\n'
         f'(uuid "{RADICE}") (paper "A3")\n'
-        f'(title_block (title "SwimTimer - tag nRF52840") (rev "0.2") (comment 1 "Generato da dati_scheda.py: modificare i dati, non lo schema"))\n'
+        f'(title_block (title "SwimTimer - tag nRF52840") (rev "0.3") (comment 1 "Variante {VARIANTE}. Generato da dati_scheda.py: modificare i dati, non lo schema"))\n'
         f'(lib_symbols\n' + "\n".join(lib_symbols.values()) + "\n)\n"
         + "\n".join(simboli + etichette + croci)
         + '\n(sheet_instances (path "/" (page "1")))\n)\n')
