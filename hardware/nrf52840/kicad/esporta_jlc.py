@@ -48,7 +48,7 @@ def main():
         w.writerow(["Designator", "Mid X", "Mid Y", "Layer", "Rotation"])
         for r in csv.DictReader(f):
             w.writerow([r["Ref"], f'{float(r["PosX"]):.3f}mm', f'{float(r["PosY"]):.3f}mm',
-                        "Top" if r["Side"] == "top" else "Bottom", f'{float(r["Rot"]):.0f}'])
+                        "Top" if r["Side"] == "top" else "Bottom", f'{float(r["Rot"]) % 360:.0f}'])
     pos.unlink()
 
     for lato, extra in (("sopra", ["--side", "top"]), ("sotto", ["--side", "bottom"]),

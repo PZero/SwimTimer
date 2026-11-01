@@ -29,6 +29,8 @@ def main():
     board = pcbnew.LoadBoard(str(PCB))
     if not pcbnew.ExportSpecctraDSN(board, str(dsn)):
         sys.exit("esportazione DSN non riuscita")
+    # margine di 5 um sul minimo JLC (0,1 mm): Freerouting arrotonda le posizioni e a volte resta 1 um sotto
+    dsn.write_text(dsn.read_text(encoding="utf-8").replace("(clearance 100)", "(clearance 105)"), encoding="utf-8")
     ses.unlink(missing_ok=True)
     subprocess.run([os.environ.get("JAVA25", "java"), "-jar", os.environ["FREEROUTING_JAR"],
                     "-de", str(dsn), "-do", str(ses), "-mp", passate, "--gui.enabled=false"],

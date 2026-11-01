@@ -10,8 +10,7 @@
 > | U6 | TI TPS22916CYFPR, interruttore di carico 2 A, QOD 150 Ω, smart pull-down su ON | C2680319 | extended | 1646 | 0,40 | DSBGA-4 0,78 mm, passo 0,4 |
 > | U7 | MAX17048G+T10, misuratore di carica | C2682616 | extended | 24741 | 2,10 | TDFN-8 2 × 2 mm |
 > | J1 | JST SM02B-SRSS-TB(LF)(SN), SH 1,0 mm, ingresso laterale | C160402 | extended | 74535 | 0,13 | scelto sul PicoBlade 1,25 (stesso prezzo, più piccolo); nessun connettore è *basic* |
-> | J2 | 1271WR-2x12P, header 1,27 mm 2 × 12, angolo retto, foro passante | C7470112 | extended | 493 | 0,20 | THT, saldatura a onda JLC; alternativa verticale C7470094 (935, 0,12) |
-> | J3 | HX PZ1.27-1x2P WZ, 1 × 2 angolo retto | C22438188 | extended | 1190 | 0,03 | ponticello (shunt 1,27 mm, C150949, 0,04 $) da comprare a parte: non è montabile da JLC |
+> | ~~J2~~, ~~J3~~ | ~~header 2 × 12 (C7470112) e ponticello 1 × 2 (C22438188)~~ | | | | | **tolti nella variante 1c (2026-11-01)**: vedi sotto |
 > | C10, C11 | 47 µF 6,3 V X5R 0805 (Samsung CL21A476MQYNNNE) | C16780 | **basic** | 1,0 M | 0,10 | a 4,2 V la capacità reale scende a circa 15–20 µF ciascuno |
 > | C9 / C12 / R8–R10 | 100 nF / 10 µF / 1 MΩ / 10 kΩ | C1525 / C15525 / C26083 / C25744 | basic | milioni | < 0,03 | già in uso |
 > | U5 | **MS583702BA01-50** (= MS5837-02BA01, stesso chip e stesso package del C2887129, che è a **stock 0**) | **C5785272** | extended | 1079 | 4,70 | cambiato il codice, nessun cambio di schema né di dati |
@@ -22,7 +21,17 @@
 > |---|---|---|---|---|---|---|
 > | **U1** | **Ebyte E73-2G4M08S1C** (nRF52840-QIAA, antenna ceramica, 13,0 × 18,0 × 3,0 mm, 43 pad a 1,27 mm: perimetrali a mezzo foro + 15 interni LGA, rifusione) | **C356849** | extended | **572** (API JLC 2026-11-01) | **7,70** (1-9 pz; 7,54 da 10) | VDDH, VDD, VBUS, SWD e RESET esposti, DC/DC REG1 con induttori sul modulo, nessun quarzo a 32 kHz (verifiche in [verifiche.md](verifiche.md)). Costa meno del Raytac ma è 2,5 mm più largo, 2,5 mm più lungo e quasi 1 mm più alto (3,0 contro 2,05 mm): scheda e tag più grandi, vedi `progetto.md`. Certificazione dichiarata dal produttore (FCC ID 2ALPH-E73 in etichetta): non darla per scontata per un uso commerciale |
 >
-> **Costi in più per tag (v0.3 collaudo rispetto alla v0.2):** U6 + U7 + J1 + J2 + J3 + 2 × 47 µF + passivi ≈ **3,2 $**; MS5837 a 4,70 $ invece di 5–8 $. **Spese fisse in più:** 5 componenti *extended* nuovi (U6, U7, J1, J2, J3) × ~3 $ di caricamento = **~15 $**, oltre all'eventuale supplemento per i componenti a foro passante (da chiedere a JLC). Totale per l'ordine di 2 tag: circa **+22 $** (IVA esclusa). Il PCB resta nella stessa fascia di prezzo (< 100 × 100 mm).
+> **Variante 1c (2026-11-01, scheda 26 × 30 mm, approvata dall'utente): cambi alla distinta.** Distinta effettiva: `kicad/jlc/v0.3_swimtag_collaudo/bom_jlc.csv` (22 righe, 37 componenti montati da JLC, tutti sul lato sopra).
+>
+> | Rif. | Componente | LCSC | Tipo | $ / pezzo | Note |
+> |---|---|---|---|---|---|
+> | **R11** | resistenza **0 Ω 0402** (UNI-ROYAL 0402WGF0000TCE) tra BAT e VBAT | C17168 | **basic** | < 0,01 | si dissalda a banco per misurare la corrente (al posto di J3 + ponticello) |
+> | **J4** | impronta **Tag-Connect TC2030-NL** (6 pad + 3 fori di centraggio) sul lato sotto | — (solo rame, non montata) | — | 0 | cavo TC2030-NL **da comprare a parte** (listino Tag-Connect ~40 $, prezzo da verificare, oppure un clone; serve un solo cavo per tutti i tag; con un J-Link serve anche l'adattatore ARM 10 pin: **non ordinato, da decidere**) |
+> | TP1, TP2 | contatti di ricarica Ø 2,5 mm (VIN, GND) a 4,2 mm | — | — | 0 | solo rame (ENIG) |
+> | TP3-TP6 / TP7-TP9 | piazzole di prova Ø 0,8 mm (CHG_N, SENS_ON, VDD_SENS, FG_ALRT) / Ø 1 mm (VBAT, VDD, GND) | — | — | 0 | solo rame |
+> | TP10, TP11 | piazzole 1 × 1 mm per i fili del vibratore (MOT+, MOT−) | — | — | 0 | vibratore Ø 6 mm da comprare a parte |
+>
+> **Costi del tag di collaudo 1c (stima, da riverificare nel carrello JLC).** Per tag: modulo 7,70 + IMU ~3 + flash ~3 + caricatore ~1,5 + MS5837 4,70 + U6 0,40 + U7 2,10 + J1 0,13 + 2 × 47 µF 0,20 + resto ~1 = **~24 $ di componenti**; rispetto alla v0.3 con header risparmia ~0,2 $ per tag (J2 e J3) e ~6 $ di spese fisse (due componenti *extended* in meno). **Componenti *extended*: U1, U2, U3, U4, U5, U6, U7, J1, D3, D4 = 10 × ~3 $ = ~30 $ di caricamento.** Ordine di **2 tag** (JLC chiede minimo 5 schede, di cui 2 assemblate): componenti ~48 $ + caricamento *extended* ~30 $ + PCB 4 strati ENIG 26 × 30 mm ×5 ~30 $ + montaggio Economic/raggi X ~10-15 $ ≈ **120-130 $** (IVA e spedizione escluse; spedizione DHL da Shenzhen di solito 5-7 giorni lavorativi + ~3 giorni di produzione). Più cella 401012 (~3 $), vibratore (~1 $), cavo Tag-Connect (~40 $ se non si ha già un programmatore con SWD a molle).
 
 Prezzi indicativi in USD per pezzo a piccoli lotti (5–10 schede); codici LCSC/JLCPCB da riverificare al momento dell'ordine (stock e prezzi cambiano ogni settimana). Progetto e motivazioni in `progetto.md`.
 

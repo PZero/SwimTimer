@@ -1,121 +1,245 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 92 46" width="1380" height="690"><rect width="92" height="46" fill="#ffffff"/><g transform="translate(4,6)">
-<text x="-0.80" y="-3.20" font-size="1.4" text-anchor="start" fill="#111111" font-family="Arial, sans-serif" font-weight="bold">A · lunga, un solo lato</text>
-<rect x="-0.80" y="-0.80" width="13.10" height="28.10" fill="#c8dcf0" fill-opacity="0.35" stroke="#7fa7c9" stroke-width="0.12" stroke-dasharray="0.3 0.3"/>
-<rect x="0.00" y="0.00" width="11.50" height="26.50" fill="#2e7d4f" stroke="#1b4d30" stroke-width="0.1"/>
-<rect x="0.50" y="0.00" width="10.50" height="15.50" fill="#b8bec6" stroke="#555555" stroke-width="0.1"/>
-<text x="5.75" y="8.13" font-size="1.1" text-anchor="middle" fill="#222222" font-family="Arial, sans-serif">MDBT50Q</text>
-<rect x="0.50" y="15.90" width="8.00" height="6.00" fill="#3a3a3a" stroke="#000000" stroke-width="0.05"/>
-<rect x="9.10" y="16.10" width="1.60" height="0.80" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
-<rect x="9.10" y="17.20" width="1.60" height="0.80" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
-<rect x="9.40" y="18.40" width="1.00" height="0.50" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
-<rect x="9.40" y="19.20" width="1.00" height="0.50" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
-<rect x="9.40" y="20.00" width="1.00" height="0.50" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
-<rect x="9.40" y="20.80" width="1.00" height="0.50" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
-<rect x="0.50" y="22.30" width="2.50" height="3.00" fill="#3a3a3a" stroke="#000000" stroke-width="0.05"/>
-<text x="1.75" y="24.05" font-size="0.7" text-anchor="middle" fill="#ffffff" font-family="Arial, sans-serif">IMU</text>
-<rect x="3.40" y="22.30" width="3.30" height="3.30" fill="#3a3a3a" stroke="#000000" stroke-width="0.05"/>
-<text x="5.05" y="24.20" font-size="0.7" text-anchor="middle" fill="#ffffff" font-family="Arial, sans-serif">press.</text>
-<rect x="7.10" y="22.40" width="1.60" height="0.90" fill="#3a3a3a" stroke="#000000" stroke-width="0.05"/>
-<rect x="9.20" y="22.40" width="1.00" height="1.00" fill="#f5f5f5" stroke="#999999" stroke-width="0.05"/>
-<rect x="7.10" y="23.70" width="1.20" height="1.20" fill="#3a3a3a" stroke="#000000" stroke-width="0.05"/>
-<rect x="8.60" y="23.90" width="1.00" height="0.50" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
-<rect x="9.80" y="23.70" width="1.20" height="0.80" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
-<rect x="7.10" y="25.20" width="1.00" height="0.50" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
-<rect x="8.40" y="25.20" width="1.00" height="0.50" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
-<rect x="9.70" y="25.20" width="1.00" height="0.50" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
-<rect x="0.00" y="0.00" width="11.50" height="3.80" fill="#e74c3c" fill-opacity="0.3" stroke="#c0392b" stroke-width="0.12"/>
-<text x="5.75" y="1.60" font-size="0.75" text-anchor="middle" fill="#222222" font-family="Arial, sans-serif">antenna: niente rame</text>
-<text x="5.75" y="2.70" font-size="0.75" text-anchor="middle" fill="#222222" font-family="Arial, sans-serif">(3,8 mm, tutti gli strati)</text>
-<circle cx="3.00" cy="19.00" r="1.25" fill="none" stroke="#d4a017" stroke-width="0.15" stroke-dasharray="0.4 0.3"/>
-<circle cx="8.00" cy="19.00" r="1.25" fill="none" stroke="#d4a017" stroke-width="0.15" stroke-dasharray="0.4 0.3"/>
-<rect x="1.20" y="23.90" width="0.90" height="0.90" fill="none" stroke="#d4a017" stroke-width="0.15" stroke-dasharray="0.4 0.3"/>
-<rect x="2.47" y="23.90" width="0.90" height="0.90" fill="none" stroke="#d4a017" stroke-width="0.15" stroke-dasharray="0.4 0.3"/>
-<rect x="3.74" y="23.90" width="0.90" height="0.90" fill="none" stroke="#d4a017" stroke-width="0.15" stroke-dasharray="0.4 0.3"/>
-<rect x="5.01" y="23.90" width="0.90" height="0.90" fill="none" stroke="#d4a017" stroke-width="0.15" stroke-dasharray="0.4 0.3"/>
-<rect x="6.28" y="23.90" width="0.90" height="0.90" fill="none" stroke="#d4a017" stroke-width="0.15" stroke-dasharray="0.4 0.3"/>
-<rect x="0.75" y="4.00" width="10.00" height="12.00" fill="#3478dc" fill-opacity="0.2" stroke="#2a62c9" stroke-width="0.15" stroke-dasharray="0.6 0.4"/>
-<text x="5.75" y="10.31" font-size="0.9" text-anchor="middle" fill="#222222" font-family="Arial, sans-serif">cella 20 mAh (sopra)</text>
-<circle cx="4.50" cy="18.90" r="3.00" fill="#e67e22" fill-opacity="0.2" stroke="#d35400" stroke-width="0.15" stroke-dasharray="0.6 0.4"/>
-<text x="4.50" y="19.18" font-size="0.8" text-anchor="middle" fill="#222222" font-family="Arial, sans-serif">flash + vibr.</text>
-<text x="5.75" y="29.30" font-size="1.0" text-anchor="middle" fill="#222222" font-family="Arial, sans-serif">scheda 11,5 × 26,5 mm</text>
-<text x="5.75" y="30.80" font-size="1.1" text-anchor="middle" fill="#111111" font-family="Arial, sans-serif" font-weight="bold">finito ≈ 13 × 28 × 7,2 mm</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 98 46" width="1470" height="690"><rect width="98" height="46" fill="#ffffff"/><g>
+<text x="2.50" y="2.60" font-size="1.4" text-anchor="start" fill="#111111" font-family="Arial, sans-serif" font-weight="bold">Sopra (componenti)</text>
+<rect x="2.50" y="4.50" width="29.00" height="33.00" fill="#c8dcf0" fill-opacity="0.35" stroke="#7fa7c9" stroke-width="0.12" stroke-dasharray="0.3 0.3"/>
+<rect x="4.00" y="6.00" width="26.00" height="30.00" fill="#2e7d4f" stroke="#1b4d30" stroke-width="0.1"/>
+<rect x="7.66" y="26.55" width="0.64" height="0.54" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="7.66" y="25.53" width="0.64" height="0.54" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="8.57" y="31.90" width="1.55" height="0.60" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="8.57" y="32.90" width="1.55" height="0.60" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="4.58" y="30.30" width="1.80" height="1.20" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="4.58" y="33.90" width="1.80" height="1.20" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="25.93" y="22.98" width="0.56" height="0.62" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="26.89" y="22.98" width="0.56" height="0.62" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="6.68" y="16.03" width="1.48" height="0.60" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="6.68" y="14.13" width="1.48" height="0.60" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="4.80" y="15.08" width="1.48" height="0.60" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="27.73" y="21.41" width="1.48" height="0.60" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="27.73" y="19.51" width="1.48" height="0.60" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="25.86" y="20.46" width="1.48" height="0.60" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="22.52" y="26.81" width="0.54" height="0.64" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="23.54" y="26.81" width="0.54" height="0.64" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="7.74" y="17.54" width="0.54" height="0.64" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="6.72" y="17.54" width="0.54" height="0.64" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="25.82" y="16.74" width="0.56" height="0.62" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="26.78" y="16.74" width="0.56" height="0.62" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="6.48" y="21.22" width="0.64" height="0.54" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="6.48" y="20.20" width="0.64" height="0.54" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="27.88" y="30.84" width="0.56" height="0.62" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="28.84" y="30.84" width="0.56" height="0.62" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="17.50" y="26.71" width="0.60" height="0.27" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="17.50" y="27.21" width="0.60" height="0.27" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="17.50" y="27.71" width="0.60" height="0.27" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="17.50" y="28.21" width="0.60" height="0.27" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="18.34" y="28.22" width="0.27" height="0.60" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="18.84" y="28.22" width="0.27" height="0.60" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="19.34" y="28.22" width="0.27" height="0.60" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="19.84" y="28.21" width="0.60" height="0.27" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="19.84" y="27.71" width="0.60" height="0.27" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="19.84" y="27.21" width="0.60" height="0.27" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="19.84" y="26.71" width="0.60" height="0.27" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="19.34" y="26.38" width="0.27" height="0.60" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="18.84" y="26.38" width="0.27" height="0.60" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="18.34" y="26.38" width="0.27" height="0.60" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="21.48" y="31.39" width="0.56" height="0.62" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="22.44" y="31.39" width="0.56" height="0.62" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="9.71" y="28.10" width="0.56" height="0.62" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="8.75" y="28.10" width="0.56" height="0.62" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="16.38" y="27.57" width="0.64" height="0.54" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="16.38" y="26.55" width="0.64" height="0.54" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="25.72" y="15.59" width="0.64" height="0.54" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="25.72" y="14.57" width="0.64" height="0.54" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="7.72" y="18.88" width="0.54" height="0.64" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="6.70" y="18.88" width="0.54" height="0.64" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="28.15" y="22.95" width="0.64" height="0.54" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="28.15" y="23.97" width="0.64" height="0.54" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="26.17" y="32.52" width="1.00" height="1.45" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="28.07" y="32.52" width="1.00" height="1.45" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="11.34" y="26.64" width="0.88" height="0.95" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="12.92" y="26.64" width="0.88" height="0.95" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="15.13" y="28.31" width="0.62" height="0.56" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="15.13" y="27.35" width="0.62" height="0.56" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<circle cx="9.96" cy="26.84" r="0.10" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<circle cx="10.36" cy="26.84" r="0.10" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<circle cx="9.96" cy="27.24" r="0.10" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<circle cx="10.36" cy="27.24" r="0.10" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="23.08" y="33.47" width="1.00" height="1.45" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="21.18" y="33.47" width="1.00" height="1.45" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="10.86" y="28.35" width="0.54" height="0.64" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="11.88" y="28.35" width="0.54" height="0.64" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="28.18" y="17.73" width="0.70" height="1.00" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="28.18" y="15.39" width="0.70" height="1.00" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="21.04" y="28.04" width="0.62" height="0.56" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="21.04" y="27.08" width="0.62" height="0.56" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="24.73" y="28.97" width="1.00" height="0.70" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="27.07" y="28.97" width="1.00" height="0.70" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="25.79" y="17.96" width="0.54" height="0.64" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="26.81" y="17.96" width="0.54" height="0.64" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="27.91" y="12.93" width="0.60" height="0.45" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="25.81" y="12.93" width="0.60" height="0.45" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="5.04" y="26.14" width="0.25" height="0.78" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="5.54" y="26.14" width="0.25" height="0.78" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="6.04" y="26.14" width="0.25" height="0.78" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="6.54" y="26.14" width="0.25" height="0.78" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="6.54" y="24.16" width="0.25" height="0.78" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="6.04" y="24.16" width="0.25" height="0.78" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="5.54" y="24.16" width="0.25" height="0.78" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="5.04" y="24.16" width="0.25" height="0.78" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="5.31" y="25.14" width="1.20" height="0.80" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="23.29" y="28.17" width="0.62" height="0.56" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="23.29" y="29.13" width="0.62" height="0.56" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="27.58" y="27.04" width="1.30" height="1.30" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="27.58" y="25.04" width="1.30" height="1.30" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="25.58" y="25.04" width="1.30" height="1.30" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="25.58" y="27.04" width="1.30" height="1.30" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="9.50" y="9.74" width="2.00" height="0.90" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="9.50" y="11.01" width="2.00" height="0.90" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="9.50" y="12.25" width="2.00" height="0.90" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="9.50" y="13.55" width="2.00" height="0.90" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="9.50" y="14.82" width="2.00" height="0.90" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="9.50" y="16.09" width="2.00" height="0.90" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="9.50" y="17.36" width="2.00" height="0.90" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="9.50" y="18.63" width="2.00" height="0.90" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="9.50" y="19.90" width="2.00" height="0.90" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="9.50" y="21.17" width="2.00" height="0.90" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="12.10" y="23.21" width="0.90" height="2.00" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="12.74" y="21.66" width="0.90" height="0.90" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="13.37" y="23.21" width="0.90" height="2.00" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="14.01" y="21.66" width="0.90" height="0.90" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="14.64" y="23.21" width="0.90" height="2.00" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="15.28" y="21.66" width="0.90" height="0.90" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="15.91" y="23.21" width="0.90" height="2.00" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="16.55" y="21.66" width="0.90" height="0.90" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="17.18" y="23.21" width="0.90" height="2.00" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="17.82" y="21.66" width="0.90" height="0.90" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="18.45" y="23.21" width="0.90" height="2.00" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="19.09" y="21.66" width="0.90" height="0.90" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="19.72" y="23.21" width="0.90" height="2.00" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="20.36" y="21.66" width="0.90" height="0.90" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="20.99" y="23.21" width="0.90" height="2.00" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="22.50" y="21.17" width="2.00" height="0.90" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="22.50" y="19.90" width="2.00" height="0.90" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="20.96" y="19.26" width="0.90" height="0.90" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="22.50" y="18.63" width="2.00" height="0.90" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="20.96" y="17.99" width="0.90" height="0.90" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="22.50" y="17.36" width="2.00" height="0.90" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="20.96" y="16.72" width="0.90" height="0.90" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="22.50" y="16.09" width="2.00" height="0.90" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="20.96" y="15.45" width="0.90" height="0.90" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="22.50" y="14.82" width="2.00" height="0.90" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="20.96" y="14.18" width="0.90" height="0.90" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="22.50" y="13.55" width="2.00" height="0.90" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="20.96" y="12.91" width="0.90" height="0.90" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="22.50" y="12.28" width="2.00" height="0.90" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="20.96" y="11.64" width="0.90" height="0.90" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="22.50" y="11.01" width="2.00" height="0.90" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="20.95" y="10.37" width="0.90" height="0.90" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="22.50" y="9.74" width="2.00" height="0.90" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="10.50" y="8.20" width="13" height="18" fill="none" stroke="#555555" stroke-width="0.15"/>
+<text x="17.00" y="19.40" font-size="0.9" text-anchor="middle" fill="#222222" font-family="Arial, sans-serif">E73-2G4M08S1C</text>
+<text x="17.00" y="20.60" font-size="0.8" text-anchor="middle" fill="#222222" font-family="Arial, sans-serif">13 × 18 mm</text>
+<circle cx="8.21" cy="21.87" r="0.10" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<circle cx="7.81" cy="21.87" r="0.10" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<circle cx="8.21" cy="21.47" r="0.10" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<circle cx="7.81" cy="21.47" r="0.10" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<circle cx="8.21" cy="21.07" r="0.10" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<circle cx="7.81" cy="21.07" r="0.10" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="6.62" y="28.41" width="0.56" height="0.62" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="5.66" y="28.41" width="0.56" height="0.62" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="7.74" y="22.74" width="0.56" height="0.62" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="6.78" y="22.74" width="0.56" height="0.62" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<circle cx="15.41" cy="33.05" r="0.30" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<circle cx="16.41" cy="33.05" r="0.30" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<circle cx="15.41" cy="32.05" r="0.30" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<circle cx="16.41" cy="32.05" r="0.30" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="19.24" y="34.17" width="1.40" height="0.56" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="19.24" y="32.90" width="1.40" height="0.56" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="19.24" y="31.64" width="1.40" height="0.56" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="19.24" y="30.37" width="1.40" height="0.56" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="11.18" y="30.37" width="1.40" height="0.56" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="11.18" y="31.64" width="1.40" height="0.56" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="11.18" y="32.90" width="1.40" height="0.56" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="11.18" y="34.17" width="1.40" height="0.56" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="14.21" y="30.40" width="3.40" height="4.30" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="5.41" y="17.87" width="0.64" height="0.54" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="5.41" y="18.89" width="0.64" height="0.54" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<circle cx="14.46" cy="15.50" r="0.50" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<circle cx="19.54" cy="14.48" r="0.50" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<circle cx="19.54" cy="16.52" r="0.50" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="4.00" y="6.00" width="26.00" height="3.70" fill="#e74c3c" fill-opacity="0.3" stroke="#c0392b" stroke-width="0.12"/>
+<text x="17.00" y="7.50" font-size="0.75" text-anchor="middle" fill="#222222" font-family="Arial, sans-serif">antenna: niente rame</text>
+<text x="17.00" y="8.60" font-size="0.75" text-anchor="middle" fill="#222222" font-family="Arial, sans-serif">(3,7 mm, tutti gli strati)</text>
+<rect x="12.00" y="11.00" width="10.00" height="12.00" fill="#3478dc" fill-opacity="0.25" stroke="#2a62c9" stroke-width="0.15" stroke-dasharray="0.6 0.4"/>
+<text x="17.00" y="16.50" font-size="0.85" text-anchor="middle" fill="#222222" font-family="Arial, sans-serif">cella 401012</text>
+<text x="17.00" y="17.60" font-size="0.8" text-anchor="middle" fill="#222222" font-family="Arial, sans-serif">4 × 10 × 12 mm</text>
+<text x="17.00" y="18.70" font-size="0.8" text-anchor="middle" fill="#222222" font-family="Arial, sans-serif">(sopra il modulo)</text>
+<circle cx="15.91" cy="32.55" r="3.00" fill="#e67e22" fill-opacity="0.25" stroke="#d35400" stroke-width="0.15" stroke-dasharray="0.6 0.4"/>
+<text x="15.91" y="32.85" font-size="0.75" text-anchor="middle" fill="#222222" font-family="Arial, sans-serif">vibratore Ø 6</text>
+<text x="17.00" y="39.50" font-size="1.0" text-anchor="middle" fill="#222222" font-family="Arial, sans-serif">scheda 26 × 30 mm</text>
+<text x="17.00" y="41.00" font-size="1.0" text-anchor="middle" fill="#111111" font-family="Arial, sans-serif" font-weight="bold">con resina ≈ 29 × 33 mm</text>
 </g>
-<g transform="translate(26,6)">
-<text x="-0.80" y="-3.20" font-size="1.4" text-anchor="start" fill="#111111" font-family="Arial, sans-serif" font-weight="bold">B · compatta, un solo lato</text>
-<rect x="-0.80" y="-0.80" width="19.10" height="21.10" fill="#c8dcf0" fill-opacity="0.35" stroke="#7fa7c9" stroke-width="0.12" stroke-dasharray="0.3 0.3"/>
-<rect x="0.00" y="0.00" width="17.50" height="19.50" fill="#2e7d4f" stroke="#1b4d30" stroke-width="0.1"/>
-<rect x="0.30" y="0.00" width="10.50" height="15.50" fill="#b8bec6" stroke="#555555" stroke-width="0.1"/>
-<text x="5.55" y="8.13" font-size="1.1" text-anchor="middle" fill="#222222" font-family="Arial, sans-serif">MDBT50Q</text>
-<rect x="11.20" y="4.10" width="6.00" height="8.00" fill="#3a3a3a" stroke="#000000" stroke-width="0.05"/>
-<rect x="11.40" y="12.60" width="2.50" height="3.00" fill="#3a3a3a" stroke="#000000" stroke-width="0.05"/>
-<text x="12.65" y="14.34" font-size="0.7" text-anchor="middle" fill="#ffffff" font-family="Arial, sans-serif">IMU</text>
-<rect x="14.40" y="12.70" width="1.60" height="0.90" fill="#3a3a3a" stroke="#000000" stroke-width="0.05"/>
-<rect x="14.40" y="14.00" width="1.00" height="0.50" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
-<rect x="14.40" y="14.80" width="1.00" height="0.50" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
-<rect x="16.10" y="12.70" width="1.00" height="0.50" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
-<rect x="16.10" y="13.50" width="1.00" height="0.50" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
-<rect x="16.10" y="14.30" width="1.00" height="0.50" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
-<rect x="16.10" y="15.10" width="1.00" height="0.50" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
-<rect x="0.30" y="15.90" width="3.30" height="3.30" fill="#3a3a3a" stroke="#000000" stroke-width="0.05"/>
-<text x="1.95" y="17.80" font-size="0.7" text-anchor="middle" fill="#ffffff" font-family="Arial, sans-serif">press.</text>
-<rect x="4.00" y="16.10" width="1.60" height="0.80" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
-<rect x="4.00" y="17.30" width="1.60" height="0.80" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
-<rect x="6.00" y="16.10" width="1.20" height="1.20" fill="#3a3a3a" stroke="#000000" stroke-width="0.05"/>
-<rect x="7.60" y="16.10" width="1.20" height="0.80" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
-<rect x="9.20" y="16.10" width="1.00" height="0.50" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
-<rect x="10.60" y="16.00" width="1.00" height="1.00" fill="#f5f5f5" stroke="#999999" stroke-width="0.05"/>
-<rect x="6.00" y="17.80" width="1.00" height="0.50" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
-<rect x="7.40" y="17.80" width="1.00" height="0.50" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
-<rect x="8.80" y="17.80" width="1.00" height="0.50" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
-<rect x="10.20" y="17.80" width="1.00" height="0.50" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
-<rect x="0.00" y="0.00" width="17.50" height="3.80" fill="#e74c3c" fill-opacity="0.3" stroke="#c0392b" stroke-width="0.12"/>
-<text x="8.75" y="1.60" font-size="0.75" text-anchor="middle" fill="#222222" font-family="Arial, sans-serif">antenna: niente rame</text>
-<text x="8.75" y="2.70" font-size="0.75" text-anchor="middle" fill="#222222" font-family="Arial, sans-serif">(3,8 mm, tutti gli strati)</text>
-<circle cx="4.00" cy="10.00" r="1.25" fill="none" stroke="#d4a017" stroke-width="0.15" stroke-dasharray="0.4 0.3"/>
-<circle cx="9.00" cy="10.00" r="1.25" fill="none" stroke="#d4a017" stroke-width="0.15" stroke-dasharray="0.4 0.3"/>
-<rect x="11.30" y="17.30" width="0.90" height="0.90" fill="none" stroke="#d4a017" stroke-width="0.15" stroke-dasharray="0.4 0.3"/>
-<rect x="12.57" y="17.30" width="0.90" height="0.90" fill="none" stroke="#d4a017" stroke-width="0.15" stroke-dasharray="0.4 0.3"/>
-<rect x="13.84" y="17.30" width="0.90" height="0.90" fill="none" stroke="#d4a017" stroke-width="0.15" stroke-dasharray="0.4 0.3"/>
-<rect x="15.11" y="17.30" width="0.90" height="0.90" fill="none" stroke="#d4a017" stroke-width="0.15" stroke-dasharray="0.4 0.3"/>
-<rect x="16.38" y="17.30" width="0.90" height="0.90" fill="none" stroke="#d4a017" stroke-width="0.15" stroke-dasharray="0.4 0.3"/>
-<rect x="0.55" y="4.00" width="10.00" height="12.00" fill="#3478dc" fill-opacity="0.2" stroke="#2a62c9" stroke-width="0.15" stroke-dasharray="0.6 0.4"/>
-<text x="5.55" y="10.31" font-size="0.9" text-anchor="middle" fill="#222222" font-family="Arial, sans-serif">cella 20 mAh (sopra)</text>
-<circle cx="14.20" cy="8.10" r="3.00" fill="#e67e22" fill-opacity="0.2" stroke="#d35400" stroke-width="0.15" stroke-dasharray="0.6 0.4"/>
-<text x="14.20" y="8.38" font-size="0.8" text-anchor="middle" fill="#222222" font-family="Arial, sans-serif">flash + vibr.</text>
-<text x="8.75" y="22.30" font-size="1.0" text-anchor="middle" fill="#222222" font-family="Arial, sans-serif">scheda 17,5 × 19,5 mm</text>
-<text x="8.75" y="23.80" font-size="1.1" text-anchor="middle" fill="#111111" font-family="Arial, sans-serif" font-weight="bold">finito ≈ 19 × 21 × 7,2 mm</text>
+<g>
+<text x="36.50" y="2.60" font-size="1.4" text-anchor="start" fill="#111111" font-family="Arial, sans-serif" font-weight="bold">Sotto (visto girando la scheda)</text>
+<rect x="36.50" y="4.50" width="29.00" height="33.00" fill="#c8dcf0" fill-opacity="0.35" stroke="#7fa7c9" stroke-width="0.12" stroke-dasharray="0.3 0.3"/>
+<rect x="38.00" y="6.00" width="26.00" height="30.00" fill="#2e7d4f" stroke="#1b4d30" stroke-width="0.1"/>
+<circle cx="52.59" cy="33.05" r="0.30" fill="#e8c46a" stroke="#7a5a2a" stroke-width="0.05"/>
+<circle cx="51.59" cy="33.05" r="0.30" fill="#e8c46a" stroke="#7a5a2a" stroke-width="0.05"/>
+<circle cx="52.59" cy="32.05" r="0.30" fill="#e8c46a" stroke="#7a5a2a" stroke-width="0.05"/>
+<circle cx="51.59" cy="32.05" r="0.30" fill="#e8c46a" stroke="#7a5a2a" stroke-width="0.05"/>
+<circle cx="48.80" cy="34.00" r="1.25" fill="#e8c46a" stroke="#7a5a2a" stroke-width="0.05"/>
+<circle cx="44.60" cy="34.00" r="1.25" fill="#e8c46a" stroke="#7a5a2a" stroke-width="0.05"/>
+<circle cx="40.40" cy="19.60" r="0.40" fill="#e8c46a" stroke="#7a5a2a" stroke-width="0.05"/>
+<circle cx="40.40" cy="26.60" r="0.50" fill="#e8c46a" stroke="#7a5a2a" stroke-width="0.05"/>
+<circle cx="53.54" cy="15.50" r="0.50" fill="#e8c46a" stroke="#7a5a2a" stroke-width="0.05"/>
+<circle cx="48.46" cy="14.48" r="0.50" fill="#e8c46a" stroke="#7a5a2a" stroke-width="0.05"/>
+<circle cx="48.46" cy="16.52" r="0.50" fill="#e8c46a" stroke="#7a5a2a" stroke-width="0.05"/>
+<circle cx="52.27" cy="14.87" r="0.39" fill="#e8c46a" stroke="#7a5a2a" stroke-width="0.05"/>
+<circle cx="52.27" cy="16.14" r="0.39" fill="#e8c46a" stroke="#7a5a2a" stroke-width="0.05"/>
+<circle cx="51.00" cy="14.87" r="0.39" fill="#e8c46a" stroke="#7a5a2a" stroke-width="0.05"/>
+<circle cx="51.00" cy="16.14" r="0.39" fill="#e8c46a" stroke="#7a5a2a" stroke-width="0.05"/>
+<circle cx="49.73" cy="14.87" r="0.39" fill="#e8c46a" stroke="#7a5a2a" stroke-width="0.05"/>
+<circle cx="49.73" cy="16.14" r="0.39" fill="#e8c46a" stroke="#7a5a2a" stroke-width="0.05"/>
+<circle cx="40.40" cy="23.20" r="0.40" fill="#e8c46a" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="52.90" y="34.20" width="1.00" height="1.00" fill="#e8c46a" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="54.90" y="34.20" width="1.00" height="1.00" fill="#e8c46a" stroke="#7a5a2a" stroke-width="0.05"/>
+<circle cx="40.40" cy="30.60" r="0.50" fill="#e8c46a" stroke="#7a5a2a" stroke-width="0.05"/>
+<circle cx="40.40" cy="24.80" r="0.40" fill="#e8c46a" stroke="#7a5a2a" stroke-width="0.05"/>
+<circle cx="40.40" cy="21.40" r="0.40" fill="#e8c46a" stroke="#7a5a2a" stroke-width="0.05"/>
+<circle cx="40.40" cy="28.60" r="0.50" fill="#e8c46a" stroke="#7a5a2a" stroke-width="0.05"/>
+<rect x="38.00" y="6.00" width="26.00" height="3.70" fill="#e74c3c" fill-opacity="0.3" stroke="#c0392b" stroke-width="0.12"/>
+<text x="51.00" y="7.50" font-size="0.75" text-anchor="middle" fill="#222222" font-family="Arial, sans-serif">antenna: niente rame</text>
+<text x="51.00" y="8.60" font-size="0.75" text-anchor="middle" fill="#222222" font-family="Arial, sans-serif">(3,7 mm, tutti gli strati)</text>
+<text x="48.80" y="32.00" font-size="0.8" text-anchor="middle" fill="#222222" font-family="Arial, sans-serif">VIN</text>
+<text x="44.60" y="32.00" font-size="0.8" text-anchor="middle" fill="#222222" font-family="Arial, sans-serif">GND</text>
+<text x="40.40" y="24.60" font-size="0.8" text-anchor="middle" fill="#222222" font-family="Arial, sans-serif">prova</text>
+<text x="51.00" y="13.50" font-size="0.8" text-anchor="middle" fill="#222222" font-family="Arial, sans-serif">TC2030</text>
+<text x="53.40" y="32.70" font-size="0.8" text-anchor="middle" fill="#222222" font-family="Arial, sans-serif">MOT-</text>
+<text x="55.40" y="32.70" font-size="0.8" text-anchor="middle" fill="#222222" font-family="Arial, sans-serif">MOT+</text>
+<text x="51.00" y="39.50" font-size="1.0" text-anchor="middle" fill="#222222" font-family="Arial, sans-serif">scheda 26 × 30 mm</text>
+<text x="51.00" y="41.00" font-size="1.0" text-anchor="middle" fill="#111111" font-family="Arial, sans-serif" font-weight="bold">con resina ≈ 29 × 33 mm</text>
 </g>
-<text x="52.00" y="5.80" font-size="1.4" text-anchor="start" fill="#111111" font-family="Arial, sans-serif" font-weight="bold">Sezione (A e B)</text>
-<rect x="52.00" y="17.50" width="16.00" height="0.50" fill="#dde9f3" stroke="#7fa7c9" stroke-width="0.08"/>
-<text x="69.00" y="17.20" font-size="0.9" text-anchor="start" fill="#222222" font-family="Arial, sans-serif">resina sotto (copre l'SWD)</text>
-<rect x="52.00" y="16.70" width="16.00" height="0.80" fill="#2e7d4f" stroke="#1b4d30" stroke-width="0.1"/>
-<text x="69.00" y="16.10" font-size="0.9" text-anchor="start" fill="#222222" font-family="Arial, sans-serif">PCB 0,8</text>
-<rect x="52.00" y="14.65" width="16.00" height="2.05" fill="#b8bec6" stroke="#555555" stroke-width="0.1"/>
-<text x="69.00" y="15.00" font-size="0.9" text-anchor="start" fill="#222222" font-family="Arial, sans-serif">modulo 2,05</text>
-<rect x="52.00" y="14.45" width="16.00" height="0.20" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
-<text x="69.00" y="13.90" font-size="0.9" text-anchor="start" fill="#222222" font-family="Arial, sans-serif">biadesivo 0,2</text>
-<rect x="52.00" y="11.45" width="16.00" height="3.00" fill="#3478dc" fill-opacity="0.2" stroke="#2a62c9" stroke-width="0.15" stroke-dasharray="0.6 0.4"/>
-<text x="69.00" y="12.80" font-size="0.9" text-anchor="start" fill="#222222" font-family="Arial, sans-serif">cella 3,0</text>
-<rect x="52.00" y="10.85" width="16.00" height="0.60" fill="#dde9f3" stroke="#7fa7c9" stroke-width="0.08"/>
-<text x="69.00" y="11.50" font-size="0.9" text-anchor="start" fill="#222222" font-family="Arial, sans-serif">resina sopra 0,6</text>
-<text x="52.00" y="20.00" font-size="0.9" text-anchor="start" fill="#222222" font-family="Arial, sans-serif">totale ≈ 7,2 mm; contatti di ricarica a filo sotto</text>
-<text x="52.00" y="21.40" font-size="0.9" text-anchor="start" fill="#222222" font-family="Arial, sans-serif">sensore di pressione: porta verso l'alto con O-ring</text>
-<text x="52.00" y="24.50" font-size="1.2" text-anchor="start" fill="#111111" font-family="Arial, sans-serif" font-weight="bold">Legenda (scala 1:1 in mm)</text>
-<rect x="52.00" y="26.00" width="2.40" height="1.30" fill="#b8bec6" stroke="#555555" stroke-width="0.1"/>
-<text x="55.20" y="27.00" font-size="0.95" text-anchor="start" fill="#222222" font-family="Arial, sans-serif">modulo nRF52840</text>
-<rect x="52.00" y="27.90" width="2.40" height="1.30" fill="#3a3a3a" stroke="#000000" stroke-width="0.05"/>
-<text x="55.20" y="28.90" font-size="0.95" text-anchor="start" fill="#222222" font-family="Arial, sans-serif">integrati</text>
-<rect x="52.00" y="29.80" width="2.40" height="1.30" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
-<text x="55.20" y="30.80" font-size="0.95" text-anchor="start" fill="#222222" font-family="Arial, sans-serif">passivi 0402/0603</text>
-<rect x="52.00" y="31.70" width="2.40" height="1.30" fill="#f5f5f5" stroke="#999999" stroke-width="0.05"/>
-<text x="55.20" y="32.70" font-size="0.95" text-anchor="start" fill="#222222" font-family="Arial, sans-serif">LED RGB</text>
-<rect x="52.00" y="33.60" width="2.40" height="1.30" fill="#e74c3c" fill-opacity="0.3" stroke="#c0392b" stroke-width="0.12"/>
-<text x="55.20" y="34.60" font-size="0.95" text-anchor="start" fill="#222222" font-family="Arial, sans-serif">zona antenna senza rame</text>
-<rect x="52.00" y="35.50" width="2.40" height="1.30" fill="#3478dc" fill-opacity="0.2" stroke="#2a62c9" stroke-width="0.15" stroke-dasharray="0.6 0.4"/>
-<text x="55.20" y="36.50" font-size="0.95" text-anchor="start" fill="#222222" font-family="Arial, sans-serif">cella (impilata sopra)</text>
-<rect x="52.00" y="37.40" width="2.40" height="1.30" fill="#e67e22" fill-opacity="0.2" stroke="#d35400" stroke-width="0.15" stroke-dasharray="0.6 0.4"/>
-<text x="55.20" y="38.40" font-size="0.95" text-anchor="start" fill="#222222" font-family="Arial, sans-serif">vibratore Ø 6 (sopra)</text>
-<rect x="52.00" y="39.30" width="2.40" height="1.30" fill="none" stroke="#d4a017" stroke-width="0.15" stroke-dasharray="0.4 0.3"/>
-<text x="55.20" y="40.30" font-size="0.95" text-anchor="start" fill="#222222" font-family="Arial, sans-serif">lato sotto: contatti ricarica (tondi) e SWD (quadrati)</text>
-<rect x="52.00" y="41.20" width="2.40" height="1.30" fill="#c8dcf0" fill-opacity="0.35" stroke="#7fa7c9" stroke-width="0.12" stroke-dasharray="0.3 0.3"/>
-<text x="55.20" y="42.20" font-size="0.95" text-anchor="start" fill="#222222" font-family="Arial, sans-serif">ingombro finito con 0,8 mm di resina</text></svg>
+<text x="72.00" y="5.60" font-size="1.4" text-anchor="start" fill="#111111" font-family="Arial, sans-serif" font-weight="bold">Sezione (spessori)</text>
+<rect x="72.00" y="17.70" width="14.00" height="0.50" fill="#dde9f3" stroke="#7fa7c9" stroke-width="0.08"/>
+<text x="87.00" y="18.30" font-size="0.9" text-anchor="start" fill="#222222" font-family="Arial, sans-serif">resina sotto 0,5</text>
+<rect x="72.00" y="16.90" width="14.00" height="0.80" fill="#2e7d4f" stroke="#1b4d30" stroke-width="0.1"/>
+<text x="87.00" y="17.65" font-size="0.9" text-anchor="start" fill="#222222" font-family="Arial, sans-serif">PCB 0,8</text>
+<rect x="72.00" y="13.90" width="14.00" height="3.00" fill="#b8bec6" stroke="#555555" stroke-width="0.1"/>
+<text x="87.00" y="15.75" font-size="0.9" text-anchor="start" fill="#222222" font-family="Arial, sans-serif">modulo E73 3,0</text>
+<rect x="72.00" y="9.90" width="14.00" height="4.00" fill="#3478dc" fill-opacity="0.25" stroke="#2a62c9" stroke-width="0.15" stroke-dasharray="0.6 0.4"/>
+<text x="87.00" y="12.25" font-size="0.9" text-anchor="start" fill="#222222" font-family="Arial, sans-serif">cella 4,0</text>
+<rect x="72.00" y="9.00" width="14.00" height="0.90" fill="#dde9f3" stroke="#7fa7c9" stroke-width="0.08"/>
+<text x="87.00" y="9.80" font-size="0.9" text-anchor="start" fill="#222222" font-family="Arial, sans-serif">resina sopra 0,9</text>
+<text x="72.00" y="19.80" font-size="1.0" text-anchor="start" fill="#111111" font-family="Arial, sans-serif" font-weight="bold">totale ≈ 9,2 mm</text>
+<text x="72.00" y="21.20" font-size="0.85" text-anchor="start" fill="#222222" font-family="Arial, sans-serif">(vibratore e flash sotto lo spessore del modulo)</text>
+<text x="72.00" y="23.70" font-size="1.2" text-anchor="start" fill="#111111" font-family="Arial, sans-serif" font-weight="bold">Legenda (scala 1:1 in mm)</text>
+<rect x="72.00" y="25.20" width="2.40" height="1.30" fill="#c9a66b" stroke="#7a5a2a" stroke-width="0.05"/>
+<text x="75.20" y="26.20" font-size="0.95" text-anchor="start" fill="#222222" font-family="Arial, sans-serif">piazzole sopra</text>
+<rect x="72.00" y="27.10" width="2.40" height="1.30" fill="#e8c46a" stroke="#7a5a2a" stroke-width="0.05"/>
+<text x="75.20" y="28.10" font-size="0.95" text-anchor="start" fill="#222222" font-family="Arial, sans-serif">piazzole sotto</text>
+<rect x="72.00" y="29.00" width="2.40" height="1.30" fill="#e74c3c" fill-opacity="0.3" stroke="#c0392b" stroke-width="0.12"/>
+<text x="75.20" y="30.00" font-size="0.95" text-anchor="start" fill="#222222" font-family="Arial, sans-serif">zona antenna senza rame</text>
+<rect x="72.00" y="30.90" width="2.40" height="1.30" fill="#3478dc" fill-opacity="0.25" stroke="#2a62c9" stroke-width="0.15" stroke-dasharray="0.6 0.4"/>
+<text x="75.20" y="31.90" font-size="0.95" text-anchor="start" fill="#222222" font-family="Arial, sans-serif">cella 401012 (sopra il modulo)</text>
+<rect x="72.00" y="32.80" width="2.40" height="1.30" fill="#e67e22" fill-opacity="0.25" stroke="#d35400" stroke-width="0.15" stroke-dasharray="0.6 0.4"/>
+<text x="75.20" y="33.80" font-size="0.95" text-anchor="start" fill="#222222" font-family="Arial, sans-serif">vibratore Ø 6 (sopra la flash)</text>
+<rect x="72.00" y="34.70" width="2.40" height="1.30" fill="#c8dcf0" fill-opacity="0.35" stroke="#7fa7c9" stroke-width="0.12" stroke-dasharray="0.3 0.3"/>
+<text x="75.20" y="35.70" font-size="0.95" text-anchor="start" fill="#222222" font-family="Arial, sans-serif">ingombro con 1.5 mm di resina per lato</text></svg>

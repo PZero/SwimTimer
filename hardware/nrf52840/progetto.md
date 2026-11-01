@@ -80,7 +80,7 @@ Con l'ICM-45686 il nuoto scende a ~1,1 mA (~14 h). Ricarica a 13,5 mA: **~1,5–
 
 ## Ingombro stimato
 
-Pianta in scala 1:1 in [`ingombro.svg`](ingombro.svg) (rigenerabile con `python genera_ingombro.py`). Vincolo principale dal foglio Raytac: **antenna sul bordo della scheda** e striscia di **3,8 mm senza rame su tutti gli strati**, larga quanto la scheda. Sopra al modulo, fuori da quella striscia, ci sta esattamente una cella da ~3 × 10 × 12 mm.
+Pianta in scala 1:1 in [`ingombro.svg`](ingombro.svg) (rigenerabile con `python.exe genera_ingombro.py` di KiCad: **ora disegna la v0.3 variante 1c dal PCB reale**, 26 × 30 mm; il testo di questa sezione è la storia della v0.2/Raytac). Vincolo principale dal foglio Raytac: **antenna sul bordo della scheda** e striscia di **3,8 mm senza rame su tutti gli strati**, larga quanto la scheda. Sopra al modulo, fuori da quella striscia, ci sta esattamente una cella da ~3 × 10 × 12 mm.
 
 | Disposizione | Scheda | Tag finito (0,8 mm di resina sui lati) | Note |
 |---|---|---|---|
@@ -142,6 +142,7 @@ File in [`kicad/`](kicad/), generati da script a partire da un'unica tabella di 
 | `genera_schema.py` | scrive `swimtag.kicad_sch` (schema a etichette di rete) |
 | `verifica_netlist.py` | confronta la netlist esportata da KiCad con i dati (oggi: 28 reti su 28) |
 | `genera_pcb.py` | scrive `swimtag.kicad_pcb`: contorno, componenti, piani di massa, zona antenna, regole JLC |
+| `posizioni_collaudo.py` / `cerca_posizioni.py` | posizioni dei componenti della variante 1c (x, y, rotazione, lato) e programma che le cerca (raffreddamento simulato, `python.exe cerca_posizioni.py L H seme passi file`) |
 | `sbroglia.py` | sbroglio automatico con **Freerouting 2.5.0** (Java 25), poi riempimenti di massa |
 | `esporta_jlc.py` | Gerber + fori (zip), BOM e CPL nel formato JLC, render, PDF dello schema in `jlc/` |
 | `lib/` | simboli, impronte e modelli 3D scaricati da LCSC con `easyeda2kicad` |
@@ -158,11 +159,13 @@ File in [`kicad/`](kicad/), generati da script a partire da un'unica tabella di 
 
 **Verifiche sui datasheet:** fatte il 2026-10-25, registro in [verifiche.md](verifiche.md) (4 correzioni: due 100 nF sull'IMU, pull-up I2C, 10 µF sull'uscita del caricatore, condensatori del modulo avvicinati). Restano: anteprima JLC (rotazioni e stock) e la protezione dei contatti. Il modulo Raytac non ha modello 3D (nei render si vedono solo le piazzole).
 
-## v0.3 (in corso, 2026-11-01) — solo variante "collaudo"
+## v0.3 (2026-11-01) — solo variante "collaudo", forma 1c (quasi quadrata)
 
-> **Modulo sostituito il 2026-11-01: Raytac MDBT50Q-1MV2 → Ebyte E73-2G4M08S1C (LCSC C356849).** Il Raytac è a **stock 0** su JLC e LCSC (decisione dell'utente). Il resto della v0.3 è invariato; cambiano pin del modulo, impronta, zona antenna, misure della scheda (ora **19,0 × 46,0 mm**) e spessore. Verifiche sul foglio Ebyte in [verifiche.md](verifiche.md) (ultima sezione). Il testo sotto sul "foglio Raytac" vale solo come storia; il disegno `ingombro.svg` e `genera_ingombro.py` sono ancora quelli del Raytac (v0.2).
+> **Modulo sostituito il 2026-11-01: Raytac MDBT50Q-1MV2 → Ebyte E73-2G4M08S1C (LCSC C356849).** Il Raytac è a **stock 0** su JLC e LCSC (decisione dell'utente). Il resto della v0.3 è invariato; cambiano pin del modulo, impronta, zona antenna, misure della scheda e spessore. Verifiche sul foglio Ebyte in [verifiche.md](verifiche.md) (ultima sezione). Il testo sotto sul "foglio Raytac" vale solo come storia; `ingombro.svg` è ora generato dal PCB reale (vedi sotto).
 
-Schema generato e verificato anche dopo il cambio di modulo (`kicad/swimtag_collaudo.kicad_sch`, 36 reti, `verifica_netlist.py` 0 differenze, ERC 0 errori); **PCB non sbrogliato**: `kicad/swimtag_collaudo.kicad_pcb` è solo un posizionamento di prova per stimare l'ingombro (render in `kicad/prova/`). I file v0.2 (`swimtag.kicad_sch/pcb`, `jlc/`) restano come storico. La variante *definitiva* è prevista in `dati_scheda.py` (`SWIMTAG_VARIANTE`) ma non ancora implementata.
+**Variante 1c (approvata dall'utente il 2026-11-01).** Il tag di collaudo si indossa a lungo sotto la cuffia, quindi la forma è **quasi quadrata e piatta** (la v0.3 con header 2 × 12 era 19 × 46 mm, lunga e scomoda). Cambiano rispetto al commit 2a257ff: **tolti J2 (header 2 × 12) e J3 (ponticello)**; BAT e VBAT sono uniti da uno **0 Ω 0402 (R11, C17168, basic)** che si dissalda a banco per misurare la corrente; **J1 JST SH resta** (serigrafia + e −); sul lato sotto **Tag-Connect TC2030-NL (J4)** per SWD al posto delle 5 piazzole, più piazzole di prova (Ø 0,8: CHG_N, SENS_ON, VDD_SENS, FG_ALRT; Ø 1: VBAT, VDD, GND per il tester) e due contatti di ricarica Ø 2,5 mm a 4,2 mm l'uno dall'altro. Componenti solo sul lato sopra; sotto solo piazzole.
+
+**Stato del progetto KiCad (2026-11-01): sbrogliato.** `kicad/swimtag_collaudo.kicad_sch/.kicad_pcb` generati da `dati_scheda.py` + `posizioni_collaudo.py` (posizioni cercate con `cerca_posizioni.py`, raffreddamento simulato su lunghezza delle reti e ingombri reali): **netlist 0 differenze (36 reti), ERC 0, DRC 0 errori e 0 elementi non connessi, parità schema/PCB 0** (restano 7 avvisi di serigrafia: U5 e D4 vicini, cerchio del pin 1 di U5), **609 piste e 80 via** (Freerouting 2.5.0, 40 passate, margine di 5 µm sul minimo JLC di 0,1 mm). File per JLC in `kicad/jlc/v0.3_swimtag_collaudo/` (Gerber, BOM, CPL, render sopra/sotto/3D, PDF dello schema). I file v0.2 (`swimtag.kicad_*`, `jlc/` sciolti) restano come storico. La variante *definitiva* è prevista in `dati_scheda.py` ma non ancora implementata.
 
 | Cambio | Come | Pin / rete |
 |---|---|---|
@@ -171,9 +174,9 @@ Schema generato e verificato anche dopo il cambio di modulo (`kicad/swimtag_coll
 | Misuratore di carica | **MAX17048 (U7)** sul VBAT lato sistema, 100 nF, secondo bus I2C con pull-up 10 kΩ (R9/R10) su VDD sempre acceso | SDA2 pad 34 (P0.22), SCL2 pad 35 (P0.24), ALRT pad 4 (P0.28) |
 | Sospensione carica | pin TS del BQ25101 a un GPIO, R2 10 kΩ resta | `TS` pad 2 (P1.10) |
 | Condensatori | 2 × 47 µF 0805 (C10, C11) su VBAT; 10 µF su VDDH (C7) e 10 µF sull'uscita del caricatore lato batteria (C12) | |
-| Corrente | **J3** (1×2, 1,27 mm) tra `BAT` (cella e caricatore) e `VBAT` (circuito) + ponticello da 1,27 mm; tolto il ponticello il tester va in serie | la carica non passa dal ponticello |
-| Collaudo | **J2** 2×12, 1,27 mm, ad angolo retto sul bordo basso: i pin escono dalla resina verso il basso | tabella sotto |
-| Misure | scheda **19,0 × 46,0 mm** con l'E73 (con il Raytac 17,5 × 34,5; v0.2: 17,5 × 22,5), vedi sotto | |
+| Corrente | **R11 = 0 Ω 0402** (C17168, basic) tra `BAT` (cella e caricatore) e `VBAT` (circuito): si dissalda a banco e il tester va in serie (C12 resta sul lato batteria, vicino al caricatore) | la carica non passa dallo 0 Ω |
+| Collaudo | niente header: **Tag-Connect TC2030-NL (J4)** sul lato sotto per SWD + 7 piazzole di prova sotto | vedi sotto |
+| Misure | scheda **26,0 × 30,0 mm** con l'E73 (v0.3 con header: 19 × 46; Raytac 17,5 × 34,5; v0.2: 17,5 × 22,5), vedi sotto | |
 
 **Pin del modulo scelti (E73, rete → pad → GPIO).** Fonte: foglio Ebyte cap. 3 e Nordic PS. SPI, I2C e QSPI solo su pin non "bassa frequenza"; sui pin lenti (colonna sinistra, pad 2-10) solo segnali statici.
 - Alimentazione e sistema: VDD 19, VDDH (`VBAT`) 23, VBUS (`VIN_D`) 27, GND 5/21/24, RESET P0.18 26, SWDIO 37, SWDCLK 39.
@@ -182,17 +185,21 @@ Schema generato e verificato anche dopo il cambio di modulo (`kicad/swimtag_coll
 - IMU in SPI: SCK 20 (P0.12), MOSI 22 (P0.07), MISO 28 (P0.15), CS 30 (P0.17). I2C sensori: SDA 32 (P0.20), SCL 33 (P0.13). I2C misuratore: SDA 34 (P0.22), SCL 35 (P0.24).
 - Liberi: P1.11, XL1/XL2 (11, 13, per un eventuale quarzo), DCCH, USB D±, P1.00, P1.02, P1.04, P1.06, NFC.
 
-**Header J2 (pin 1 a destra, file dispari/pari):** 1 VDD (=VREF per il programmatore) · 2 SWDIO · 3 GND · 4 SWDCLK · 5 RESET · 6 GND · 7 VBAT · 8 VDD_SENS · 9 CHG_N · 10 TS · 11 SENS_ON · 12 FG_ALRT · 13 I2C_SDA · 14 I2C_SCL · 15 FG_SDA · 16 FG_SCL · 17 GND · 18 IMU_SCK · 19 IMU_MOSI · 20 IMU_MISO · 21 IMU_CS · 22 GND · 23 IMU_INT1 · 24 IMU_INT2. BAT e VBAT sono anche su J3.
+**Lato sotto (variante 1c).**
+- **J4 Tag-Connect TC2030-NL** (6 pad Ø 0,787 mm a passo 1,27 + 3 fori di allineamento NPTH Ø 0,99; impronta KiCad `Tag-Connect_TC2030-IDC-NL`, dal disegno Tag-Connect). Pinout standard ARM SWD: **1 VREF (VDD), 2 SWDIO, 3 RESET, 4 SWDCLK, 5 GND, 6 SWO non collegato**. Sta sotto il corpo del modulo (x = 13, y = 9,5): sul lato opposto non ci sono pad, ma i 3 fori passano sotto l'E73 (controllo DRC `npth_inside_courtyard` messo su *ignore* nel progetto per questo motivo); nessuna via sotto i pad (zona di divieto nell'impronta). Si usa il cavo TC2030-NL con i fori di centraggio.
+- **Piazzole di prova** (colonna a destra, nomi in serigrafia): Ø 0,8 mm CHG_N, SENS_ON, VDD_SENS, FG_ALRT; Ø 1 mm VBAT, VDD, GND (puntali del tester). Gli altri ex pin di J2 (IMU_*, I2C_*, FG_SDA/SCL, TS) non sono più raggiungibili dall'esterno.
+- **Contatti di ricarica:** 2 piazzole Ø 2,5 mm (VIN, GND) a 4,2 mm tra i centri (x = 15,2 e 19,4; y = 28,0), lontane dal Tag-Connect: servirà una base a più posti (molle pogo a passo 4,2 mm) o un solo posto per tag.
+- **Vibratore:** piazzole MOT+/MOT− (1 × 1 mm) vicino al bordo basso (x = 8,6 e 10,6); il motore Ø 6 mm sta **sopra la flash** (a ~15 mm dall'antenna), i fili girano intorno al bordo.
+- Serigrafia sotto: "SwimTimer tag / v0.3 collaudo" e i nomi di tutte le piazzole; sopra + e − del connettore batteria.
 
-**Ingombro (collaudo, E73, da posizionamento di prova senza sbroglio; render in `kicad/prova/`):**
-- **Scheda 19,0 × 46,0 mm** (Raytac: 17,5 × 34,5). Il modulo E73 (13 × 18 mm, antenna sul bordo alto) occupa i primi 18 mm; flash (9,5 × 6,1 mm), IMU, caricatore, sensori, JST, 2 × 47 µF e J2 stanno tutti sotto, sul solo lato sopra (montaggio JLC su un lato). Larghezza 19 mm per avere 2 mm di margine ai lati dei pad e far passare le piste dei pin laterali. Nessuna sovrapposizione di ingombri (controllo DRC delle zone dei componenti), ma lo spazio per lo sbroglio è stato stimato con 0,2 mm tra le zone dei componenti: potrebbe servire ancora 1-2 mm.
-- Zona antenna: striscia di **3,7 mm** senza rame su tutti gli strati (dal bordo al pad 1/43 del modulo); la cella 401012 (4 × 10 × 12 mm) sta sopra il modulo tra y = 5 e 17 mm, cioè ≥ 1,3 mm oltre la striscia; il modulo è alto 3,0 mm, la cella ci poggia sopra.
-- **Tag finito:** resina +~1,5 mm per lato → **~22 × 49 mm**; con la spina della cella a sinistra (+~5 mm), i pin di J3 a destra (+~3 mm) e quelli di J2 sotto (+~3 mm): **~30 × 52 mm** nel punto più largo e più lungo. **Spessore ~9,2 mm** (scheda 0,8 + modulo 3,0 + cella 4,0 + resina ~1,4), cioè ~1 mm più della versione Raytac (8,2 mm).
-- Cambio rispetto al Raytac: la scheda cresce di +1,5 mm in larghezza e +11,5 mm in altezza, il tag finito di ~+4 × +13 mm. La variante *definitiva*, senza striscia di J2/J3, dovrebbe scendere a circa 19 × 38 mm.
-- Possibili riduzioni (decisioni dell'utente): flash 16 MB (WSON 6 × 5 mm) al posto di quella da 32 MB (WSON 8 × 6 mm) = −1 mm; componenti anche sul lato sotto (JLC montaggio doppia faccia più caro) = −8 mm circa.
-- Non risolto: il 47 µF vicino al modulo/vibratore e C12 vicino al BQ25101 sono lontani dove servono (da avvicinare allo sbroglio). I contatti di ricarica (TP1/TP2) sono sul lato sotto, sotto la flash; le piazzole SWD e quelle del vibratore sul lato sotto.
+**Ingombro (variante 1c, dal PCB sbrogliato; disegno in [ingombro.svg](ingombro.svg), render in `kicad/jlc/v0.3_swimtag_collaudo/` e `kicad/prova/`):**
+- **Scheda 26,0 × 30,0 mm** (misurata sul contorno), 4 strati 0,8 mm. **25 × 27 e 25 × 28 mm non reggono** (flash 9,5 × 6,2 mm e J1 5,9 × 6,7 mm non entrano nelle strisce laterali larghe ~5 mm accanto al modulo, vanno nella fascia sotto, e così gli spazi per le piste mancano); 26 × 30 è la più piccola che si è sbrogliata con DRC 0.
+- Modulo E73 (13 × 18 mm) in alto, antenna sul bordo alto con la **striscia di 3,7 mm senza rame su tutti gli strati**; nella fascia sotto il modulo J1 (a filo del bordo sinistro, apertura verso l'esterno) e la flash; ai lati MOSFET, caricatore, IMU, MS5837 (scoperto verso l'alto), MAX17048, TPS22916C, 2 × 47 µF e i passivi. Cella 401012 (4 × 10 × 12 mm) **sopra il modulo** (x 8-18, y 5-17 mm), ≥ 1,3 mm oltre la striscia dell'antenna. Il vibratore Ø 6 mm (2,7 mm) sta sopra la flash: non aumenta lo spessore.
+- **Tag finito con ~1,5 mm di resina per lato: ~29 × 33 mm**; la spina della cella (J1) a sinistra sporge ancora di ~4-5 mm (connettore + filo). **Spessore ~9,2 mm**: PCB 0,8 + modulo 3,0 + cella 4,0 + resina ~1,4 (sopra ~0,9, sotto ~0,5). Rispetto alla v0.3 con header (19 × 46 mm, ~22 × 49 con resina, fino a 30 × 52 con i pin): larghezza +7 mm, lunghezza −16 mm, area −11 %, ma forma quasi quadrata e **nessun pin che sporge**: adatta a stare sotto la cuffia.
+- **Piste sotto il modulo (lato opposto, B.Cu):** solo SWD (SWDIO 2,0 mm, SWDCLK 4,1, RESET 2,5), VDD 7,2 e SENS_ON 7,1 mm (statici), GND 0,8 mm: **nessun segnale veloce** (QSPI, SPI dell'IMU, I2C) sul lato opposto al modulo, come consiglia il foglio Ebyte. I piani interni però **non sono interi**: Freerouting ha usato In1 e In2 anche per i segnali (219 e 245 mm di piste) con la massa a riempimento attorno; da migliorare nella versione definitiva con piano di massa pieno e sbroglio guidato.
+- Possibili riduzioni (decisioni dell'utente): flash 16 MB (WSON 6 × 5 mm) al posto di quella da 32 MB; componenti anche sul lato sotto (JLC doppia faccia, più caro); variante *definitiva* senza piazzole di prova.
 
-**Pendenze dello sbroglio:** impronta MAX17048 (KiCad TDFN-8 2×2, EP 0,8 × 1,2) da confrontare con quella LCSC; il PCB v0.2 sbrogliato non va riusato; `esporta_jlc.py` ora scrive in `jlc/v0.3_<variante>/` e include anche i componenti a foro passante nel CPL.
+**Pendenze prima dell'ordine:** impronta MAX17048 (KiCad TDFN-8 2×2, EP 0,8 × 1,2) da confrontare con quella LCSC; nell'anteprima JLC controllare rotazione e pin 1 di U6 (TPS22916C), U7 (MAX17048), U1 (E73), J1 (JST SH, apertura verso il bordo sinistro), Q1/Q2 (SOT-23: nelle librerie JLC spesso serve +180°), D2 (LED) e D1/D3/D4 (polarità); `esporta_jlc.py` scrive in `jlc/v0.3_<variante>/` con rotazioni normalizzate 0-359.
 
 ## Piano a tappe
 

@@ -92,6 +92,8 @@ def main():
         libreria, nome = lib_id.split(":")
         if lib_id not in lib_symbols:
             lib_symbols[lib_id] = simbolo_piatto(libreria, nome)
+            if "TagConnect" in nome:   # i pin VCC/GND del connettore di programmazione non sono alimentazioni da pilotare (ERC)
+                lib_symbols[lib_id] = lib_symbols[lib_id].replace("power_in", "passive")
         if rif not in pos:
             pos[rif] = (215.9 + 25.4 * (col % 6), 139.7 + 20.32 * (riga // 6))
             col += 1

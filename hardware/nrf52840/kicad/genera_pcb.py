@@ -132,15 +132,38 @@ def main(solo_piano_interno=False):
     k.SetZoneName("antenna")
     board.Add(k)
 
-    # testo in serigrafia sotto
-    t = pcbnew.PCB_TEXT(board)
-    t.SetText("SwimTimer tag v0.3")
-    t.SetLayer(pcbnew.B_SilkS)
-    t.SetPosition(punto(SCHEDA_L / 2, 14.0))
-    t.SetTextSize(punto(0.8, 0.8))
-    t.SetTextThickness(mm(0.12))
-    t.SetMirrored(True)
-    board.Add(t)
+    # serigrafia sotto: nomi delle piazzole (testo verticale accanto, specchiato) e titolo
+    def testo(txt, x, y, layer, size=0.6, angolo=0.0, specchio=False):
+        t = pcbnew.PCB_TEXT(board)
+        t.SetText(txt)
+        t.SetLayer(layer)
+        t.SetPosition(punto(x, y))
+        t.SetTextSize(punto(size, size))
+        t.SetTextThickness(mm(0.13))
+        t.SetTextAngleDegrees(angolo)
+        t.SetMirrored(specchio)
+        board.Add(t)
+
+    for rif, _, valore, _, _, _, (x, y, _, lato) in COMPONENTI:
+        if lato != "B" or rif == "J4":
+            continue
+        if rif in ("TP1", "TP2", "TP10", "TP11"):   # sul bordo basso: nome verticale sopra la piazzola
+            raggio = 1.5 if rif in ("TP1", "TP2") else 0.8
+            testo(valore, x, y - raggio - 0.3 - 0.33 * len(valore), pcbnew.B_SilkS, 0.8, 90, True)
+        else:               # colonna sul bordo destro: nome orizzontale a sinistra (visto da sotto: a destra, specchiato)
+            testo(valore, x - 0.9 - 0.33 * len(valore), y, pcbnew.B_SilkS, 0.8, 0, True)
+    fj4 = next(c for c in COMPONENTI if c[0] == "J4")
+    testo("SWD", fj4[6][0], fj4[6][1] + 2.6, pcbnew.B_SilkS, 0.8, 0, True)
+    testo("SwimTimer tag", 6.5, 14.6, pcbnew.B_SilkS, 0.8, 0, True)   # titolo su due righe (la scritta intera tocca i nomi delle piazzole)
+    testo("v0.3 collaudo", 6.5, 15.9, pcbnew.B_SilkS, 0.8, 0, True)
+    # serigrafia sopra: polarita' del connettore batteria
+    for c in COMPONENTI:
+        if c[0] == "J1":
+            fp = board.FindFootprintByReference("J1")
+            for pad in fp.Pads():
+                if pad.GetNumber() in ("1", "2"):
+                    q = pad.GetPosition()
+                    testo("+" if pad.GetNumber() == "1" else "-", pcbnew.ToMM(q.x) + 1.2, pcbnew.ToMM(q.y), pcbnew.F_SilkS, 0.9)
 
     pcbnew.ZONE_FILLER(board).Fill(board.Zones())
     board.Save(str(QUI / f"{NOME}.kicad_pcb"))

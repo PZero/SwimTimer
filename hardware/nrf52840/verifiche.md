@@ -201,3 +201,20 @@ Cercate su JLCPCB (API del 2026-11-01) per evitare la saldatura a onda sul lato 
 - **Verticali SMD:** XUNPU PH1.27-02-xxPWS, da 2 × 2 a 2 × 20 (C41360874-C41360891, 130-1800 pz, 0,08-0,54 $): perno 4 mm + 1 mm di plastica = ~5 mm. Il 2 × 12 non c'è ma si può usare un 2 × 13 (C41360884, 280 pz, 0,35 $) o due 2 × 6 (C41360878, 788 pz, 0,16 $). Altezza ~5 mm: **non esce da ~8 mm di resina**. Le femmine verticali (C22436132, 2 × 12, H 4,3 mm, 1528 pz, 0,26 $) sono ancora più basse.
 - **Opzioni:** (a) due header ad angolo retto 2 × 5 (C180221) e J2 ridotto a 2 × 10; (b) J2 come file di piazzole per pogo (come l'SWD): nessuna saldatura a onda; (c) tenere il THT C7470112 e chiedere a JLC la protezione dei contatti dorati.
 
+
+
+## Tag-Connect TC2030-NL e piazzole di prova (variante 1c, 2026-11-01)
+
+Impronta presa dalla libreria KiCad 10 (`Connector:Tag-Connect_TC2030-IDC-NL_2x03_P1.27mm_Vertical`, dal disegno Tag-Connect TC2030-IDC-NL); simbolo `Connector:Conn_ARM_SWD_TagConnect_TC2030-NL`.
+
+| Voce | Dato (impronta / disegno) | Nel progetto | Esito |
+|---|---|---|---|
+| Pad | 6 pad Ø 0,787 mm (0,031"), due file a passo 1,27 mm | stessi pad, lato sotto (B.Cu), nessuna via sotto i pad (zona di divieto dell'impronta) | ✅ |
+| Fori di allineamento | 3 NPTH Ø 0,991 mm a (−2,54; 0), (+2,54; ±1,016) mm dal centro | stessi fori; **passano sotto il corpo dell'E73** (x = 13, y = 9,5: nessun pad del modulo vicino, pad laterali a ≥ 2,5 mm); DRC `npth_inside_courtyard` su *ignore* | ✅ ⚠️ controllare nell'anteprima JLC che i fori non tocchino pad del modulo |
+| Pinout ARM SWD | 1 VCC (VREF), 2 SWDIO/TMS, 3 nRESET, 4 SWCLK/TCK, 5 GND, 6 SWO/TDO | 1 `VDD`, 2 `SWDIO`, 3 `RESET`, 4 `SWDCLK`, 5 `GND`, 6 non collegato | ✅ come da simbolo KiCad; da riconfermare con il foglio del cavo prima del primo collegamento (non misurato) |
+| Alimentazione di prova | VREF serve solo come riferimento di livello (il programmatore non alimenta il tag) | `VDD` = uscita di REG0 (3,3 V da UICR); col tag spento (batteria scollegata) SWD non risponde | ⚠️ programmare con la batteria collegata; il primo avvio (UICR vuoto, VDD a 1,8 V) è da provare |
+| Spessore scheda | il cavo senza gambe (NL) si appoggia ai fori: nessun requisito sullo spessore | 0,8 mm | ✅ |
+| Resina | il connettore resta annegato come le vecchie piazzole SWD | da fresare/aprire o programmare prima | ⚠️ da decidere con l'involucro |
+| Controllo DRC | | 0 errori, 0 non connessi, parità schema/PCB 0 | ✅ |
+| Piazzole di prova | Ø 0,8 (4) e Ø 1 mm (3), nomi in serigrafia sotto | CHG_N, SENS_ON, VDD_SENS, FG_ALRT, VBAT, VDD, GND | ✅ |
+| Contatti di ricarica | Ø 2,5 mm a 4,2 mm tra i centri (1,7 mm tra i bordi) | TP1 VIN (x = 15,2), TP2 GND (x = 19,4), y = 28,0 | ✅ servirà base a più posti |
