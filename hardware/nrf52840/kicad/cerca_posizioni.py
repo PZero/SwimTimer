@@ -10,7 +10,7 @@ import sys
 import pcbnew
 
 import genera_pcb as g
-from dati_scheda import COMPONENTI
+from dati_scheda import COMPONENTI, VARIANTE
 
 mm = pcbnew.ToMM
 GAP = float(__import__("os").environ.get("GAP", "0.2"))      # spazio minimo tra ingombri (mm): piste a 0,127 e via da 0,5
@@ -65,7 +65,11 @@ def main():
     seme = int(sys.argv[3]) if len(sys.argv) > 3 else 1
     passi = int(sys.argv[4]) if len(sys.argv) > 4 else 150000
     rnd = random.Random(seme)
-    fisso = sotto(W, H)
+    if VARIANTE == "economica":   # v0.4: piazzole pogo e ricarica su griglia 2,54 mm (dati_economica.fissi), nessun componente sopra fissato
+        import dati_economica as de
+        fisso = de.fissi(W, H)
+    else:
+        fisso = sotto(W, H)
     comp = {c[0]: c for c in COMPONENTI}
     inf = {r: info(c[3]) for r, c in comp.items()}
     mod_xy = (W / 2, 11.2)
@@ -76,8 +80,8 @@ def main():
                 reti.setdefault(net, []).append((r, str(pin)))
     mobili = [r for r in comp if r != "U1" and r not in fisso]
     # ostacoli fissi lato sopra oltre al modulo (J1, U3): usati nei controlli di sovrapposizione
-    sopra_fissi = ("J1", "U3")
-    rot_ok = {"J1": (90, 270)}   # connettore batteria: apertura verso l'esterno (90 = bordo destro, 270 = bordo sinistro)
+    sopra_fissi = de.SOPRA_FISSI if VARIANTE == "economica" else ("J1", "U3")
+    rot_ok = {} if VARIANTE == "economica" else {"J1": (90, 270)}   # connettore batteria: apertura verso l'esterno (90 = bordo destro, 270 = bordo sinistro)
     pos = {r: [rnd.uniform(3, W - 3), rnd.uniform(5, H - 3), rnd.choice(rot_ok.get(r, ROT))] for r in mobili}
     FAN = 0.9
     mx0, mx1, my0, my1 = mod_xy[0] - 7.5 - FAN, mod_xy[0] + 7.5 + FAN, 0, 19.3 + FAN
@@ -103,7 +107,7 @@ def main():
         return x + x0 - GAP / 2, y + y0 - GAP / 2, x + x1 + GAP / 2, y + y1 + GAP / 2
 
     ostacoli = [box(r, *fisso[r]) for r in sopra_fissi]
-    peso = {"VDD": 0.4, "VBAT": 0.4, "VDD_SENS": 0.4, "BAT": 0.6}
+    peso = {"VDD": 0.4, "VBAT": 0.4, "VDD_SENS": 0.4, "BAT": 0.6, "VIN_D": 0.6}
 
     def costo_reti(solo=None):
         t = 0.0
@@ -115,6 +119,17 @@ def main():
             xs, ys = [q[0] for q in pts], [q[1] for q in pts]
             t += peso.get(net, 1.0) * ((max(xs) - min(xs)) + (max(ys) - min(ys)))
         return t
+
+    attr = getattr(__import__("dati_economica"), "ATTRAZIONI", {}) if VARIANTE == "economica" else {}
+
+    def costo_attr(r):
+        """Condensatori di disaccoppiamento e resistenze di configurazione: vicini al loro pin (peso 4 sulla distanza)."""
+        if r not in attr:
+            return 0.0
+        (u, pin), w = attr[r]
+        x1, y1 = pad_xy(r, "1")
+        x2, y2 = pad_xy(u, pin)
+        return w * (abs(x1 - x2) + abs(y1 - y2))
 
     def pen_comp(r, f=1.0):
         x, y, rot = pos[r]
@@ -153,10 +168,10 @@ def main():
         return 0 if b[2] >= W - 0.2 else 5 + 5 * (W - b[2])
 
     def totale():
-        return costo_reti() + sum(pen_comp(r, 0.5) for r in mobili) + pen_j1()
+        return costo_reti() + sum(pen_comp(r, 0.5) + costo_attr(r) for r in mobili) + pen_j1()
 
     def locale(r):
-        return costo_reti(reti_di[r]) + pen_comp(r) + (pen_j1() if r == "J1" else 0)
+        return costo_reti(reti_di[r]) + pen_comp(r) + costo_attr(r) + (pen_j1() if r == "J1" else 0)
 
     T0, T1 = 3.0, 0.02
     cur = totale()

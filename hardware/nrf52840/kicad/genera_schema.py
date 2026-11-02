@@ -8,13 +8,14 @@ import uuid
 import os
 from pathlib import Path
 
-from dati_scheda import COMPONENTI, NC_U1, NOME, VARIANTE
+from dati_scheda import COMPONENTI, NC_U1, NOME, VARIANTE, VERSIONE
 
 QUI = Path(__file__).parent
 KICAD = Path(os.environ.get("KICAD_DIR", Path.home() / "AppData/Local/Programs/KiCad/10.0"))
 SIMBOLI_KICAD = KICAD / "share" / "kicad" / "symbols"
 LIB_LOCALE = QUI / "lib" / "swimtag.kicad_sym"
 PROGETTO = NOME
+REV = VERSIONE.lstrip("v")
 NS = uuid.UUID("6f1d3c52-6a47-4c55-9a8e-0d7c1b3a5e01")
 
 
@@ -78,6 +79,18 @@ def pin_del_simbolo(s):
     return pins
 
 
+def nomi_pin(lib_id):
+    """{numero: nome} dei pin di un simbolo (serve a dare ai pad non collegati il nome di rete che KiCad assegna: unconnected-(U1-nome-PadN))."""
+    libreria, nome = lib_id.split(":")
+    s = simbolo_piatto(libreria, nome)
+    res = {}
+    for m in re.finditer(r"\(pin\s+\w+\s+\w+\s*\(at ", s):
+        resto = blocco(s, m.start())
+        num = re.search(r'\(number "([^"]*)"', resto).group(1)
+        res[num] = re.search(r'\(name "([^"]*)"', resto).group(1)
+    return res
+
+
 def griglia(v):
     return round(round(v / 1.27) * 1.27, 4)
 
@@ -92,6 +105,8 @@ def main():
         libreria, nome = lib_id.split(":")
         if lib_id not in lib_symbols:
             lib_symbols[lib_id] = simbolo_piatto(libreria, nome)
+            if nome.startswith("W25Q"):   # flash: i pin sono collegati solo da etichette (niente driver nello schema, ERC)
+                lib_symbols[lib_id] = re.sub(r"\(pin (power_in|input|output|bidirectional) ", "(pin passive ", lib_symbols[lib_id])
             if "TagConnect" in nome:   # i pin VCC/GND del connettore di programmazione non sono alimentazioni da pilotare (ERC)
                 lib_symbols[lib_id] = lib_symbols[lib_id].replace("power_in", "passive")
         if rif not in pos:
@@ -126,7 +141,7 @@ def main():
     testo = (
         f'(kicad_sch (version 20250114) (generator "genera_schema.py") (generator_version "9.0")\n'
         f'(uuid "{RADICE}") (paper "A3")\n'
-        f'(title_block (title "SwimTimer - tag nRF52840") (rev "0.3") (comment 1 "Variante {VARIANTE}. Generato da dati_scheda.py: modificare i dati, non lo schema"))\n'
+        f'(title_block (title "SwimTimer - tag nRF52840") (rev "{REV}") (comment 1 "Variante {VARIANTE}. Generato da dati_scheda.py: modificare i dati, non lo schema"))\n'
         f'(lib_symbols\n' + "\n".join(lib_symbols.values()) + "\n)\n"
         + "\n".join(simboli + etichette + croci)
         + '\n(sheet_instances (path "/" (page "1")))\n)\n')

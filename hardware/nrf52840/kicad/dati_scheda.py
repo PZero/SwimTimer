@@ -12,12 +12,15 @@ import os
 #   "collaudo"   : primi 2 tag, variante 1c (quasi quadrata, indossabile): Tag-Connect + piazzole di prova sotto, 0 ohm sulla corrente
 #   "definitiva" : piu' piccola possibile, senza piazzole di prova (DA FARE)
 VARIANTE = os.environ.get("SWIMTAG_VARIANTE", "collaudo")
-if VARIANTE not in ("collaudo", "definitiva"):
+if VARIANTE not in ("collaudo", "definitiva", "economica"):
     raise SystemExit(f"VARIANTE sconosciuta: {VARIANTE}")
 if VARIANTE == "definitiva":
     raise NotImplementedError("variante definitiva: non ancora implementata (v0.3 solo collaudo)")
 
 NOME = f"swimtag_{VARIANTE}"   # nome dei file KiCad generati
+# parametri della scheda (la variante "economica" li sovrascrive in fondo al file, vedi dati_economica.py)
+VERSIONE, TITOLO_SERIGRAFIA, N_STRATI, SPESSORE = "v0.3", "v0.3 collaudo", 4, 0.8
+PISTA, DISTANZA, VIA_D, VIA_FORO = 0.127, 0.1, 0.5, 0.3
 
 from posizioni_collaudo import POS, SCHEDA_L, SCHEDA_H_TOT   # misure e posizioni (x, y, rotazione, lato) della variante 1c, vedi cerca_posizioni.py
 ANTENNA_H = 3.7   # striscia senza rame sotto l'antenna: dal bordo al pad 1/43 del modulo (a 3,97 mm dal bordo, foglio Ebyte); Ebyte non da' una quota di rispetto
@@ -153,3 +156,9 @@ def reti():
         for pin, net in pins.items():
             r.setdefault(net, []).append((rif, str(pin)))
     return r
+
+
+# ---- v0.4 "economica": dati separati, stessi nomi (COMPONENTI, NC_U1, ANTENNA_H, misure, parametri della scheda) ----
+if VARIANTE == "economica":
+    from dati_economica import (COMPONENTI, NC_U1, ANTENNA_H, SCHEDA_L, SCHEDA_H_TOT, VERSIONE, TITOLO_SERIGRAFIA,  # noqa: F401,F811
+                                N_STRATI, SPESSORE, PISTA, DISTANZA, VIA_D, VIA_FORO)

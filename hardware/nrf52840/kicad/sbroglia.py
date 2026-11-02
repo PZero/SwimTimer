@@ -14,7 +14,7 @@ from pathlib import Path
 import pcbnew
 
 import genera_pcb
-from dati_scheda import NOME, SCHEDA_H_TOT as SCHEDA_H, SCHEDA_L
+from dati_scheda import DISTANZA, N_STRATI, NOME, PISTA, SCHEDA_H_TOT as SCHEDA_H, SCHEDA_L
 
 QUI = Path(__file__).parent
 PCB = QUI / f"{NOME}.kicad_pcb"
@@ -24,13 +24,14 @@ LAVORO = QUI / "sbroglio"
 def main():
     passate = sys.argv[1] if len(sys.argv) > 1 else "30"
     LAVORO.mkdir(exist_ok=True)
-    dsn, ses = LAVORO / "swimtag.dsn", LAVORO / "swimtag.ses"
+    dsn, ses = LAVORO / f"{NOME}.dsn", LAVORO / f"{NOME}.ses"
     genera_pcb.main(solo_piano_interno=True)
     board = pcbnew.LoadBoard(str(PCB))
     if not pcbnew.ExportSpecctraDSN(board, str(dsn)):
         sys.exit("esportazione DSN non riuscita")
-    # margine di 5 um sul minimo JLC (0,1 mm): Freerouting arrotonda le posizioni e a volte resta 1 um sotto
-    dsn.write_text(dsn.read_text(encoding="utf-8").replace("(clearance 100)", "(clearance 105)"), encoding="utf-8")
+    # margine sul minimo JLC (5 um a 4 strati, 20 um a 2 strati) (0,1 mm): Freerouting arrotonda le posizioni e a volte resta 1 um sotto
+    dist = round(DISTANZA * 1000)
+    dsn.write_text(dsn.read_text(encoding="utf-8").replace(f"(clearance {dist})", f"(clearance {dist + 20})"), encoding="utf-8")
     ses.unlink(missing_ok=True)
     subprocess.run([os.environ.get("JAVA25", "java"), "-jar", os.environ["FREEROUTING_JAR"],
                     "-de", str(dsn), "-do", str(ses), "-mp", passate, "--gui.enabled=false"],
@@ -40,10 +41,10 @@ def main():
         sys.exit("importazione SES non riuscita")
     # Freerouting traccia alcune piste di massa sotto 0,1 mm: le porto al minimo JLC
     for t in board.GetTracks():
-        if t.GetClass() == "PCB_TRACK" and t.GetWidth() < pcbnew.FromMM(0.1):
-            t.SetWidth(pcbnew.FromMM(0.1))
+        if t.GetClass() == "PCB_TRACK" and t.GetWidth() < pcbnew.FromMM(min(PISTA, 0.1) if N_STRATI == 4 else PISTA):
+            t.SetWidth(pcbnew.FromMM(min(PISTA, 0.1) if N_STRATI == 4 else PISTA))
     reti = {n.GetNetname().lstrip("/"): n for n in board.GetNetsByName().values()}
-    for layer in (pcbnew.F_Cu, pcbnew.In2_Cu, pcbnew.B_Cu):
+    for layer in ((pcbnew.F_Cu, pcbnew.In2_Cu, pcbnew.B_Cu) if N_STRATI == 4 else (pcbnew.F_Cu,)):   # 2 strati: B.Cu ha gia' la massa piena
         genera_pcb.zona(board, "GND", layer, 0.25, 0.25, SCHEDA_L - 0.25, SCHEDA_H - 0.25, reti)
     pcbnew.ZONE_FILLER(board).Fill(board.Zones())
     board.Save(str(PCB))

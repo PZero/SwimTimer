@@ -12,11 +12,11 @@ from pathlib import Path
 QUI = Path(__file__).parent
 KICAD = Path(os.environ.get("KICAD_DIR", Path.home() / "AppData/Local/Programs/KiCad/10.0"))
 CLI = KICAD / "bin" / "kicad-cli.exe"
-from dati_scheda import NOME
-OUT = QUI / "jlc" / f"v0.3_{NOME}"
+from dati_scheda import N_STRATI, NOME, VERSIONE
+OUT = QUI / "jlc" / f"{VERSIONE}_{NOME}"
 PCB = QUI / f"{NOME}.kicad_pcb"
 SCH = QUI / f"{NOME}.kicad_sch"
-STRATI = "F.Cu,In1.Cu,In2.Cu,B.Cu,F.Paste,B.Paste,F.Silkscreen,B.Silkscreen,F.Mask,B.Mask,Edge.Cuts"
+STRATI = ("F.Cu,In1.Cu,In2.Cu,B.Cu" if N_STRATI == 4 else "F.Cu,B.Cu") + ",F.Paste,B.Paste,F.Silkscreen,B.Silkscreen,F.Mask,B.Mask,Edge.Cuts"
 
 
 def cli(*argomenti):
