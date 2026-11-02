@@ -47,3 +47,10 @@
 | 2026-11-01 | v0.3: sensori su interruttore di carico (TPS22916C), MAX17048 su bus I2C separato, TS del caricatore da GPIO, 2 × 47 µF, 0 Ω tra cella e circuito, niente reed né protezione d'inversione (connettore polarizzato) | Risponde alle lezioni apprese del prototipo senza componenti inutili |
 | 2026-11-01 | Programmazione via Tag-Connect TC2030-NL; il pin VDD è solo riferimento (VREF), programmatore a tensione adattabile | Con la cella collegata VDD è già alimentato; a 1,8 V di fabbrica un Pico a 3,3 V danneggerebbe la scheda |
 | 2026-11-01 | Wallpaper tecnici e PDF di progetto generati dal PCB reale con script (`hardware/nrf52840/wallpaper/`) | Riproducibili a ogni revisione della scheda |
+| 2026-11-02 | **v0.4 "economica"** su JLC con E73: solo IMU, flash, caricatore, 1 LED, header batteria; scheda 22,86 × 26 mm | Prototipi di sola registrazione dei dati grezzi dell'IMU con tetto di 100 € tutto compreso |
+| 2026-11-02 | v0.4: via MS5837, MAX17048, TPS22916C, vibratore, Tag-Connect, piazzole di prova, TVS e MOSFET di reset; lettura batteria con VDDHDIV5 | Risparmio di componenti *extended* (3,07 $ l'uno) e di spazio; non servono alla registrazione (manca la profondità) |
+| 2026-11-02 | v0.4: 2 strati, 0,8 mm, HASL senza piombo, DRC 0 con regole JLC 0,127 mm | Lo sbroglio a 2 strati chiude senza toccare l'antenna: nessun motivo per i 4 strati |
+| 2026-11-02 | v0.4: flash W25Q128JVSIQ SOIC-8 *basic* (C97521) in SPI semplice, 16 MB | 4,93 $ per 2 schede contro 9,83 $ del WSON (caricamento extended); costa 3 mm di larghezza |
+| 2026-11-02 | v0.4: TS del BQ25101 con 10 k a massa (niente NTC né GPIO), CHG_N su GPIO, Schottky *basic* in serie ai contatti | Soluzione più economica; carica sempre; polarità e ritorno verso i contatti bloccati |
+| 2026-11-02 | v0.4: batteria su header SMD 1,27 mm (C55213900) invece del JST SH | 10,4 contro 26,6 mm² e costa meno; il THT 2,54 mm non è montabile nell'Economic (+~20 $) |
+| 2026-11-02 | v0.4: sotto 5 pogo SWD Ø 2 e 2 contatti di ricarica sulla griglia 2,54 mm, tacche di serigrafia | Primo caricamento su millefori con pin/molle pogo saldati |

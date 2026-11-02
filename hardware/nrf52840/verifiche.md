@@ -230,3 +230,54 @@ Impronta presa dalla libreria KiCad 10 (`Connector:Tag-Connect_TC2030-IDC-NL_2x0
 | C2836756 | KOTL Z4TH3B0791626, cilindrico 3 V 90 mA | SMT | stock e misure non verificati (LCSC: "Part not found") |
 
 Fonte: pagine jlcpcb.com/partdetail. I motori SMD non sono sigillati: niente lavaggio dopo la rifusione. Decisione: vibratore non montato sui tag di collaudo.
+
+
+---
+
+# Verifiche v0.4 "economica" (2026-11-02)
+
+Fonti: API JLCPCB (stock, tipo, descrizione parametri) del 2026-11-02; impronte KiCad e easyeda2kicad; per BQ25101, E73 e pin lenti/veloci le verifiche v0.3 sopra (datasheet TI SLUSBV8C, manuale Ebyte v1.9, Nordic PS). **Il datasheet Winbond W25Q128JV non è stato riletto in questa sessione:** i punti sulla flash marcati ⚠️ vanno confermati sul foglio prima dell'ordine.
+
+## Flash W25Q128JVSIQ (U3, C97521) in SPI semplice
+
+| Voce | Dato | Scheda | Esito |
+|---|---|---|---|
+| Pin SOIC-8 | 1 /CS, 2 DO (IO1), 3 /WP (IO2), 4 GND, 5 DI (IO0), 6 CLK, 7 /HOLD (IO3), 8 VCC | netlist: 1 FL_CS, 2 FL_MISO, 5 FL_MOSI, 6 FL_SCK, 4 GND, 8 VDD, 3 e 7 su `FL_IO23` | ✅ come simbolo KiCad `Memory_Flash:W25Q128JVS` |
+| /WP e /HOLD in SPI standard | in SPI semplice con QE = 0 sono funzioni attive (HOLD basso ferma il dispositivo): vanno tenuti alti | R4 10 k da `FL_IO23` a VDD (un resistore per i due pin; con QE = 1 diventano IO2/IO3 e la resistenza resta innocua) | ⚠️ confermare sul foglio Winbond il valore di QE alla consegna |
+| Alimentazione | 2,7-3,6 V (descrizione JLC) | VDD = 3,3 V da REGOUT0, C3 100 nF | ✅ |
+| /CS durante il reset | GPIO flottanti all'avvio | R5 100 k a VDD | ✅ |
+| Capacità | 128 Mbit = 16 MB, 133 MHz | SPI a 8 MHz bastano; ~11,5 kB/s per IMU a 960 Hz sei assi | ⚠️ **~24 min a 960 Hz, ~97 min a 240 Hz, ~3 h a 120 Hz** |
+| Impronta | SOIC-8 5,3 × 5,3 mm (EIAJ 208 mil), `Package_SO:SOIC-8_5.3x5.3mm_P1.27mm`; courtyard 9,4 × 5,9 mm | pin 1 con il punto; la JLC (C97521) è "SOIC-8-208mil" | ✅ rotazione da controllare nell'anteprima |
+
+## BQ25101 (U4) senza GPIO su TS
+
+| Voce | Dato (verifiche v0.3, TI SLUSBV8C) | Scheda | Esito |
+|---|---|---|---|
+| TS | senza NTC: 10 kΩ verso VSS; 50 µA × 10 k = 0,5 V in zona normale (carica abilitata) | R2 10 k a massa, nessun GPIO | ✅ (niente TTDM: il pin non è mai flottante o alto) |
+| ISET | 135 AΩ / R: 10 k → 13,5 mA (0,34 C su 40 mAh); terminazione fissa al 10 % | R1 10 k | ✅ |
+| /CHG | open drain, basso durante la carica | `CHG_N` su P0.03, pull-up interno | ✅ firmware: abilitare il pull-up |
+| Condensatori | ingresso e uscita 1-10 µF | C5 10 µF su VIN_D, C6 10 µF su VBAT | ✅ |
+| Rinuncia | niente sospensione della carica a SOC 80 % (serviva il MAX17048) | il caricatore carica sempre a 4,2 V | ✅ accettato per la registrazione |
+| Tensione sui contatti | IN max 28 V assoluti, OVP; nessuna via cella → IN | Schottky 1N5819WS in serie, VIN → D2 → `VIN_D` | ✅ |
+
+## Lettura batteria, LED, regole 2 strati
+
+| Voce | Dato | Scheda | Esito |
+|---|---|---|---|
+| VDDHDIV5 | ingresso interno del SAADC = VDDH/5 (Nordic PS): 4,2 V → 0,84 V | nessun partitore, nessun GPIO; VDDH è `VBAT` (pad 23) | ✅ da provare a banco col tester |
+| LED NCD0402R1 | Vf 1,6-2,6 V, 25 mA max (descrizione JLC), rosso 630 nm | anodo su VBAT, 1 k, catodo sul GPIO P0.31: ~2,2 mA a 4,2 V, ~0,5 mA a 3,0 V; con GPIO alto (3,3 V) a 4,2 V la tensione ai capi (0,9 V) è sotto la Vf: spento | ✅ polarità da controllare nell'anteprima |
+| Regole JLC 2 strati | piste/distanze 0,127 mm, via 0,6/0,3 mm, foro-rame 0,2 mm | DRC 0 con questi valori; margine di 20 µm nello sbroglio | ✅ |
+| Zona antenna | 3,7 mm senza rame su F.Cu e B.Cu (zona vietata) | invariata, modulo a 2,2 mm dal bordo | ⚠️ valore dedotto dal disegno Ebyte (v0.3), prova di portata |
+| Sbroglio sotto il modulo | il foglio Ebyte sconsiglia piste veloci sotto il modulo | B.Cu: massa piena, 59 piste di segnale (circa 77 mm in tutto sotto il modulo) | ⚠️ sotto il modulo passano 4,8 mm di FL_CS e 4,7 mm di FL_MISO (SPI a 8 MHz), più INT1/INT2, CHG_N, VIN_D, SWD e RESET: da rivedere se la portata risultasse scarsa |
+
+## Header batteria SMD 1,27 mm (J1, C55213900) e JST SH (confronto)
+
+| Voce | JST SH C160402 | Header 1,27 C55213900 | Header 2,54 SMD C41417359 | Header 2,54 THT C225477 |
+|---|---|---|---|---|
+| Impronta (pad, mm) | 4,8 × 5,55 = 26,6 mm² | 2,0 × 5,2 = 10,4 mm² | 3,81 × 5,8 = 22,1 mm² | THT (foro Ø ~1) |
+| Prezzo | 0,133 $ | 0,008 $ | 0,028 $ | 0,041 $ |
+| Tipo / stock | extended / 73858 | extended / 3803 | extended / 48116 | extended / 30477 |
+| Economic JLC | sì | sì (da confermare in anteprima) | sì | **no, solo Standard (+~20 $)** |
+| Altezza | ~2,6 mm | pin 7,2 mm totali, da accorciare | ~8,5 mm | ~8,5 mm |
+
+Impronte ricavate con easyeda2kicad (pad e quote dal disegno LCSC); il file `lib/swimtag.pretty/HDR-SMD_2P-P1.27-V-M-LS4.2-R1.kicad_mod` contiene solo i pad (2 × 0,74 × 2,1 mm sfalsati di 1,26 mm e 3,1 mm) e il courtyard, senza modello 3D. ⚠️ Non letto il foglio del produttore: portata e tenuta dei pad all'estrazione dei fili da verificare in prova (resina o fermacavo).

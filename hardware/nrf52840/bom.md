@@ -106,3 +106,35 @@ Proposta di impostazione: **±4 g** (rumore invariato, nessuna saturazione a spi
 | Cella LiPo 20 mAh con PCM | 2–4 $ |
 | PCB 4 strati 0,8 mm + montaggio JLC (spese fisse ~25–40 $ divise sul lotto, componenti *extended* ~3 $ l'uno, raggi X) | 6–12 $ |
 | **Totale tag** | **~30–45 $ al pezzo** (spedizione e IVA escluse; ordine di 5 pezzi ~150–250 $ tutto compreso) |
+
+
+---
+
+# Distinta v0.4 "economica" (2026-11-02)
+
+Distinta effettiva: `kicad/jlc/v0.4_swimtag_economica/bom_jlc.csv` (12 righe, 20 componenti per scheda, tutti sopra, per 2 schede montate). Stock, tipo e prezzo letti dall'API JLCPCB il 2026-11-02 (da riverificare prima dell'ordine). Servizio **Economic** (solo SMD, una faccia): 5 *extended* (E73, IMU, BQ25101, LED, header) = 5 × 3,07 $ di caricamento; gli altri sono *basic*.
+
+| Rif. | Componente | LCSC | Tipo | Stock | $ / pezzo | Note |
+|---|---|---|---|---|---|---|
+| U1 | Ebyte E73-2G4M08S1C | C356849 | extended | 550 | 7,70 | come v0.3 |
+| U2 | ST LSM6DSV16X (LGA-14 2,5 × 3) | C5267406 | extended | 15977 | 3,36 | come v0.3 |
+| U3 | Winbond W25Q128JVSIQ, 128 Mbit, SOIC-8 208 mil | C97521 | **basic** | 78355 | 2,46 | **nuovo**, 16 MB, SPI semplice; vedi alternative sotto |
+| U4 | TI BQ25101YFPR (DSBGA-6, passo 0,4) | C478468 | extended | 5054 | 0,82 | come v0.3 |
+| D1 | LED rosso 0402 NCD0402R1 (Vf 1,6-2,6 V) | C130719 | extended | 513777 | 0,04 | **nuovo**; alternativa *basic* 0603 KT-0603R C2286 (0,008 $) |
+| D2 | Schottky 1N5819WS SOD-323 40 V 1 A | C191023 | **basic** | 3,37 M | 0,012 | **nuovo**, al posto di TVS + B5819WS |
+| J1 | Header SMD 1,27 mm 1 × 2 (PZ1.27-1x2PLT-L7.2-R) | C55213900 | extended | 3803 | 0,008 | **nuovo**, al posto del JST SH C160402 |
+| C1, C5-C7 | 10 µF 0402 (CL05A106MQ5NUNC) | C15525 | basic | 10 M | 0,026 | |
+| C2-C4 | 100 nF 0402 | C1525 | basic | 35 M | 0,003 | |
+| R1, R2, R4 | 10 kΩ 0402 | C25744 | basic | 16 M | 0,003 | ISET, TS, pull-up IO2/IO3 |
+| R3 | 1 kΩ 0402 | C11702 | basic | 21 M | 0,001 | LED |
+| R5, R6 | 100 kΩ 0402 | C25741 | basic | 8 M | 0,001 | CS flash e IMU alti all'avvio |
+
+Non montati da JLC (solo rame): 5 piazzole pogo Ø 2,0 mm (VDD, SWDIO, SWDCLK, RESET, GND) e 2 contatti di ricarica Ø 2,5 mm (VIN, GND), tutti sul lato sotto.
+
+**Alternative valutate (v0.4):**
+- **Flash:** C97521 SOIC-8 *basic* 2,46 $ (scelto) · C190862 W25Q128JVPIQ WSON 5 × 6, extended, 3,38 $ · C3202839 XT25F128FWOIGT WSON 5 × 6, extended, 1,56 $ · GD25Q128ESIG SOP-8 C2758105, extended, 1,78 $. Il SOIC non paga il caricamento (3,07 $): costo per 2 schede 4,93 $ contro 9,83 $ (Winbond WSON) e 6,19 $ (XTX WSON); il WSON riduce l'ingombro di circa 3-4 mm in larghezza (non provato). Alcune varianti della stessa Winbond (C2456297 6 × 8, C401662) sono a stock 0 o più grandi.
+- **Connettore batteria:** JST SH C160402 (26,6 mm², 0,133 $) · header SMD 1,27 mm C55213900 (10,4 mm², 0,008 $, scelto) · header SMD 2,54 mm C41417359 (22,1 mm², 0,028 $) · header THT 2,54 mm C225477: non adatto all'Economic (solo SMD); con montaggio Standard circa +20 $.
+- **LED:** nessun 0402 *basic*; 0603 KT-0603R C2286 *basic* (taglio di 3,07 $).
+- **Protezione contatti:** TVS SD05 C85201 (extended) tolto; Schottky B5819WS C22624 (extended) sostituito dal *basic* 1N5819WS C191023.
+
+**Costo (2 schede):** vedi la tabella in [progetto.md](progetto.md#v04-economica-2026-11-02--registrazione-dei-dati-grezzi-dellimu-budget--100-): ~84,5 $ + IVA 22 % ≈ 103 $ ≈ **91-95 €** con PCB (5 pz, 2 strati, HASL senza piombo, 0,8 mm) e spedizione stimati (non verificati nel carrello JLC).

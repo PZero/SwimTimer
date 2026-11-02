@@ -20,3 +20,5 @@ Risolte: modulo MDBT50Q-1MV2, IMU LSM6DSV16X ±4 g, sensore di pressione, cella 
 23. Carichi tu i file di `kicad/jlc/v0.3_swimtag_collaudo/` nell'anteprima JLC (rotazioni, stock, prezzo)?
 25. Programmazione del tag v0.3: cavo Tag-Connect TC2030-NL (~40 $) con J-Link EDU Mini (si adatta a 1,8 V) o Raspberry Pi Pico + traslatore di livello?
 26. Cella Ampul 401012 con spina JST SH 1,0 mm: la vende così o serve un'altra cella equivalente?
+27. v0.4 economica: ~91-95 € stimati per 2 schede (PCB e spedizione non verificati nel carrello JLC). Taglio possibile: LED 0603 *basic* (−3,07 $). Confermi LED 0402 e flash SOIC-8 16 MB (22,86 × 26 mm)? Caricare tu `kicad/jlc/v0.4_swimtag_economica/` nell'anteprima JLC (header C55213900 nell'Economic, rotazioni, prezzi reali).
+28. v0.4: 16 MB bastano per la registrazione? ~24 min a 960 Hz sei assi, ~97 min a 240 Hz; quale frequenza e quanto dura una registrazione?
