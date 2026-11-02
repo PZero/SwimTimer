@@ -34,9 +34,10 @@ def main():
         for f in sorted(gerber.iterdir()):
             z.write(f, f.name)
 
-    # BOM: un rigo per valore/impronta/codice LCSC, piazzole escluse (in_bom no nello schema)
+    # BOM: un rigo per valore/impronta/codice LCSC, piazzole escluse (in_bom no nello schema);
+    # designatori elencati uno per uno: JLC non capisce gli intervalli tipo "C2-C4"
     cli("sch", "export", "bom", "--fields", "Value,Reference,Footprint,LCSC,${QUANTITY}",
-        "--labels", "Comment,Designator,Footprint,LCSC Part #,Quantity",
+        "--labels", "Comment,Designator,Footprint,LCSC Part #,Quantity", "--ref-range-delimiter", "",
         "--group-by", "Value,Footprint,LCSC", "--exclude-dnp", "-o", OUT / "bom_jlc.csv", SCH)
 
     # CPL: posizioni dei componenti montati da JLC (solo lato sopra)

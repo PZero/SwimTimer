@@ -1,6 +1,6 @@
 "Comment","Designator","Footprint","LCSC Part #","Quantity"
-"10u","C1,C5-C7","Capacitor_SMD:C_0402_1005Metric","C15525","4"
-"100n","C2-C4","Capacitor_SMD:C_0402_1005Metric","C1525","3"
+"10u","C1,C5,C6,C7","Capacitor_SMD:C_0402_1005Metric","C15525","4"
+"100n","C2,C3,C4","Capacitor_SMD:C_0402_1005Metric","C1525","3"
 "rosso 0402","D1","LED_SMD:LED_0402_1005Metric","C130719","1"
 "1N5819WS","D2","swimtag:SOD-323_L1.8-W1.3-LS2.5-RD","C191023","1"
 "BATT header 1.27","J1","swimtag:HDR-SMD_2P-P1.27-V-M-LS4.2-R1","C55213900","1"

@@ -1,6 +1,6 @@
 "Comment","Designator","Footprint","LCSC Part #","Quantity"
 "10u","C1,C5,C7,C12","Capacitor_SMD:C_0402_1005Metric","C15525","4"
-"100n","C2-C4,C6,C8,C9","Capacitor_SMD:C_0402_1005Metric","C1525","6"
+"100n","C2,C3,C4,C6,C8,C9","Capacitor_SMD:C_0402_1005Metric","C1525","6"
 "47u","C10,C11","Capacitor_SMD:C_0805_2012Metric","C16780","2"
 "1N4148WS","D1","Diode_SMD:D_SOD-323","C2128","1"
 "rosso","D2","LED_SMD:LED_0603_1608Metric","C2286","1"
