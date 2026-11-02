@@ -16,6 +16,9 @@ from dati_scheda import N_STRATI, NOME, VERSIONE
 OUT = QUI / "jlc" / f"{VERSIONE}_{NOME}"
 PCB = QUI / f"{NOME}.kicad_pcb"
 SCH = QUI / f"{NOME}.kicad_sch"
+# correzioni di rotazione per impronte della libreria KiCad il cui modello JLC è orientato diversamente
+# (le impronte swimtag: vengono da EasyEDA/LCSC e non ne hanno bisogno); verificato nell'anteprima JLC
+CORREZIONE_ROT = {"Package_SO:SOIC-": 270}
 STRATI = ("F.Cu,In1.Cu,In2.Cu,B.Cu" if N_STRATI == 4 else "F.Cu,B.Cu") + ",F.Paste,B.Paste,F.Silkscreen,B.Silkscreen,F.Mask,B.Mask,Edge.Cuts"
 
 
@@ -48,8 +51,9 @@ def main():
         w = csv.writer(g)
         w.writerow(["Designator", "Mid X", "Mid Y", "Layer", "Rotation"])
         for r in csv.DictReader(f):
+            rot = float(r["Rot"]) + sum(v for k, v in CORREZIONE_ROT.items() if r["Package"].startswith(k.split(":")[1]))
             w.writerow([r["Ref"], f'{float(r["PosX"]):.3f}mm', f'{float(r["PosY"]):.3f}mm',
-                        "Top" if r["Side"] == "top" else "Bottom", f'{float(r["Rot"]) % 360:.0f}'])
+                        "Top" if r["Side"] == "top" else "Bottom", f'{rot % 360:.0f}'])
     pos.unlink()
 
     for lato, extra in (("sopra", ["--side", "top"]), ("sotto", ["--side", "bottom"]),
