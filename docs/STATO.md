@@ -2,6 +2,13 @@
 
 **Ultimo aggiornamento:** 2026-11-02 — **v0.4 economica ricompattata il 2026-11-03 (21,59 × 26 mm, 2 strati, DRC 0, LED 0603 basic con anodo su VDD, ~87-91 € per 2 schede, file JLC rigenerati, anteprima JLC da fare)**;  2026-11-01 — Fase 1 (prototipo ESP32 sul tavolo) + scheda su misura nRF52840: **tag v0.3 di collaudo sbrogliato, pronto per l'anteprima JLC** (ramo `claude/scheda-nrf52840-08642d`, solo sul repository privato `PZero/SwimTimer-nrf52840`, mai su `origin`).
 
+## Ripresa (sessione chiusa il 2026-11-03 sera)
+- **Lavoro interrotto a metà:** aggiunta del TPS22916C che commuta l'alimentazione dell'IMU (decisione dell'utente; MAX17048 no). Schema/PCB/script nel commit "WIP" sono **non verificati** (DRC non rifatto): riprendere da lì, poi C5 ≥ 10 V, uscita caricatore 1–10 µF, piste sotto l'E73 su B.Cu, serigrafia ≥ 1 mm, R6 (pull-up CS IMU) su VDD_IMU o tolta, nota firmware (SPI/INT bassi prima di spegnere l'IMU).
+- Poi: DRC/ERC, `kicad/verifica_v04.py` con tabella ATTESA aggiornata, file JLC, costi (≤ 100 €), `hardware/programmatore/genera_kicad.py --drc` + `genera_pdf.py` se le piazzole cambiano, `hardware/wallpaper_v0.4/genera.py` (20 sfondi tecnici).
+- Fatto oggi: verifica indipendente `hardware/nrf52840/verifica_v0.4.md` (65 test, 0 bloccanti, su 8fd6cc0); programmatore HAT per Raspberry Pi 3/4 in `hardware/programmatore/` (PDF con stampe 1:1); generatore sfondi in `hardware/wallpaper_v0.4/`.
+- Scelta dell'utente all'ordine: finitura HASL o ENIG (la verifica consiglia ENIG per BQ25101 0,4 mm e IMU 0,5 mm).
+- Da cancellare a mano: cartella temporanea `C:\swt_chk`.
+
 ## Fatto
 - **Prototipo** (invariato, dettagli in `hardware/bom.md`, `hardware/schema.md`): tag ESP32-S3 SuperMini + BMI160 con BLE e sonno profondo; display LilyGO T-RGB 2,8" con pace clock a 4 lancette; pagina `tools/assi.html`.
 - **Scheda nRF52840 v0.3, variante di collaudo 1c** (`hardware/nrf52840/`, nessun acquisto):

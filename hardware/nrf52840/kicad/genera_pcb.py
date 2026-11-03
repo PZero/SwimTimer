@@ -67,18 +67,18 @@ def serigrafia_economica(board, testo):
     for rif, _, valore, _, _, _, (x, y, _, lato) in COMPONENTI:
         if lato != "B":
             continue
-        lung = 0.6 * len(valore)
+        lung = 0.85 * len(valore)
         if rif in ("TP1", "TP2", "TP3", "TP4", "TP5"):   # SWD: nome verticale sopra la piazzola
-            testo(valore, x, y - 1.0 - 1.0 - lung / 2, pcbnew.B_SilkS, 0.8, 90, True)
+            testo(valore, x, y - 1.0 - 0.8 - lung / 2, pcbnew.B_SilkS, 1.0, 90, True)
         else:                                           # ricarica: nome verticale sotto la piazzola
-            testo(valore, x, y + 1.25 + 0.6 + lung / 2, pcbnew.B_SilkS, 0.8, 90, True)
+            testo(valore, x, y + 1.25 + 0.8 + lung / 2, pcbnew.B_SilkS, 1.0, 90, True)
     # tacche della griglia: sul bordo sinistro ogni 2,54 mm (lunga ogni 5 passi), sul bordo alto idem; origine = angolo in alto a sinistra
     for k in range(1, int((SCHEDA_H - 0.3) // g) + 1):
         segmento(0.4, k * g, 1.2 if k % 5 else 1.9, k * g)
     for k in range(1, int((SCHEDA_L - 0.3) // g) + 1):
         segmento(k * g, 0.4, k * g, 1.2 if k % 5 else 1.9)
-    testo("SwimTimer tag", SCHEDA_L / 2, SCHEDA_H - 2.3, pcbnew.B_SilkS, 0.8, 0, True)
-    testo(TITOLO_SERIGRAFIA, SCHEDA_L / 2, SCHEDA_H - 1.1, pcbnew.B_SilkS, 0.8, 0, True)
+    testo("SwimTimer tag", SCHEDA_L / 2, SCHEDA_H - 2.4, pcbnew.B_SilkS, 1.0, 0, True)
+    testo(TITOLO_SERIGRAFIA, SCHEDA_L / 2, SCHEDA_H - 1.1, pcbnew.B_SilkS, 1.0, 0, True)
 
 
 def main(solo_piano_interno=False):
@@ -177,6 +177,21 @@ def main(solo_piano_interno=False):
     k.SetZoneName("antenna")
     board.Add(k)
 
+    if VARIANTE == "economica":   # Ebyte: niente piste sotto il modulo sul suo stesso lato: zona centrale F.Cu senza piste (via e pad ammessi)
+        from dati_economica import MOD_X
+        k2 = pcbnew.ZONE(board)
+        k2.SetIsRuleArea(True)
+        k2.SetLayer(pcbnew.F_Cu)
+        k2.SetDoNotAllowTracks(True)
+        k2.SetDoNotAllowVias(False)
+        k2.SetDoNotAllowZoneFills(False)
+        k2.SetDoNotAllowPads(False)
+        k2.SetDoNotAllowFootprints(False)
+        for x, y in ((MOD_X - 3.3, 6.9), (MOD_X + 3.3, 6.9), (MOD_X + 3.3, 15.5), (MOD_X - 3.3, 15.5)):
+            k2.AppendCorner(punto(x, y), -1)
+        k2.SetZoneName("sotto_modulo")
+        board.Add(k2)
+
     # serigrafia sotto: nomi delle piazzole (testo verticale accanto, specchiato) e titolo
     def testo(txt, x, y, layer, size=0.6, angolo=0.0, specchio=False):
         t = pcbnew.PCB_TEXT(board)
@@ -184,7 +199,7 @@ def main(solo_piano_interno=False):
         t.SetLayer(layer)
         t.SetPosition(punto(x, y))
         t.SetTextSize(punto(size, size))
-        t.SetTextThickness(mm(0.13))
+        t.SetTextThickness(mm(0.15 if VARIANTE == "economica" else 0.13))
         t.SetTextAngleDegrees(angolo)
         t.SetMirrored(specchio)
         board.Add(t)
@@ -212,7 +227,7 @@ def main(solo_piano_interno=False):
                 if pad.GetNumber() in ("1", "2"):
                     q = pad.GetPosition()
                     if VARIANTE == "economica":   # header 1,27 mm (orizzontale): il segno sta sopra il pad
-                        testo("+" if pad.GetNumber() == "1" else "-", pcbnew.ToMM(q.x), pcbnew.ToMM(q.y) - 1.25, pcbnew.F_SilkS, 0.9)
+                        testo("+" if pad.GetNumber() == "1" else "-", pcbnew.ToMM(q.x), pcbnew.ToMM(q.y) - 1.25, pcbnew.F_SilkS, 1.0)
                         continue
                     testo("+" if pad.GetNumber() == "1" else "-", pcbnew.ToMM(q.x) + 1.2, pcbnew.ToMM(q.y), pcbnew.F_SilkS, 0.9)
 

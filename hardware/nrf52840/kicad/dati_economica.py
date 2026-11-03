@@ -42,17 +42,21 @@ PINS_U1 = {
     32: "CHG_N", 34: "LED", 12: "IMU_INT1", 14: "IMU_INT2",   # pad interni (P0.20, P0.22 a destra; P0.26, P0.06 in basso): la colonna sinistra non ha spazio per le piste
     11: "IMU_CS", 13: "IMU_MISO", 15: "IMU_MOSI", 17: "IMU_SCK",
     33: "FL_MOSI", 35: "FL_SCK", 28: "FL_MISO", 30: "FL_CS",
+    18: "SENS_ON",   # ON del TPS22916C (pad interno in basso, P0.04): segnale statico
 }
 NC_U1 = [n for n in range(1, 44) if n not in PINS_U1]
 
 COMPONENTI = [
     ("U1", "swimtag:E73-2G4M08S1C", "E73-2G4M08S1C", "swimtag:WIRELM-SMD_E73-2G4M08S1C", "C356849", PINS_U1, _p("U1")),
     ("U2", "swimtag:LSM6DSV16XTR", "LSM6DSV16X", "swimtag:LGA-14_L3.0-W2.5-P0.50-BR", "C5267406",
-     {1: "IMU_MISO", 2: "GND", 3: "GND", 4: "IMU_INT1", 5: "VDD", 6: "GND", 7: "GND", 8: "VDD",
+     {1: "IMU_MISO", 2: "GND", 3: "GND", 4: "IMU_INT1", 5: "VDD_IMU", 6: "GND", 7: "GND", 8: "VDD_IMU",
       9: "IMU_INT2", 12: "IMU_CS", 13: "IMU_SCK", 14: "IMU_MOSI"}, _p("U2")),
     # flash 16 MB in SOIC-8 208 mil (Basic JLC, nessun costo di caricamento): SPI semplice, IO2/IO3 (WP#/HOLD#) alti tramite R4
     ("U3", "Memory_Flash:W25Q128JVS", "W25Q128JVSIQ", SOIC8, "C97521",
      {1: "FL_CS", 2: "FL_MISO", 3: "FL_IO23", 4: "GND", 5: "FL_MOSI", 6: "FL_SCK", 7: "FL_IO23", 8: "VDD"}, _p("U3")),
+    # interruttore di carico dell'IMU (come v0.3, 2026-11-03): un IMU in latch-up dentro la resina si sblocca solo togliendo l'alimentazione
+    ("U6", "swimtag:TPS22916CYFPR", "TPS22916C", "swimtag:DSBGA-4_L0.78-W0.78-P0.40", "C2680319",
+     {"A2": "VDD", "A1": "VDD_IMU", "B2": "SENS_ON", "B1": "GND"}, _p("U6")),
     ("U4", "swimtag:BQ25101YFPR", "BQ25101", "swimtag:DSBGA-6_L0.9-W1.6-R2-C3-P0.40-BL", "C478468",
      {"A2": "VIN_D", "A1": "VBAT", "B1": "TS", "B2": "ISET", "C1": "CHG_N", "C2": "GND"}, _p("U4")),
     ("D1", "Device:LED", "rosso 0603", LED0603, "C2286", {1: "LED_K", 2: "VDD"}, _p("D1")),   # KT-0603R (Basic JLC): anodo su VDD (1,8 V al primo avvio: niente corrente nei diodi di protezione del pin), 1 k -> ~1,4 mA a VDD 3,3 V
@@ -63,14 +67,14 @@ COMPONENTI = [
     ("R3", "Device:R", "1k", R0402, "C11702", {1: "LED_K", 2: "LED"}, _p("R3")),
     ("R4", "Device:R", "10k", R0402, "C25744", {1: "FL_IO23", 2: "VDD"}, _p("R4")),
     ("R5", "Device:R", "100k", R0402, "C25741", {1: "FL_CS", 2: "VDD"}, _p("R5")),   # CS flash alto mentre i GPIO sono flottanti
-    ("R6", "Device:R", "100k", R0402, "C25741", {1: "IMU_CS", 2: "VDD"}, _p("R6")),  # CS IMU alto all'avvio
+    ("R6", "Device:R", "100k", R0402, "C25741", {1: "IMU_CS", 2: "VDD_IMU"}, _p("R6")),  # CS IMU alto all'accensione; su VDD_IMU (non su VDD) per non alimentare l'IMU spento dal pin
+    ("R7", "Device:R", "1M", R0402, "C26083", {1: "SENS_ON", 2: "GND"}, _p("R7")),    # pull-down su ON: IMU spento all'avvio e a GPIO flottante
     ("C1", "Device:C", "10u", C0402, "C15525", {1: "VDD", 2: "GND"}, _p("C1")),      # VDD del modulo (pad 19)
-    ("C2", "Device:C", "100n", C0402, "C1525", {1: "VDD", 2: "GND"}, _p("C2")),      # IMU Vdd_IO (pin 5)
+    ("C2", "Device:C", "100n", C0402, "C1525", {1: "VDD_IMU", 2: "GND"}, _p("C2")),      # IMU Vdd_IO (pin 5)
     ("C3", "Device:C", "100n", C0402, "C1525", {1: "VDD", 2: "GND"}, _p("C3")),      # flash VCC
-    ("C4", "Device:C", "100n", C0402, "C1525", {1: "VDD", 2: "GND"}, _p("C4")),      # IMU Vdd (pin 8)
-    ("C5", "Device:C", "10u", C0402, "C15525", {1: "VIN_D", 2: "GND"}, _p("C5")),    # ingresso caricatore
-    ("C6", "Device:C", "10u", C0402, "C15525", {1: "VBAT", 2: "GND"}, _p("C6")),     # uscita caricatore
-    ("C7", "Device:C", "10u", C0402, "C15525", {1: "VBAT", 2: "GND"}, _p("C7")),     # VDDH del modulo (pad 23)
+    ("C4", "Device:C", "100n", C0402, "C1525", {1: "VDD_IMU", 2: "GND"}, _p("C4")),      # IMU Vdd (pin 8)
+    ("C5", "Device:C", "4u7", C0402, "C23733", {1: "VIN_D", 2: "GND"}, _p("C5")),    # ingresso caricatore: 4,7 uF 10 V X5R (Basic) su 5 V; TI chiede >= 1 uF
+    ("C6", "Device:C", "4u7", C0402, "C23733", {1: "VBAT", 2: "GND"}, _p("C6")),     # uscita caricatore (1-10 uF TI) e VDDH: da solo, con i 4,7 uF gia' nel modulo
     # connettore batteria: due pin header SMD 1,27 mm (fili della cella saldati ai pin); 1 = + (VBAT), 2 = - (GND)
     ("J1", "Connector_Generic:Conn_01x02", "BATT header 1.27", HDR127, "C55213900", {1: "VBAT", 2: "GND"}, _p("J1")),
     # lato sotto (solo rame, non montate): 5 piazzole pogo SWD Ø 2,0 sulla griglia 2,54 mm; 2 contatti di ricarica Ø 2,5
@@ -109,5 +113,5 @@ ATTRAZIONI = {
     "C1": (("U1", "19"), 4.0),
     "C2": (("U2", "5"), 4.0), "C4": (("U2", "8"), 4.0), "C3": (("U3", "8"), 4.0),
     "C5": (("U4", "A2"), 4.0), "C6": (("U4", "A1"), 4.0), "R1": (("U4", "B2"), 3.0), "R2": (("U4", "B1"), 3.0),
-    "R4": (("U3", "3"), 2.0), "R5": (("U3", "1"), 1.5), "R6": (("U2", "12"), 1.5), "R3": (("D1", "1"), 3.0), "U2": (("U1", "15"), 3.0), "C7": (("U1", "23"), 4.0),
+    "R4": (("U3", "3"), 2.0), "R5": (("U3", "1"), 1.5), "R6": (("U2", "12"), 1.5), "R3": (("D1", "1"), 3.0), "U6": (("U2", "5"), 3.0), "R7": (("U6", "B2"), 2.0), "U2": (("U1", "15"), 3.0),
 }
