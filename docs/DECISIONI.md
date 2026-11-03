@@ -55,3 +55,5 @@
 | 2026-11-02 | v0.4: batteria su header SMD 1,27 mm (C55213900) invece del JST SH | 10,4 contro 26,6 mm² e costa meno; il THT 2,54 mm non è montabile nell'Economic (+~20 $) |
 | 2026-11-02 | v0.4: sotto 5 pogo SWD Ø 2 e 2 contatti di ricarica sulla griglia 2,54 mm, tacche di serigrafia | Primo caricamento su millefori con pin/molle pogo saldati |
 | 2026-11-03 | v0.4: LED 0603 KT-0603R (C2286, *basic*) con anodo su VDD; scheda ricompattata a 21,59 × 26 mm (E73 a 0,3 mm dal bordo sinistro, pinout dei segnali lenti spostato sui pad interni) | −3,07 $ di caricamento extended; anodo su VDD per non iniettare corrente nel pin al primo avvio (VDD 1,8 V); 20,32 mm non chiude lo sbroglio a 2 strati |
+| 2026-11-03 | Programmatore: HAT 65 × 56,5 mm innestato sul 40 pin del Raspberry Pi 3/4 (OpenOCD bit-bang), pogo sulle 7 piazzole, 1 kΩ in serie su SWD, ricarica 5 V con ponticello e PTC; toner transfer | L'utente ha un Pi 3/4 e non vuole comprare altre schede; l'innesto 2×20 completo evita errori di cablaggio |
+| 2026-11-03 | Regola "niente saldature" solo per il tag (tutto montato da JLC); il programmatore lo salda l'utente | Chiarimento dell'utente |
