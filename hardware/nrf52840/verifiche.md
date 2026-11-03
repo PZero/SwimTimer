@@ -255,7 +255,7 @@ Fonti: API JLCPCB (stock, tipo, descrizione parametri) del 2026-11-02; impronte 
 |---|---|---|---|
 | TS | senza NTC: 10 kΩ verso VSS; 50 µA × 10 k = 0,5 V in zona normale (carica abilitata) | R2 10 k a massa, nessun GPIO | ✅ (niente TTDM: il pin non è mai flottante o alto) |
 | ISET | 135 AΩ / R: 10 k → 13,5 mA (0,34 C su 40 mAh); terminazione fissa al 10 % | R1 10 k | ✅ |
-| /CHG | open drain, basso durante la carica | `CHG_N` su P0.03, pull-up interno | ✅ firmware: abilitare il pull-up |
+| /CHG | open drain, basso durante la carica | `CHG_N` su P0.20 (pad 32; era P0.03 fino al 2026-11-03), pull-up interno | ✅ firmware: abilitare il pull-up |
 | Condensatori | ingresso e uscita 1-10 µF | C5 10 µF su VIN_D, C6 10 µF su VBAT | ✅ |
 | Rinuncia | niente sospensione della carica a SOC 80 % (serviva il MAX17048) | il caricatore carica sempre a 4,2 V | ✅ accettato per la registrazione |
 | Tensione sui contatti | IN max 28 V assoluti, OVP; nessuna via cella → IN | Schottky 1N5819WS in serie, VIN → D2 → `VIN_D` | ✅ |
@@ -265,9 +265,9 @@ Fonti: API JLCPCB (stock, tipo, descrizione parametri) del 2026-11-02; impronte 
 | Voce | Dato | Scheda | Esito |
 |---|---|---|---|
 | VDDHDIV5 | ingresso interno del SAADC = VDDH/5 (Nordic PS): 4,2 V → 0,84 V | nessun partitore, nessun GPIO; VDDH è `VBAT` (pad 23) | ✅ da provare a banco col tester |
-| LED NCD0402R1 | Vf 1,6-2,6 V, 25 mA max (descrizione JLC), rosso 630 nm | anodo su VBAT, 1 k, catodo sul GPIO P0.31: ~2,2 mA a 4,2 V, ~0,5 mA a 3,0 V; con GPIO alto (3,3 V) a 4,2 V la tensione ai capi (0,9 V) è sotto la Vf: spento | ✅ polarità da controllare nell'anteprima |
-| Regole JLC 2 strati | piste/distanze 0,127 mm, via 0,6/0,3 mm, foro-rame 0,2 mm | DRC 0 con questi valori; margine di 20 µm nello sbroglio | ✅ |
-| Zona antenna | 3,7 mm senza rame su F.Cu e B.Cu (zona vietata) | invariata, modulo a 2,2 mm dal bordo | ⚠️ valore dedotto dal disegno Ebyte (v0.3), prova di portata |
+| LED KT-0603R (C2286, *basic*) | Vf ~1,9 V (rosso 0603), 20 mA max | **anodo su VDD** (non su VBAT: dal 2026-11-03), R3 1 k, catodo sul GPIO **P0.22** (pad 34) in assorbimento. Motivo: al primo avvio VDD è 1,8 V (UICR vuoto); con l'anodo su VBAT (fino a 4,2 V) LED e resistenza porterebbero il pin oltre VDD + 0,3 V iniettando corrente nei diodi di protezione. A VDD 3,3 V: (3,3 − 1,9) / 1 k ≈ **1,4 mA**; a 1,8 V il LED resta spento (corrente < 0,1 mA, nessuna iniezione) | ✅ basta per un LED rosso 0603 ad alta efficienza; da vedere a banco |
+| Regole JLC 2 strati | piste/distanze 0,127 mm, via 0,6/0,3 mm, foro-rame 0,2 mm | DRC 0 con questi valori; margine di 35 µm nello sbroglio (20 µm lasciava distanze di 121-124 µm sotto il minimo di 127) | ✅ |
+| Zona antenna | 3,7 mm senza rame su F.Cu e B.Cu (zona vietata) | invariata; modulo a 0,3 mm dal bordo sinistro (pad esterni), a destra una colonna di 6,3 mm di componenti | ⚠️ il foglio Ebyte (v1.9) non dà nessuna quota laterale tra modulo e bordo né sul rame vicino all'antenna: solo "antenna lontana da metallo"; prova di portata obbligatoria, anche con la cella sopra |
 | Sbroglio sotto il modulo | il foglio Ebyte sconsiglia piste veloci sotto il modulo | B.Cu: massa piena, 59 piste di segnale (circa 77 mm in tutto sotto il modulo) | ⚠️ sotto il modulo passano 4,8 mm di FL_CS e 4,7 mm di FL_MISO (SPI a 8 MHz), più INT1/INT2, CHG_N, VIN_D, SWD e RESET: da rivedere se la portata risultasse scarsa |
 
 ## Header batteria SMD 1,27 mm (J1, C55213900) e JST SH (confronto)

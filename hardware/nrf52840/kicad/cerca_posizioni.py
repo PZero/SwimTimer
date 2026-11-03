@@ -72,7 +72,7 @@ def main():
         fisso = sotto(W, H)
     comp = {c[0]: c for c in COMPONENTI}
     inf = {r: info(c[3]) for r, c in comp.items()}
-    mod_xy = (W / 2, 11.2)
+    mod_xy = (__import__('dati_economica').MOD_X if VARIANTE == 'economica' else W / 2, 11.2)
     reti = {}
     for r, c in comp.items():
         for pin, net in c[5].items():
@@ -83,7 +83,7 @@ def main():
     sopra_fissi = de.SOPRA_FISSI if VARIANTE == "economica" else ("J1", "U3")
     rot_ok = {} if VARIANTE == "economica" else {"J1": (90, 270)}   # connettore batteria: apertura verso l'esterno (90 = bordo destro, 270 = bordo sinistro)
     pos = {r: [rnd.uniform(3, W - 3), rnd.uniform(5, H - 3), rnd.choice(rot_ok.get(r, ROT))] for r in mobili}
-    FAN = 0.9
+    FAN = float(__import__("os").environ.get("FAN", "0.9"))
     mx0, mx1, my0, my1 = mod_xy[0] - 7.5 - FAN, mod_xy[0] + 7.5 + FAN, 0, 19.3 + FAN
 
     padd = {r: {rot: {n: (dx, dy) for n, dx, dy in inf[r][rot][0]} for rot in ROT} for r in inf}

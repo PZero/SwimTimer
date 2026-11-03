@@ -31,7 +31,7 @@ def main():
         sys.exit("esportazione DSN non riuscita")
     # margine sul minimo JLC (5 um a 4 strati, 20 um a 2 strati) (0,1 mm): Freerouting arrotonda le posizioni e a volte resta 1 um sotto
     dist = round(DISTANZA * 1000)
-    dsn.write_text(dsn.read_text(encoding="utf-8").replace(f"(clearance {dist})", f"(clearance {dist + 20})"), encoding="utf-8")
+    dsn.write_text(dsn.read_text(encoding="utf-8").replace(f"(clearance {dist})", f"(clearance {dist + (35 if N_STRATI == 2 else 20)})"), encoding="utf-8")
     ses.unlink(missing_ok=True)
     subprocess.run([os.environ.get("JAVA25", "java"), "-jar", os.environ["FREEROUTING_JAR"],
                     "-de", str(dsn), "-do", str(ses), "-mp", passate, "--gui.enabled=false"],

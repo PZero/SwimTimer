@@ -76,7 +76,7 @@ def vista(board, ox, oy, titolo, lato, W, H):
 def main():
     board = pcbnew.LoadBoard(str(PCB))
     bb = board.GetBoardEdgesBoundingBox()
-    W, H = round(mm(bb.GetWidth()) * 2) / 2, round(mm(bb.GetHeight()) * 2) / 2
+    W, H = round(mm(bb.GetWidth()) - 0.1, 2), round(mm(bb.GetHeight()) - 0.1, 2)
     vista(board, 4, 6, "Sopra (componenti)", "F", W, H)
     vista(board, W + 12, 6, "Sotto (visto girando la scheda), griglia 2,54", "B", W, H)
     sx, sy = 2 * W + 20, 9

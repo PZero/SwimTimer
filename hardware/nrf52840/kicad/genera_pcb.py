@@ -73,9 +73,9 @@ def serigrafia_economica(board, testo):
         else:                                           # ricarica: nome verticale sotto la piazzola
             testo(valore, x, y + 1.25 + 0.6 + lung / 2, pcbnew.B_SilkS, 0.8, 90, True)
     # tacche della griglia: sul bordo sinistro ogni 2,54 mm (lunga ogni 5 passi), sul bordo alto idem; origine = angolo in alto a sinistra
-    for k in range(1, int(SCHEDA_H // g) + 1):
+    for k in range(1, int((SCHEDA_H - 0.3) // g) + 1):
         segmento(0.4, k * g, 1.2 if k % 5 else 1.9, k * g)
-    for k in range(1, int(SCHEDA_L // g) + 1):
+    for k in range(1, int((SCHEDA_L - 0.3) // g) + 1):
         segmento(k * g, 0.4, k * g, 1.2 if k % 5 else 1.9)
     testo("SwimTimer tag", SCHEDA_L / 2, SCHEDA_H - 2.3, pcbnew.B_SilkS, 0.8, 0, True)
     testo(TITOLO_SERIGRAFIA, SCHEDA_L / 2, SCHEDA_H - 1.1, pcbnew.B_SilkS, 0.8, 0, True)
@@ -143,6 +143,10 @@ def main(solo_piano_interno=False):
         # in serigrafia solo i riferimenti, piccoli; nascosti valore, codice LCSC e testi delle librerie
         for campo in fp.GetFields():
             campo.SetVisible(campo.IsReference())
+        if VARIANTE == "economica" and rif == "U3":   # contorno serigrafico del SOIC: toccherebbe i pad del modulo, tolto
+            for disegno in list(fp.GraphicalItems()):
+                if disegno.GetLayer() == pcbnew.F_SilkS:
+                    fp.Remove(disegno)
         for disegno in fp.GraphicalItems():
             if isinstance(disegno, pcbnew.PCB_TEXT):
                 disegno.SetVisible(False)

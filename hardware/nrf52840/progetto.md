@@ -205,11 +205,11 @@ File in [`kicad/`](kicad/), generati da script a partire da un'unica tabella di 
 
 **Scopo:** 2 prototipi montati da JLC per registrare i dati grezzi dell'IMU (definire i filtri), spesi il meno possibile (5 PCB, 2 montati, spedizione e IVA incluse, tetto 100 €). La v0.3 collaudo resta com'è e si rigenera con `SWIMTAG_VARIANTE=collaudo` (default); la v0.4 con `SWIMTAG_VARIANTE=economica`. Dati in `kicad/dati_economica.py`, posizioni in `kicad/posizioni_economica.py`, file generati `kicad/swimtag_economica.*`, file JLC in `kicad/jlc/v0.4_swimtag_economica/`, disegno in [`ingombro_v0.4.svg`](ingombro_v0.4.svg).
 
-**Esito: scheda a 2 strati riuscita, DRC 0 errori e 0 avvisi, 0 non collegati, ERC 0, parità schema/PCB 0, netlist 24/24 reti.** Non serve passare a 4 strati. 317 piste (258 sopra, 59 sotto), 31 via, **22,86 × 26,0 mm**, 0,8 mm, HASL senza piombo, componenti solo sopra.
+**Esito: scheda a 2 strati riuscita, DRC 0 errori e 0 avvisi, 0 non collegati, ERC 0, parità schema/PCB 0, netlist 24/24 reti.** Non serve passare a 4 strati. ERC: 0 errori (34 avvisi `pin_to_pin` sui pin "Unspecified" dei simboli generati, come prima). **Ricompattata il 2026-11-03: 21,59 × 26,0 mm** (era 22,86 × 26,0), 313 piste, 29 via, 0,8 mm, HASL senza piombo, componenti solo sopra.
 
-**Contenuto (20 componenti montati per scheda):** E73-2G4M08S1C (VDDH dalla cella, REGOUT0 3,3 V da UICR, come v0.3), IMU LSM6DSV16X in SPI con INT1/INT2, flash 16 MB in SPI semplice, caricatore BQ25101, 1 LED 0402, header batteria a 2 pin, 6 resistenze, 7 condensatori, Schottky in serie ai contatti di ricarica. **Tolti rispetto alla v0.3:** MS5837 (pressione), MAX17048, TPS22916C, vibratore e pilotaggio (Q1, D1, R3 di allora), Tag-Connect, 7 piazzole di prova, TVS, MOSFET di reset (Q2, C8, R7), 2 × 47 µF, 0 Ω BAT/VBAT, pull-up I2C. BAT e VBAT sono ora la stessa rete (`VBAT`).
+**Contenuto (20 componenti montati per scheda):** E73-2G4M08S1C (VDDH dalla cella, REGOUT0 3,3 V da UICR, come v0.3), IMU LSM6DSV16X in SPI con INT1/INT2, flash 16 MB in SPI semplice, caricatore BQ25101, 1 LED 0603 *basic* (KT-0603R, anodo su VDD), header batteria a 2 pin, 6 resistenze, 7 condensatori, Schottky in serie ai contatti di ricarica. **Tolti rispetto alla v0.3:** MS5837 (pressione), MAX17048, TPS22916C, vibratore e pilotaggio (Q1, D1, R3 di allora), Tag-Connect, 7 piazzole di prova, TVS, MOSFET di reset (Q2, C8, R7), 2 × 47 µF, 0 Ω BAT/VBAT, pull-up I2C. BAT e VBAT sono ora la stessa rete (`VBAT`).
 
-**Misure.** Scheda **22,86 × 26,0 mm** (= 9 passi da 2,54 mm in larghezza), tag finito ~26 × 29 mm con 1,5 mm di resina, ~9,2 mm di spessore (cella sopra il modulo come v0.3). La stima di 18 × 22 mm non è raggiungibile: il solo E73 è 13 × 18 mm con 2,2 mm di margine sopra e la striscia d'antenna di 3,7 mm come v0.3; ai lati restano strisce di ~2,5 mm e sotto il modulo una fascia di ~5,8 mm per flash, IMU, header e passivi. Provati senza successo: 20,32 × 27 e 20,32 × 26 (posizionamento con collisioni per i 9,4 mm d'ingombro della flash SOIC), 21,6 × 25,5 (posizionamento ok, sbroglio incompleto con Freerouting). Riducibile solo con flash WSON 5 × 6 (+~5 $, non provato) o accorciando il margine d'antenna dopo la prova di portata.
+**Misure (ricompattazione del 2026-11-03).** Scheda **21,59 × 26,0 mm** (8,5 passi da 2,54 mm), tag finito ~25 × 29 mm con 1,5 mm di resina. Cosa è cambiato rispetto ai 22,86 mm: il modulo E73 è spostato a sinistra, con i pad esterni a **0,3 mm dal bordo** (centro a x = 7,8 mm); la striscia sinistra (D2, LED, resistenza, header) non c'è più; D1 (LED), BQ25101 e i suoi condensatori e resistenze stanno nella colonna destra (x da 15,3 mm), D2 e J1 nella fascia sotto il modulo, a sinistra della flash. **Antenna:** il foglio Ebyte non indica alcuna distanza laterale tra modulo e bordo (solo "antenna lontana da metallo"); resta la zona senza rame di 3,7 mm sul bordo alto, larga quanto la scheda, e a sinistra non c'è rame oltre ai pad del modulo. La prova di portata resta obbligatoria (⚠️ il piano di massa vicino al lato sinistro dell'antenna non è misurato). **Perché non 20,32 mm:** con il modulo a filo di sinistra la colonna destra utile è 5,0 mm meno 0,9 mm di uscita dei pad (3,8 mm per D1, BQ25101, 7 passivi, 2 resistenze); la posizione dei componenti chiude (penalità 0 a 20,32 × 25,4 e 26) ma lo sbroglio con Freerouting a 2 strati, regole JLC 0,127 mm, non chiude: su circa 100 sbroglii (una quindicina di posizionamenti con penalità 0, altezze 25,4 e 26) il migliore lascia 2 collegamenti aperti o violazioni di distanza di pochi µm (reti ISET, CHG_N, SPI dell'IMU, VDD, riempimenti di massa isolati sopra), mai DRC 0. A 21,59 mm chiude dopo ~20 sbroglii (margine di 35 µm sulla distanza in Freerouting). Per scendere ancora servirebbe lo sbroglio a mano o 4 strati (non misurato). Il flash SOIC resta (nessun WSON, nessun caricamento extended in più).
 
 **Pinout del modulo (pad → GPIO → rete).** Segnali veloci solo su pin non "bassa frequenza" (Nordic PS).
 
@@ -219,52 +219,52 @@ File in [`kicad/`](kicad/), generati da script a partire da un'unica tabella di 
 | 13 | P0.01 | IMU_MISO | 30 | P0.17 | FL_CS (R5 100 k a VDD) |
 | 15 | P0.05 | IMU_MOSI | 33 | P0.13 | FL_MOSI |
 | 17 | P1.09 | IMU_SCK | 35 | P0.24 | FL_SCK |
-| 3 | P0.03 | CHG_N (pull-up interno) | 7 / 8 | P0.02 / P0.29 | IMU_INT2 / INT1 |
-| 9 | P0.31 | LED (anodo su VBAT, 1 k, attivo basso) | 26 | P0.18 | RESET (`UICR.PSELRESET`) |
+| 32 | P0.20 | CHG_N (pull-up interno) | 12 / 14 | P0.26 / P0.06 | IMU_INT1 / IMU_INT2 |
+| 34 | P0.22 | LED (anodo su VDD, 1 k, attivo basso) | 26 | P0.18 | RESET (`UICR.PSELRESET`) |
 | 19 / 23 | VDD / VDDH | VDD (C1 10 µ) / VBAT (C7 10 µ) | 37 / 39 | SWDIO / SWDCLK | SWD |
 | 5, 21, 24 | GND | | altri | | liberi (27 VBUS non collegato) |
 
-P0.00/P0.01 sono XL1/XL2: liberi come GPIO perché l'E73 non ha il quarzo a 32 kHz. Lettura batteria: canale **VDDHDIV5** del SAADC (VDDH è la cella), nessun partitore e nessun GPIO. Nessun dato inviato all'app cambia; **manca però la pressione (profondità)**: se l'app o il rilevamento la usano va segnalato all'agente `app`.
+**Pinout cambiato il 2026-11-03** rispetto alla prima v0.4 (CHG_N 3→32, LED 9→34, INT2 7→14, INT1 8→12): i pad della colonna sinistra del modulo stanno a 0,3 mm dal bordo e non hanno spazio per le piste; il firmware deve usare i nuovi GPIO (P0.20, P0.22, P0.26, P0.06). Nessun dato inviato all'app cambia. P0.00/P0.01 sono XL1/XL2: liberi come GPIO perché l'E73 non ha il quarzo a 32 kHz. Lettura batteria: canale **VDDHDIV5** del SAADC (VDDH è la cella), nessun partitore e nessun GPIO. Nessun dato inviato all'app cambia; **manca però la pressione (profondità)**: se l'app o il rilevamento la usano va segnalato all'agente `app`.
 
 **Scelte e motivazioni.**
-- **Flash 16 MB: W25Q128JVSIQ SOIC-8 208 mil (C97521), *basic*, 78 mila pz, 2,46 $.** Alternative: W25Q128JVPIQ WSON 5 × 6 (C190862, extended, 3,38 $) e XTX XT25F128FWOIGT WSON (C3202839, extended, 1,56 $). Per 2 schede: SOIC 4,93 $; WSON Winbond 6,76 + 3,07 di caricamento extended = 9,83 $; XTX 3,12 + 3,07 = 6,19 $. Il SOIC costa meno e non paga il caricamento; l'ingombro (courtyard 9,4 × 5,9 mm contro ~6 × 6) ha imposto i 22,86 mm di larghezza. SPI semplice (non QSPI): per l'IMU bastano pochi kB/s; IO2/IO3 (WP#/HOLD#) alti con R4 10 k su VDD. **Attenzione: 16 MB sono ~24 minuti a 960 Hz sei assi a 16 bit (11,5 kB/s, senza timestamp), ~97 min a 240 Hz, ~3 ore a 120 Hz:** scegliere la frequenza di campionamento di conseguenza (la v0.3 aveva 32 MB).
+- **Flash 16 MB: W25Q128JVSIQ SOIC-8 208 mil (C97521), *basic*, 78 mila pz, 2,46 $.** Alternative: W25Q128JVPIQ WSON 5 × 6 (C190862, extended, 3,38 $) e XTX XT25F128FWOIGT WSON (C3202839, extended, 1,56 $). Per 2 schede: SOIC 4,93 $; WSON Winbond 6,76 + 3,07 di caricamento extended = 9,83 $; XTX 3,12 + 3,07 = 6,19 $. Il SOIC costa meno e non paga il caricamento; l'ingombro (courtyard 9,4 × 5,9 mm contro ~6 × 6) ha imposto la larghezza (21,59 mm, ex 22,86). SPI semplice (non QSPI): per l'IMU bastano pochi kB/s; IO2/IO3 (WP#/HOLD#) alti con R4 10 k su VDD. **Attenzione: 16 MB sono ~24 minuti a 960 Hz sei assi a 16 bit (11,5 kB/s, senza timestamp), ~97 min a 240 Hz, ~3 ore a 120 Hz:** scegliere la frequenza di campionamento di conseguenza (la v0.3 aveva 32 MB).
 - **TS del BQ25101:** resistenza fissa **10 k verso massa (R2)**, nessun NTC e nessun GPIO: 50 µA × 10 k = 0,5 V = zona normale, il caricatore carica sempre. Costa una resistenza *basic* e zero pin. Rinuncia alla protezione termica del caricatore (la cella ha il PCM; 13,5 mA = 0,34 C). Alternativa scartata: NTC 10 k (componente in più, non giustificato a 13,5 mA). ISET 10 k = 13,5 mA, come v0.3 (verifiche.md).
 - **Stato di carica:** `CHG_N` (open drain) su P0.03 con pull-up interno; costa solo una pista.
 - **Protezione dei contatti di ricarica:** Schottky **1N5819WS (C191023, *basic*)** in serie al contatto VIN (polarità inversa, e nessun ritorno della tensione di batteria verso i contatti anche se il caricatore perdesse). TVS (extended, +3,07 $) e reset all'inserimento tolti.
-- **LED:** 0402 rosso NCD0402R1 (C130719, extended, 513 mila pz). Nessun LED 0402 è *basic*: il 0603 *basic* KT-0603R (C2286) toglierebbe 3,07 $ di caricamento (taglio possibile).
+- **LED:** 0603 rosso **KT-0603R (C2286, *basic*, stock 6,98 M pz il 2026-11-03, 0,0077 $)**: toglie il caricamento extended del LED (−3,07 $, ~3,3 €). **Anodo su VDD** (non su VBAT): al primo avvio VDD è 1,8 V (UICR vuoto) e con l'anodo su VBAT (fino a 4,2 V) LED e resistenza tirerebbero il pin oltre VDD + 0,3 V iniettando corrente nei diodi di protezione. Catodo → R3 1 k → P0.22 in assorbimento: con VDD 3,3 V e Vf ~1,9 V circa **1,4 mA** (a VDD 1,8 V il LED non si accende). Alternativa scartata: 0402 NCD0402R1 C130719 (extended).
 - **Batteria: header SMD 1,27 mm 1 × 2 (C55213900) al posto del JST SH.** Confronto: JST SH SM02B-SRSS-TB (C160402): impronta 4,8 × 5,55 mm = 26,6 mm², 0,133 $; header SMD 1,27 mm: 2,0 × 5,2 mm = 10,4 mm² (−61 %), 0,008 $; header SMD 2,54 mm (C41417359): 3,81 × 5,8 mm = 22,1 mm², 0,028 $; header THT 2,54 (C225477): **non montabile nel servizio Economic (solo SMD)**, servirebbe il montaggio Standard (setup 25 $ invece di 8,18 $, più manodopera a mano) = circa +20 $. Tutti i connettori sono *extended* (3,07 $ in ogni caso). L'header 1,27 mm occupa meno della metà del JST e costa meno: scelto. Pin lunghi (7,2 mm totali): si accorciano dopo la saldatura dei fili; i pad sfalsati sono piccoli, serve un fermacavo o la resina. Da controllare nell'anteprima JLC che lo accetti a rifusione (`assemblyProcess` non indicato nell'API).
 - **2 strati / 0,8 mm / HASL senza piombo:** regole JLC a 2 strati: piste e distanze 0,127 mm, via 0,6/0,3 mm (coperti dal solder mask), foro-rame 0,2 mm. Massa piena su B.Cu (isole di massa su F.Cu rimosse), sbroglio Freerouting 2.5.0 con margine di 20 µm sulla distanza (da ripetere finché DRC = 0: lo sbroglio non è deterministico). Zona antenna invariata: 3,7 mm senza rame su tutti gli strati, modulo a 2,2 mm dal bordo. Un 2 strati con piano di massa unico dalla parte dei contatti e piste di segnale a 0,127 mm vicino all'antenna non è stato misurato: la prova di portata resta obbligatoria.
 
-**Lato sotto: griglia 2,54 mm.** Coordinate in mm dall'angolo in alto a sinistra (lato antenna, scheda vista da sopra, y verso il basso); essendo la larghezza 9 × 2,54, la griglia coincide anche vista da sotto (x' = 22,86 − x).
+**Lato sotto: griglia 2,54 mm.** Coordinate in mm dall'angolo in alto a sinistra (lato antenna, scheda vista da sopra, y verso il basso); la larghezza (21,59 mm) non è multipla di 2,54: vista da sotto le colonne sono a x' = 21,59 − x (la griglia dalle tacche si legge dal bordo sinistro visto da sopra, il bordo alto è lo stesso).
 
 | Piazzola | Rete | x | y | Ø | x' vista da sotto |
 |---|---|---|---|---|---|
-| TP1 | VDD | 5,08 | 12,70 | 2,0 | 17,78 |
-| TP2 | SWDIO | 7,62 | 12,70 | 2,0 | 15,24 |
-| TP3 | SWDCLK | 10,16 | 12,70 | 2,0 | 12,70 |
-| TP4 | RESET | 12,70 | 12,70 | 2,0 | 10,16 |
-| TP5 | GND | 15,24 | 12,70 | 2,0 | 7,62 |
-| TP6 | VIN (ricarica) | 7,62 | 17,78 | 2,5 | 15,24 |
-| TP7 | GND (ricarica) | 12,70 | 17,78 | 2,5 | 10,16 |
+| TP1 | VDD | 5,08 | 12,70 | 2,0 | 16,51 |
+| TP2 | SWDIO | 7,62 | 12,70 | 2,0 | 13,97 |
+| TP3 | SWDCLK | 10,16 | 12,70 | 2,0 | 11,43 |
+| TP4 | RESET | 12,70 | 12,70 | 2,0 | 8,89 |
+| TP5 | GND | 15,24 | 12,70 | 2,0 | 6,35 |
+| TP6 | VIN (ricarica) | 7,62 | 17,78 | 2,5 | 13,97 |
+| TP7 | GND (ricarica) | 12,70 | 17,78 | 2,5 | 8,89 |
 
 Le 5 piazzole SWD stanno in una fila a passo 2,54 mm (5 passi dal bordo alto), i 2 contatti di ricarica a 5,08 mm l'uno dall'altro, 2 passi sotto la fila, sulle colonne di SWDIO e RESET. Le piazzole SWD (Ø 2,0) hanno 0,54 mm tra i bordi. Riferimento per la millefori: **tacche di serigrafia ogni 2,54 mm sui bordi sinistro e alto** (più lunga ogni 5 passi); l'angolo in alto a sinistra è il foro (0,0). Su una millefori le molle pogo si saldano ai fori (colonna, riga) = (2, 5), (3, 5), (4, 5), (5, 5), (6, 5) per SWD e (3, 7), (5, 7) per la ricarica, con colonna = x/2,54 e riga = y/2,54. Finitura HASL: contatti irregolari (ENIG costa di più). VDD sul pogo è solo riferimento: il tag va programmato con la cella collegata. Nell'ingombro la griglia è sovrapposta (lato sotto).
 
-**Controlli nell'anteprima JLC:** rotazione e pin 1 di U1 (E73), U2 (LGA), U4 (BGA), U3 (SOIC-8: punto sul pin 1), J1 (header), D1 (LED 0402) e D2 (Schottky); che JLC accetti l'header C55213900 nel servizio Economic; stock dell'E73 (550 pz); che il CPL (Y negativi, come KiCad) sia letto correttamente.
+**Controlli nell'anteprima JLC:** rotazione e pin 1 di U1 (E73), U2 (LGA), U4 (BGA), U3 (SOIC-8: punto sul pin 1), J1 (header), D1 (LED 0603: catodo/anodo) e D2 (Schottky); che JLC accetti l'header C55213900 nel servizio Economic; stock dell'E73 (550 pz); che il CPL (Y negativi, come KiCad) sia letto correttamente.
 
 **Costi (stima da API JLC e pagina prezzi del 2026-11-02):**
 
 | Voce | $ |
 |---|---|
 | Componenti per 2 schede (E73 15,41, IMU 6,73, flash 4,93, BQ25101 1,63, resto ~0,40) | 29,06 |
-| Caricamento extended: 5 tipi × 3,07 (E73, IMU, BQ25101, LED, header) | 15,35 |
+| Caricamento extended: 4 tipi × 3,07 (E73, IMU, BQ25101, header; il LED 0603 è *basic*) | 12,28 |
 | Setup Economic 8,18 + stencil 1,53 + saldature 206 × 0,0016 | 10,04 |
 | 5 PCB 2 strati 0,8 mm HASL senza piombo (stima, non verificata nel carrello) | ~5,0 |
 | Spedizione DHL in Italia (stima) | ~25,0 |
-| **Subtotale** | **~84,5** |
-| IVA 22 % | ~18,6 |
-| **Totale** | **~103 $ = ~91 € a 0,88 (~95 € a 0,92)** |
+| **Subtotale** | **~81,4** |
+| IVA 22 % | ~17,9 |
+| **Totale** | **~99 $ = ~87 € a 0,88 (~91 € a 0,92)** |
 
-Non inclusi: raggi X (1,64 $ per componente, circa +10 $ per i 6 componenti BGA/LGA/modulo: totale ~101 €) e conferma del posizionamento (0,45 $). Una fonte terza segnala che il caricamento extended è sceso a 1,5 $ dal 2025-12-19: in tal caso circa −8 $ (−9,5 $ con IVA). **Tagli se serve:** LED 0603 *basic* (−3,07 $), niente header (fili saldati sulle piazzole, −3,07 $), nessun raggio X. Cella, programmatore e molle pogo non compresi.
+Non inclusi: raggi X (1,64 $ per componente, circa +10 $ per i 6 componenti BGA/LGA/modulo: totale ~101 €) e conferma del posizionamento (0,45 $). Una fonte terza segnala che il caricamento extended è sceso a 1,5 $ dal 2025-12-19: in tal caso circa −8 $ (−9,5 $ con IVA). **Tagli se serve:** (LED 0603 *basic*: già fatto il 2026-11-03), niente header (fili saldati sulle piazzole, −3,07 $), nessun raggio X. Cella, programmatore e molle pogo non compresi.
 
 ## Piano a tappe
 

@@ -17,17 +17,18 @@ PISTA, DISTANZA, VIA_D, VIA_FORO = 0.127, 0.127, 0.6, 0.3
 ANTENNA_H = 3.7          # come v0.3: striscia senza rame dal bordo alto, tutti gli strati
 GRIGLIA = 2.54           # le piazzole del lato sotto sono su questa griglia, misurata dal bordo sinistro e dal bordo alto (antenna)
 
+MOD_X = 7.8              # centro del modulo E73 (pad esterni a 7,5 mm dal centro): i pad sinistri stanno a 0,3 mm dal bordo
 try:
     from posizioni_economica import POS, SCHEDA_L, SCHEDA_H_TOT
 except ImportError:      # prima della ricerca delle posizioni (cerca_posizioni.py)
-    POS, SCHEDA_L, SCHEDA_H_TOT = {}, 20.32, 27.0
+    POS, SCHEDA_L, SCHEDA_H_TOT = {}, 20.32, 26.0
 
 def _p(rif):
     return POS.get(rif, (0.0, 0.0, 0, "F"))
 
 R0402 = "Resistor_SMD:R_0402_1005Metric"
 C0402 = "Capacitor_SMD:C_0402_1005Metric"
-LED0402 = "LED_SMD:LED_0402_1005Metric"
+LED0603 = "LED_SMD:LED_0603_1608Metric"
 SOIC8 = "Package_SO:SOIC-8_5.3x5.3mm_P1.27mm"
 HDR127 = "swimtag:HDR-SMD_2P-P1.27-V-M-LS4.2-R1"
 PAD20 = "swimtag:TestPoint_Pad_D2.0mm_NoCY"   # piazzole pogo SWD: Ø 2,0 mm (senza courtyard: sul passo 2,54 si sovrapporrebbero)
@@ -38,7 +39,7 @@ PAD25 = "TestPoint:TestPoint_Pad_D2.5mm"   # contatti di ricarica: Ø 2,5 mm
 # flash su 33/35 (P0.13, P0.24, pad esterni destri) e 28/30 (P0.15, P0.17, pad interni destri). Segnali lenti sulla colonna sinistra.
 PINS_U1 = {
     5: "GND", 21: "GND", 24: "GND", 19: "VDD", 23: "VBAT", 26: "RESET", 37: "SWDIO", 39: "SWDCLK",
-    3: "CHG_N", 7: "IMU_INT2", 8: "IMU_INT1", 9: "LED",
+    32: "CHG_N", 34: "LED", 12: "IMU_INT1", 14: "IMU_INT2",   # pad interni (P0.20, P0.22 a destra; P0.26, P0.06 in basso): la colonna sinistra non ha spazio per le piste
     11: "IMU_CS", 13: "IMU_MISO", 15: "IMU_MOSI", 17: "IMU_SCK",
     33: "FL_MOSI", 35: "FL_SCK", 28: "FL_MISO", 30: "FL_CS",
 }
@@ -54,7 +55,7 @@ COMPONENTI = [
      {1: "FL_CS", 2: "FL_MISO", 3: "FL_IO23", 4: "GND", 5: "FL_MOSI", 6: "FL_SCK", 7: "FL_IO23", 8: "VDD"}, _p("U3")),
     ("U4", "swimtag:BQ25101YFPR", "BQ25101", "swimtag:DSBGA-6_L0.9-W1.6-R2-C3-P0.40-BL", "C478468",
      {"A2": "VIN_D", "A1": "VBAT", "B1": "TS", "B2": "ISET", "C1": "CHG_N", "C2": "GND"}, _p("U4")),
-    ("D1", "Device:LED", "rosso 0402", LED0402, "C130719", {1: "LED_K", 2: "VBAT"}, _p("D1")),
+    ("D1", "Device:LED", "rosso 0603", LED0603, "C2286", {1: "LED_K", 2: "VDD"}, _p("D1")),   # KT-0603R (Basic JLC): anodo su VDD (1,8 V al primo avvio: niente corrente nei diodi di protezione del pin), 1 k -> ~1,4 mA a VDD 3,3 V
     ("D2", "swimtag:B5819WS_C22624", "1N5819WS", "swimtag:SOD-323_L1.8-W1.3-LS2.5-RD", "C191023",
      {1: "VIN_D", 2: "VIN"}, _p("D2")),     # in serie al contatto VIN: polarita' inversa e nessun ritorno della batteria verso l'esterno
     ("R1", "Device:R", "10k", R0402, "C25744", {1: "ISET", 2: "GND"}, _p("R1")),     # 13,5 mA di carica
@@ -105,8 +106,8 @@ def fissi(W, H):
 
 # Attrazione componente -> pin (usata da cerca_posizioni.py): {rif: ((componente, pin), peso)}; il pin del condensatore "1" e' quello verso l'alimentazione
 ATTRAZIONI = {
-    "C1": (("U1", "19"), 4.0), "C7": (("U1", "23"), 4.0),
+    "C1": (("U1", "19"), 4.0),
     "C2": (("U2", "5"), 4.0), "C4": (("U2", "8"), 4.0), "C3": (("U3", "8"), 4.0),
     "C5": (("U4", "A2"), 4.0), "C6": (("U4", "A1"), 4.0), "R1": (("U4", "B2"), 3.0), "R2": (("U4", "B1"), 3.0),
-    "R4": (("U3", "3"), 2.0), "R5": (("U3", "1"), 1.5), "R6": (("U2", "12"), 1.5), "R3": (("D1", "1"), 3.0),
+    "R4": (("U3", "3"), 2.0), "R5": (("U3", "1"), 1.5), "R6": (("U2", "12"), 1.5), "R3": (("D1", "1"), 3.0), "U2": (("U1", "15"), 3.0), "C7": (("U1", "23"), 4.0),
 }
