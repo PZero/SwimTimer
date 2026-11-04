@@ -102,9 +102,12 @@ def main():
         d = padd[r][rot].get(pad)
         return (x + d[0], y + d[1]) if d else (x, y)
 
+    EXTRA = {"U4": 0.5, "U6": 0.3, "U2": 0.3} if VARIANTE == "economica" else {}   # piu' aria attorno ai pacchetti a passo fine (lo sbroglio li esce male)
+
     def box(r, x, y, rot):
         x0, y0, x1, y1 = inf[r][rot][1]
-        return x + x0 - GAP / 2, y + y0 - GAP / 2, x + x1 + GAP / 2, y + y1 + GAP / 2
+        e = GAP / 2 + EXTRA.get(r, 0.0)
+        return x + x0 - e, y + y0 - e, x + x1 + e, y + y1 + e
 
     ostacoli = [box(r, *fisso[r]) for r in sopra_fissi]
     peso = {"VDD": 0.4, "VBAT": 0.4, "VDD_SENS": 0.4, "BAT": 0.6, "VIN_D": 0.6}

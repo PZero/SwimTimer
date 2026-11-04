@@ -201,9 +201,32 @@ File in [`kicad/`](kicad/), generati da script a partire da un'unica tabella di 
 
 **Pendenze prima dell'ordine:** impronta MAX17048 (KiCad TDFN-8 2×2, EP 0,8 × 1,2) da confrontare con quella LCSC; nell'anteprima JLC controllare rotazione e pin 1 di U6 (TPS22916C), U7 (MAX17048), U1 (E73), J1 (JST SH, apertura verso il bordo sinistro), Q1/Q2 (SOT-23: nelle librerie JLC spesso serve +180°), D2 (LED) e D1/D3/D4 (polarità); `esporta_jlc.py` scrive in `jlc/v0.3_<variante>/` con rotazioni normalizzate 0-359.
 
-## v0.4 "economica" (2026-11-02) — registrazione dei dati grezzi dell'IMU, budget ≤ 100 €
+## v0.4 / v0.5 "economica" (2026-11-02 / 2026-11-04) — registrazione dei dati grezzi dell'IMU, budget ≤ 100 €
 
 **Scopo:** 2 prototipi montati da JLC per registrare i dati grezzi dell'IMU (definire i filtri), spesi il meno possibile (5 PCB, 2 montati, spedizione e IVA incluse, tetto 100 €). La v0.3 collaudo resta com'è e si rigenera con `SWIMTAG_VARIANTE=collaudo` (default); la v0.4 con `SWIMTAG_VARIANTE=economica`. Dati in `kicad/dati_economica.py`, posizioni in `kicad/posizioni_economica.py`, file generati `kicad/swimtag_economica.*`, file JLC in `kicad/jlc/v0.4_swimtag_economica/`, disegno in [`ingombro_v0.4.svg`](ingombro_v0.4.svg).
+
+**Revisione v0.5 (2026-11-04), da leggere prima del resto della sezione (che descrive la v0.4: dove c'è conflitto vale questo blocco).** File: `kicad/swimtag_economica.*` e `kicad/jlc/v0.5_swimtag_economica/` (la cartella `v0.4_swimtag_economica/` resta com'è, congelata; la v0.4 si rigenera dal commit 8fd6cc0; la v0.3 resta rigenerabile con `SWIMTAG_VARIANTE=collaudo`). Titolo schema "Rev 0.5", serigrafia "v0.5 economica". **Scheda 21,59 × 28,0 mm** (larghezza invariata, +2 mm in altezza), 2 strati, 25 componenti montati per scheda, **DRC 0 errori / 0 avvisi / 0 non collegati, parità schema/PCB 0, ERC 0 errori (41 avvisi `pin_to_pin` dei pin "Unspecified" dei simboli generati), netlist 28/28 reti, `kicad/verifica_v05.py`: 100 pin attesi, 0 differenze**; 369 piste, 36 via. Piazzole sotto TP1–TP7 **alle stesse coordinate della v0.4**; nuova TP8.
+
+Cosa cambia rispetto alla v0.4 (21,59 × 26):
+1. **Interruttore di carico TPS22916C (U6, C2680319, extended, stock 1619, 0,40 $)**: VDD → `VDD_IMU` → Vdd e Vdd_IO dell'IMU con C2 e C4 (100 nF) sulla rete commutata; ON = `SENS_ON` su **P0.04 (pad 18)**, pull-down **R7 1 MΩ** (C26083, basic). Motivo: tag sigillato in resina, un IMU in latch-up si sblocca solo togliendo l'alimentazione. Nessun condensatore in uscita oltre ai 100 nF (il foglio TI SLVSDO5F non lo richiede; in ingresso bastano C1 10 µF e C3 su VDD, vicini). **R6** (100 k su CS) ora sta su `VDD_IMU`: nessun pull-up dell'IMU verso il VDD sempre acceso. Nessun altro pin dell'IMU va a VDD (INT1/INT2 sono uscite dell'IMU, senza pull-up). MAX17048 **non** rimesso.
+2. **GPIO cambiati rispetto alla v0.4:** IMU_MISO pad 13 → **16 (P0.08)**, IMU_CS pad 11 → **20 (P0.12)** (P0.00/P0.01 = XL1/XL2 ora **liberi**; MISO commuta in MHz e non è su un pin "low frequency"); SENS_ON nuovo su **P0.04 (pad 18)**. Invariati: IMU_MOSI P0.05 (15), IMU_SCK P1.09 (17), INT1 P0.26 (12), INT2 P0.06 (14), CHG_N P0.20 (32), LED P0.22 (34), flash P0.13/P0.15/P0.17/P0.24, RESET P0.18, SWD. Nessun dato inviato all'app cambia.
+3. **C5 (ingresso BQ25101) = 4,7 µF 10 V X5R (C23733, basic)**: prima 10 µF 6,3 V (C15525) su un ingresso a 5 V. TI SLUSBV8C: IN 1–10 µF (≥ 1 µF per l'ESD); con la polarizzazione a 5 V il 0402 10 V tiene ~2,5–3 µF effettivi.
+4. **Capacità su VBAT: C6 = 4,7 µF 10 V (C23733), C7 tolto.** Prima ~20 µF nominali contro 1–10 µF consigliati da TI per OUT. Ora 4,7 µF sulla rete VBAT più i 4,7 µF già dentro il modulo E73 su VDDH (manuale Ebyte; Nordic fig. 211 chiede 4,7 µF su VDDH): ~9 µF nominali, circa 5–6 µF effettivi a 4,2 V, dentro l'intervallo TI e sopra il minimo di 2 µF in uscita (ESD).
+5. **R8 100 kΩ tra VIN (TP6, anodo di D2) e GND** (C25741, basic): a tag fuori dalla base il contatto resta a ~0 V (la perdita inversa di D2 non porta VIN verso VBAT, niente elettrolisi tra i due contatti in acqua); costa 50 µA a 5 V durante la carica (0,4 % di 13,5 mA).
+6. **TVS D3 bidirezionale PTVSLC3D5VB (C41408025, SOD-323, extended, stock 3384, 0,029 $)** sul contatto VIN **prima** dello Schottky: VRWM 5 V, perdita 200 nA, 0,6 pF, clamp ~20 V (BQ25101 IN regge 28–30 V). A monte di D2 perché così protegge anche D2 dall'ESD sul contatto; bidirezionale perché con la polarità invertita a 5 V non conduce (Vbr 6 V). Scartati: PTVSUC3D5VB C918847 (1 µA, 1,2 pF), unidirezionali a valle (D2 resterebbe esposto), SMF5.0A SOD-123 (più grande, 400 µA). Tutti i TVS a stock sono *extended*: +1 caricamento.
+7. **Protezione dall'inversione della cella: P-MOSFET AO3401A (Q1, C15127, *basic*, stock 1,64 M, 0,096 $)** in serie al "+" di J1: **drain verso la cella** (`BAT_IN`, pin 1 di J1), **source verso il circuito** (`VBAT`: uscita BQ25101, VDDH, C6), **gate a GND con R9 100 kΩ** (C25741). Cella dritta: il diodo del corpo conduce all'inizio, poi Vgs ≈ −Vcella e il canale conduce nei due versi (scarica e carica dal BQ25101); cella invertita: gate e source a 0 V, il diodo è inverso, tutto spento. Dal foglio AO3401A: Vgs(th) −0,5…−1,3 V, Rds(on) 47 mΩ a 10 V, 60 a 4,5 V, **85 mΩ a 2,5 V** (≈ 70 mΩ a 3,0 V): a 20 mA di picco (radio + flash) cadono ~1,5 mV, a 13,5 mA di carica ~1 mV; Vgs max ±12 V (cella 4,2 V). ⚠️ Da provare a banco con cella dritta e invertita (la tensione letta dal BQ25101 è quella a valle del MOSFET).
+8. **Piazzola di prova TP8 `VDD_IMU`**, Ø 0,8 mm, lato sotto, x = 17,78 mm, y = 12,70 mm (sulla riga SWD, a destra di GND), serigrafia "VDD_IMU". Nessuna piazzola per CHG_N (non c'era spazio gratis).
+9. **Piste sotto il modulo:** zona senza piste su F.Cu al centro sotto l'E73 (x ±2,2 mm dal centro del modulo, y 7,4–14,8 mm). Non si può eliminare del tutto (uscite dei pad interni): la prova di portata resta obbligatoria.
+10. **Serigrafia ≥ 1,0 mm** (nomi delle piazzole, titolo, "+" e "−" della cella), tratto 0,15 mm (minimo JLC).
+
+**Perché 28,0 mm e non 26:** i 6 componenti in più (U6, R7, R8, R9, D3, Q1) hanno reso lo sbroglio a 2 strati con Freerouting impossibile a 26 e 26,5 mm (non chiudono ISET, TS e VIN_D intorno al BGA 0,4 mm del BQ25101, né MISO dell'IMU); a 27,5 mm il posizionamento chiude con pochissime soluzioni e lo sbroglio non è chiuso; a 28 mm chiude. Tag finito ~25 × 31 mm con la resina. La larghezza 20,32 mm (prova della v0.4) resta non raggiungibile.
+
+**Per il firmware (v0.5).**
+- **UICR (una volta, con SWD, cella collegata):** `REGOUT0` (0x10001304) = 5 (3,3 V; es. scrivere 0xFFFFFFFD), `PSELRESET[0]` e `[1]` (0x10001200 / 0x10001204) = 18 (P0.18 = RESET); poi un reset. Prima VDD è 1,8 V: la flash non risponde e il LED non si accende; **non toccare la flash prima del reset**.
+- **LFCLK da RC** (`CLOCK_CONTROL_NRF_K32SRC_RC`): il modulo non ha il quarzo a 32,768 kHz. Dalla v0.5 P0.00/P0.01 sono liberi, ma i pad 11 e 13 restano non collegati.
+- **Spegnere l'IMU:** prima di portare SENS_ON basso, **SCK, MOSI e CS a uscita bassa** (o in alta impedenza senza pull-up) e **MISO, INT1, INT2 come ingressi senza pull-up**: con VDD_IMU a 0 un pin alto alimenterebbe l'IMU dal diodo ESD (alimentazione parassita). Il pull-up di CS (R6) sta su VDD_IMU, quindi non lo alimenta.
+- **Riaccendere:** SENS_ON alto → attendere **≥ 3 ms** (tON 1,7 ms a 3,6 V + avvio dell'IMU; ~10 ms per sicurezza) → CS alto, SPI modo 3 o 0 → leggere WHO_AM_I → riprogrammare **tutta** la configurazione (ODR, fondo scala, FIFO, interrupt): spento, l'IMU perde ogni registro. Per sbloccare un latch-up: SENS_ON basso ≥ 100 ms (il QOD da 150 Ω scarica VDD_IMU), poi riaccendere.
+- Lettura batteria: SAADC `VDDHDIV5`; VDDH = VBAT a valle di Q1.
 
 **Esito: scheda a 2 strati riuscita, DRC 0 errori e 0 avvisi, 0 non collegati, ERC 0, parità schema/PCB 0, netlist 24/24 reti.** Non serve passare a 4 strati. ERC: 0 errori (34 avvisi `pin_to_pin` sui pin "Unspecified" dei simboli generati, come prima). **Ricompattata il 2026-11-03: 21,59 × 26,0 mm** (era 22,86 × 26,0), 313 piste, 29 via, 0,8 mm, HASL senza piombo, componenti solo sopra.
 
@@ -215,21 +238,22 @@ File in [`kicad/`](kicad/), generati da script a partire da un'unica tabella di 
 
 | Pad | GPIO | Rete | Pad | GPIO | Rete |
 |---|---|---|---|---|---|
-| 11 | P0.00 | IMU_CS (R6 100 k a VDD) | 28 | P0.15 | FL_MISO |
-| 13 | P0.01 | IMU_MISO | 30 | P0.17 | FL_CS (R5 100 k a VDD) |
+| 20 | P0.12 | IMU_CS (R6 100 k a VDD_IMU) | 28 | P0.15 | FL_MISO |
+| 16 | P0.08 | IMU_MISO | 30 | P0.17 | FL_CS (R5 100 k a VDD) |
 | 15 | P0.05 | IMU_MOSI | 33 | P0.13 | FL_MOSI |
 | 17 | P1.09 | IMU_SCK | 35 | P0.24 | FL_SCK |
 | 32 | P0.20 | CHG_N (pull-up interno) | 12 / 14 | P0.26 / P0.06 | IMU_INT1 / IMU_INT2 |
 | 34 | P0.22 | LED (anodo su VDD, 1 k, attivo basso) | 26 | P0.18 | RESET (`UICR.PSELRESET`) |
-| 19 / 23 | VDD / VDDH | VDD (C1 10 µ) / VBAT (C7 10 µ) | 37 / 39 | SWDIO / SWDCLK | SWD |
-| 5, 21, 24 | GND | | altri | | liberi (27 VBUS non collegato) |
+| 19 / 23 | VDD / VDDH | VDD (C1 10 µ) / VBAT (C6 4,7 µ) | 37 / 39 | SWDIO / SWDCLK | SWD |
+| 18 | P0.04 | SENS_ON (ON del TPS22916C, R7 1 M a GND) | 5, 21, 24 | GND | |
+| altri | | liberi (11, 13 = XL1/XL2 liberi; 27 VBUS non collegato) | | | |
 
 **Pinout cambiato il 2026-11-03** rispetto alla prima v0.4 (CHG_N 3→32, LED 9→34, INT2 7→14, INT1 8→12): i pad della colonna sinistra del modulo stanno a 0,3 mm dal bordo e non hanno spazio per le piste; il firmware deve usare i nuovi GPIO (P0.20, P0.22, P0.26, P0.06). Nessun dato inviato all'app cambia. P0.00/P0.01 sono XL1/XL2: liberi come GPIO perché l'E73 non ha il quarzo a 32 kHz. Lettura batteria: canale **VDDHDIV5** del SAADC (VDDH è la cella), nessun partitore e nessun GPIO. Nessun dato inviato all'app cambia; **manca però la pressione (profondità)**: se l'app o il rilevamento la usano va segnalato all'agente `app`.
 
 **Scelte e motivazioni.**
 - **Flash 16 MB: W25Q128JVSIQ SOIC-8 208 mil (C97521), *basic*, 78 mila pz, 2,46 $.** Alternative: W25Q128JVPIQ WSON 5 × 6 (C190862, extended, 3,38 $) e XTX XT25F128FWOIGT WSON (C3202839, extended, 1,56 $). Per 2 schede: SOIC 4,93 $; WSON Winbond 6,76 + 3,07 di caricamento extended = 9,83 $; XTX 3,12 + 3,07 = 6,19 $. Il SOIC costa meno e non paga il caricamento; l'ingombro (courtyard 9,4 × 5,9 mm contro ~6 × 6) ha imposto la larghezza (21,59 mm, ex 22,86). SPI semplice (non QSPI): per l'IMU bastano pochi kB/s; IO2/IO3 (WP#/HOLD#) alti con R4 10 k su VDD. **Attenzione: 16 MB sono ~24 minuti a 960 Hz sei assi a 16 bit (11,5 kB/s, senza timestamp), ~97 min a 240 Hz, ~3 ore a 120 Hz:** scegliere la frequenza di campionamento di conseguenza (la v0.3 aveva 32 MB).
 - **TS del BQ25101:** resistenza fissa **10 k verso massa (R2)**, nessun NTC e nessun GPIO: 50 µA × 10 k = 0,5 V = zona normale, il caricatore carica sempre. Costa una resistenza *basic* e zero pin. Rinuncia alla protezione termica del caricatore (la cella ha il PCM; 13,5 mA = 0,34 C). Alternativa scartata: NTC 10 k (componente in più, non giustificato a 13,5 mA). ISET 10 k = 13,5 mA, come v0.3 (verifiche.md).
-- **Stato di carica:** `CHG_N` (open drain) su P0.03 con pull-up interno; costa solo una pista.
+- **Stato di carica:** `CHG_N` (open drain) su P0.20 (pad 32) con pull-up interno; costa solo una pista.
 - **Protezione dei contatti di ricarica:** Schottky **1N5819WS (C191023, *basic*)** in serie al contatto VIN (polarità inversa, e nessun ritorno della tensione di batteria verso i contatti anche se il caricatore perdesse). TVS (extended, +3,07 $) e reset all'inserimento tolti.
 - **LED:** 0603 rosso **KT-0603R (C2286, *basic*, stock 6,98 M pz il 2026-11-03, 0,0077 $)**: toglie il caricamento extended del LED (−3,07 $, ~3,3 €). **Anodo su VDD** (non su VBAT): al primo avvio VDD è 1,8 V (UICR vuoto) e con l'anodo su VBAT (fino a 4,2 V) LED e resistenza tirerebbero il pin oltre VDD + 0,3 V iniettando corrente nei diodi di protezione. Catodo → R3 1 k → P0.22 in assorbimento: con VDD 3,3 V e Vf ~1,9 V circa **1,4 mA** (a VDD 1,8 V il LED non si accende). Alternativa scartata: 0402 NCD0402R1 C130719 (extended).
 - **Batteria: header SMD 1,27 mm 1 × 2 (C55213900) al posto del JST SH.** Confronto: JST SH SM02B-SRSS-TB (C160402): impronta 4,8 × 5,55 mm = 26,6 mm², 0,133 $; header SMD 1,27 mm: 2,0 × 5,2 mm = 10,4 mm² (−61 %), 0,008 $; header SMD 2,54 mm (C41417359): 3,81 × 5,8 mm = 22,1 mm², 0,028 $; header THT 2,54 (C225477): **non montabile nel servizio Economic (solo SMD)**, servirebbe il montaggio Standard (setup 25 $ invece di 8,18 $, più manodopera a mano) = circa +20 $. Tutti i connettori sono *extended* (3,07 $ in ogni caso). L'header 1,27 mm occupa meno della metà del JST e costa meno: scelto. Pin lunghi (7,2 mm totali): si accorciano dopo la saldatura dei fili; i pad sfalsati sono piccoli, serve un fermacavo o la resina. Da controllare nell'anteprima JLC che lo accetti a rifusione (`assemblyProcess` non indicato nell'API).
@@ -251,20 +275,26 @@ Le 5 piazzole SWD stanno in una fila a passo 2,54 mm (5 passi dal bordo alto), i
 
 **Controlli nell'anteprima JLC:** rotazione e pin 1 di U1 (E73), U2 (LGA), U4 (BGA), U3 (SOIC-8: punto sul pin 1), J1 (header), D1 (LED 0603: catodo/anodo) e D2 (Schottky); che JLC accetti l'header C55213900 nel servizio Economic; stock dell'E73 (550 pz); che il CPL (Y negativi, come KiCad) sia letto correttamente.
 
-**Costi (stima da API JLC e pagina prezzi del 2026-11-02):**
+**Costi v0.4 (stima del 2026-11-02, superata dal carrello reale: vedi sotto).**
 
-| Voce | $ |
-|---|---|
-| Componenti per 2 schede (E73 15,41, IMU 6,73, flash 4,93, BQ25101 1,63, resto ~0,40) | 29,06 |
-| Caricamento extended: 4 tipi × 3,07 (E73, IMU, BQ25101, header; il LED 0603 è *basic*) | 12,28 |
-| Setup Economic 8,18 + stencil 1,53 + saldature 206 × 0,0016 | 10,04 |
-| 5 PCB 2 strati 0,8 mm HASL senza piombo (stima, non verificata nel carrello) | ~5,0 |
-| Spedizione DHL in Italia (stima) | ~25,0 |
-| **Subtotale** | **~81,4** |
-| IVA 22 % | ~17,9 |
-| **Totale** | **~99 $ = ~87 € a 0,88 (~91 € a 0,92)** |
+**Costi v0.5 (2026-11-04), da carrello JLC reale del 2026-11-03 (montaggio *Standard*: E73, IMU e BQ25101 sono "Standard only"; ricalcolato, non rifatto nel carrello).** Il carrello (v0.4 con LED extended) era: merce 87,52 € (setup 23,02, stencil 7,39, componenti 26,95, caricamenti extended 16,63 = 5 × 3,33, SMT 0,66, raggi X 8,85, imballo 0,45, PCB 1,79) + spedizione 9,62 + IVA, dazio e gestione 31,32 (32,2 % su merce + spedizione) = **128,46 €**.
 
-Non inclusi: raggi X (1,64 $ per componente, circa +10 $ per i 6 componenti BGA/LGA/modulo: totale ~101 €) e conferma del posizionamento (0,45 $). Una fonte terza segnala che il caricamento extended è sceso a 1,5 $ dal 2025-12-19: in tal caso circa −8 $ (−9,5 $ con IVA). **Tagli se serve:** (LED 0603 *basic*: già fatto il 2026-11-03), niente header (fili saldati sulle piazzole, −3,07 $), nessun raggio X. Cella, programmatore e molle pogo non compresi.
+| Voce (€) | Carrello v0.4 | v0.5 |
+|---|---|---|
+| Setup + stencil + imballo + SMT | 31,52 | 31,57 |
+| Componenti per 2 schede | 26,95 | ~27,8 (+TPS22916C, TVS, AO3401A, 3 resistenze; −C7, condensatori 4,7 µF più economici) |
+| Caricamenti extended | 16,63 (5 tipi) | 19,96 (**6 tipi**: E73, IMU, BQ25101, header, TPS22916C, TVS; il LED 0603 è *basic*) |
+| Raggi X | 8,85 | ~11,8 (+1 BGA, TPS22916C) |
+| PCB | 1,79 | 1,79 |
+| Coupon PCBA / PCB | — | −8,05 / −1,79 |
+| Merce dopo i coupon | 87,52 | **~84,9** |
+| Spedizione | 9,62 | 9,62 |
+| IVA, dazio, gestione (32,2 %) | 31,32 | ~30,5 |
+| **Totale** | 128,46 | **~125 €** (115 € la v0.4 con i coupon) |
+
+**ENIG invece di HASL:** non verificato nel carrello; per 5 PCB 2 strati 0,8 mm piccoli JLC chiede in genere pochi dollari in più (stima **+4–8 $, cioè +5–10 € con imposte**): totale ~130–135 €. La scelta HASL/ENIG si fa all'ordine e non cambia i Gerber (la verifica consiglia ENIG per il BGA 0,4 mm del BQ25101 e l'LGA a 0,5 mm).
+
+**Il tetto di 100 € non è raggiunto** con la v0.5 completa (~125 €): il montaggio Standard costa 23,02 € di setup contro 8,18 $ dell'Economic. Tagli (stessa formula, coupon inclusi): **senza raggi X ~109 €** (ma i BGA/LGA non verificati: rischio sul BQ25101 e sull'IMU); senza raggi X e senza TVS (−1 extended) **~105 €**; senza raggi X, TVS e header J1 (fili saldati sulle piazzole, −1 extended) **~100,5 €**; senza raggi X, TVS e TPS22916C **~99,5 €**. I tagli sono tutti rinunce a protezioni o controlli: vanno decisi dall'utente. Nel conto non sono compresi la cella, il programmatore e le molle pogo.
 
 ## Piano a tappe
 

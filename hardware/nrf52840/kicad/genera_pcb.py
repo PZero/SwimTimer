@@ -68,7 +68,7 @@ def serigrafia_economica(board, testo):
         if lato != "B":
             continue
         lung = 0.85 * len(valore)
-        if rif in ("TP1", "TP2", "TP3", "TP4", "TP5"):   # SWD: nome verticale sopra la piazzola
+        if rif in ("TP1", "TP2", "TP3", "TP4", "TP5", "TP8"):   # SWD: nome verticale sopra la piazzola
             testo(valore, x, y - 1.0 - 0.8 - lung / 2, pcbnew.B_SilkS, 1.0, 90, True)
         else:                                           # ricarica: nome verticale sotto la piazzola
             testo(valore, x, y + 1.25 + 0.8 + lung / 2, pcbnew.B_SilkS, 1.0, 90, True)
@@ -177,7 +177,7 @@ def main(solo_piano_interno=False):
     k.SetZoneName("antenna")
     board.Add(k)
 
-    if VARIANTE == "economica":   # Ebyte: niente piste sotto il modulo sul suo stesso lato: zona centrale F.Cu senza piste (via e pad ammessi)
+    if VARIANTE == "economica" and os.environ.get("SWT_KEEPOUT", "1") != "0":   # Ebyte: niente piste sotto il modulo sul suo stesso lato: zona centrale F.Cu senza piste (via e pad ammessi)
         from dati_economica import MOD_X
         k2 = pcbnew.ZONE(board)
         k2.SetIsRuleArea(True)
@@ -187,7 +187,7 @@ def main(solo_piano_interno=False):
         k2.SetDoNotAllowZoneFills(False)
         k2.SetDoNotAllowPads(False)
         k2.SetDoNotAllowFootprints(False)
-        for x, y in ((MOD_X - 3.3, 6.9), (MOD_X + 3.3, 6.9), (MOD_X + 3.3, 15.5), (MOD_X - 3.3, 15.5)):
+        for x, y in ((MOD_X - 2.2, 7.4), (MOD_X + 2.2, 7.4), (MOD_X + 2.2, 14.8), (MOD_X - 2.2, 14.8)):
             k2.AppendCorner(punto(x, y), -1)
         k2.SetZoneName("sotto_modulo")
         board.Add(k2)

@@ -281,3 +281,21 @@ Fonti: API JLCPCB (stock, tipo, descrizione parametri) del 2026-11-02; impronte 
 | Altezza | ~2,6 mm | pin 7,2 mm totali, da accorciare | ~8,5 mm | ~8,5 mm |
 
 Impronte ricavate con easyeda2kicad (pad e quote dal disegno LCSC); il file `lib/swimtag.pretty/HDR-SMD_2P-P1.27-V-M-LS4.2-R1.kicad_mod` contiene solo i pad (2 × 0,74 × 2,1 mm sfalsati di 1,26 mm e 3,1 mm) e il courtyard, senza modello 3D. ⚠️ Non letto il foglio del produttore: portata e tenuta dei pad all'estrazione dei fili da verificare in prova (resina o fermacavo).
+
+## Revisione v0.5 (2026-11-04): TPS22916C, protezioni, correzioni della verifica indipendente
+
+| Voce | Dato | Scheda | Esito |
+|---|---|---|---|
+| TPS22916C (U6, SLVSDO5F) | A1 VOUT, A2 VIN, B1 GND, B2 ON; ON alto, QOD 150 Ω, tON 1,7 ms; CIN consigliato 1 µF | VDD → A2, VDD_IMU ← A1, ON = P0.04 con R7 1 MΩ a GND (il pull-down interno 750 kΩ c'è comunque) | ✅ |
+| Reti dell'IMU | nessun pin dell'IMU verso un'alimentazione sempre accesa | Vdd e Vdd_IO su `VDD_IMU`, C2/C4 su `VDD_IMU`, **R6 (pull-up CS) su `VDD_IMU`**; INT1/INT2 uscite senza pull-up; SDx/SCx a GND; controllo netlist: l'unica connessione IMU–VDD è U6 A2→A1 | ✅ (verifica_v05.py) |
+| Sequenza firmware | con VDD_IMU a 0 un pin alto alimenta l'IMU dai diodi ESD | vedi "Per il firmware (v0.5)" in progetto.md: SPI/CS bassi e MISO/INT in ingresso prima di spegnere; ≥ 3 ms e riconfigurazione completa alla riaccensione | ⚠️ da implementare |
+| C5 su VIN_D (BQ25101) | IN 1–10 µF, ingresso a 5 V; C15525 era X5R 6,3 V | **C23733 4,7 µF X5R 10 V** (basic) | ✅ |
+| Capacità su VBAT | OUT 1–10 µF (TI), ≥ 2 µF per l'ESD; Nordic: 4,7 µF su VDDH (già nel modulo Ebyte) | C7 tolto, **C6 4,7 µF 10 V**: ~9 µF nominali, ~5–6 µF effettivi a 4,2 V | ✅ da confermare con la carica a banco |
+| TVS D3 PTVSLC3D5VB | VRWM 5 V, Vbr 6 V, perdita 200 nA, 0,6 pF, bidirezionale, SOD-323 | sul contatto VIN prima di D2 | ✅ (foglio non scaricabile: dati dalla descrizione JLC, ⚠️) |
+| R8 100 kΩ VIN–GND | evita VIN galleggiante e la deriva da perdita inversa di D2 | 50 µA a 5 V in carica (0,4 % di 13,5 mA) | ✅ |
+| Q1 AO3401A (C15127) | Vgs(th) −0,5…−1,3 V, Rds(on) 47 mΩ (10 V), 60 (4,5 V), **85 mΩ (2,5 V)**, Vgs max ±12 V (descrizione JLC; foglio non riletto) | drain = cella (`BAT_IN`), source = `VBAT`, gate a GND con R9 100 k; a 20 mA cadono ~1,5 mV; carica e scarica passano dal canale; cella invertita: spento | ✅ ⚠️ da provare con la cella dritta e invertita |
+| IMU_MISO/IMU_CS | MISO commuta in MHz: evitare "low frequency I/O" e XL1/XL2 | MISO P0.08 (pad 16), CS P0.12 (pad 20): normali; P0.00/P0.01 liberi | ✅ |
+| Piste sotto il modulo | Ebyte: evitare piste digitali/alimentazione sullo stesso lato | zona senza piste su F.Cu x ±2,2 mm, y 7,4–14,8 mm; il resto esce dai pad | ⚠️ non eliminabile; prova di portata |
+| Serigrafia | JLC: testo ≥ 1,0 mm, tratto 0,15 mm | tutti i testi a 1,0 mm, tratto 0,15 mm | ✅ |
+| DRC / ERC | 0 / 0 errori | DRC 0 violazioni, 0 non collegati, parità schema/PCB 0 (`--schematic-parity`); ERC 0 errori, 41 avvisi `pin_to_pin` (pin "Unspecified") | ✅ |
+| Larghezza zona antenna laterale | il foglio Ebyte (v1.9) non dà quote laterali né sul rame vicino all'antenna | pad del modulo a 0,3 mm dal bordo sinistro; keep-out 3,7 mm in alto, tutta la larghezza | ⚠️ prova di portata obbligatoria |

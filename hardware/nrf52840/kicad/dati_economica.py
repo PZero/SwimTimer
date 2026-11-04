@@ -8,8 +8,8 @@ Scheda a 2 strati, 0,8 mm, HASL senza piombo, componenti solo sopra (JLC Economi
 Coordinate in mm, origine in alto a sinistra della scheda, y verso il basso; vedi cerca_posizioni.py per la ricerca delle posizioni.
 """
 
-VERSIONE = "v0.4"
-TITOLO_SERIGRAFIA = "v0.4 economica"
+VERSIONE = "v0.5"
+TITOLO_SERIGRAFIA = "v0.5 economica"
 N_STRATI = 2
 SPESSORE = 0.8
 # regole JLC 2 strati: piste/distanze 5 mil (0,127), via 0,6 / 0,3, anello 0,15, foro-rame 0,2 (capacita' standard, senza sovrapprezzo)
@@ -40,7 +40,7 @@ PAD25 = "TestPoint:TestPoint_Pad_D2.5mm"   # contatti di ricarica: Ø 2,5 mm
 PINS_U1 = {
     5: "GND", 21: "GND", 24: "GND", 19: "VDD", 23: "VBAT", 26: "RESET", 37: "SWDIO", 39: "SWDCLK",
     32: "CHG_N", 34: "LED", 12: "IMU_INT1", 14: "IMU_INT2",   # pad interni (P0.20, P0.22 a destra; P0.26, P0.06 in basso): la colonna sinistra non ha spazio per le piste
-    11: "IMU_CS", 13: "IMU_MISO", 15: "IMU_MOSI", 17: "IMU_SCK",
+    16: "IMU_MISO", 20: "IMU_CS", 15: "IMU_MOSI", 17: "IMU_SCK",   # MISO e CS su P0.08 e P0.12 (pad interni): P0.00/P0.01 (XL1/XL2) restano liberi
     33: "FL_MOSI", 35: "FL_SCK", 28: "FL_MISO", 30: "FL_CS",
     18: "SENS_ON",   # ON del TPS22916C (pad interno in basso, P0.04): segnale statico
 }
@@ -69,6 +69,8 @@ COMPONENTI = [
     ("R5", "Device:R", "100k", R0402, "C25741", {1: "FL_CS", 2: "VDD"}, _p("R5")),   # CS flash alto mentre i GPIO sono flottanti
     ("R6", "Device:R", "100k", R0402, "C25741", {1: "IMU_CS", 2: "VDD_IMU"}, _p("R6")),  # CS IMU alto all'accensione; su VDD_IMU (non su VDD) per non alimentare l'IMU spento dal pin
     ("R7", "Device:R", "1M", R0402, "C26083", {1: "SENS_ON", 2: "GND"}, _p("R7")),    # pull-down su ON: IMU spento all'avvio e a GPIO flottante
+    # 100 k tra il contatto VIN e massa (revisione 2026-11-04): a tag fuori dalla base il contatto resta a ~0 V (la perdita inversa di D2 non porta VIN verso VBAT: niente elettrolisi in acqua); 50 uA a 5 V in carica
+    ("R8", "Device:R", "100k", R0402, "C25741", {1: "VIN", 2: "GND"}, _p("R8")),
     ("C1", "Device:C", "10u", C0402, "C15525", {1: "VDD", 2: "GND"}, _p("C1")),      # VDD del modulo (pad 19)
     ("C2", "Device:C", "100n", C0402, "C1525", {1: "VDD_IMU", 2: "GND"}, _p("C2")),      # IMU Vdd_IO (pin 5)
     ("C3", "Device:C", "100n", C0402, "C1525", {1: "VDD", 2: "GND"}, _p("C3")),      # flash VCC
@@ -76,7 +78,12 @@ COMPONENTI = [
     ("C5", "Device:C", "4u7", C0402, "C23733", {1: "VIN_D", 2: "GND"}, _p("C5")),    # ingresso caricatore: 4,7 uF 10 V X5R (Basic) su 5 V; TI chiede >= 1 uF
     ("C6", "Device:C", "4u7", C0402, "C23733", {1: "VBAT", 2: "GND"}, _p("C6")),     # uscita caricatore (1-10 uF TI) e VDDH: da solo, con i 4,7 uF gia' nel modulo
     # connettore batteria: due pin header SMD 1,27 mm (fili della cella saldati ai pin); 1 = + (VBAT), 2 = - (GND)
-    ("J1", "Connector_Generic:Conn_01x02", "BATT header 1.27", HDR127, "C55213900", {1: "VBAT", 2: "GND"}, _p("J1")),
+    ("J1", "Connector_Generic:Conn_01x02", "BATT header 1.27", HDR127, "C55213900", {1: "BAT_IN", 2: "GND"}, _p("J1")),
+    # v0.5: protezione dall'inversione della cella: P-MOSFET AO3401A in serie al + (drain verso la cella, source verso il circuito, gate a GND con 100 k)
+    ("Q1", "Transistor_FET:AO3401A", "AO3401A", "Package_TO_SOT_SMD:SOT-23", "C15127", {1: "BAT_G", 2: "VBAT", 3: "BAT_IN"}, _p("Q1")),
+    ("R9", "Device:R", "100k", R0402, "C25741", {1: "BAT_G", 2: "GND"}, _p("R9")),
+    # v0.5: TVS bidirezionale 5 V (VRWM), 200 nA, sul contatto VIN prima dello Schottky (protegge anche D2 e non conduce con la polarita' inversa a 5 V)
+    ("D3", "swimtag:SD05.TCT", "PTVSLC3D5VB", "swimtag:SOD-323_L1.8-W1.3-LS2.5-RD", "C41408025", {1: "VIN", 2: "GND"}, _p("D3")),
     # lato sotto (solo rame, non montate): 5 piazzole pogo SWD Ø 2,0 sulla griglia 2,54 mm; 2 contatti di ricarica Ø 2,5
     ("TP1", "Connector:TestPoint", "VDD", PAD20, "", {1: "VDD"}, _p("TP1")),
     ("TP2", "Connector:TestPoint", "SWDIO", PAD20, "", {1: "SWDIO"}, _p("TP2")),
@@ -85,6 +92,7 @@ COMPONENTI = [
     ("TP5", "Connector:TestPoint", "GND", PAD20, "", {1: "GND"}, _p("TP5")),
     ("TP6", "Connector:TestPoint", "VIN", PAD25, "", {1: "VIN"}, _p("TP6")),
     ("TP7", "Connector:TestPoint", "GND", PAD25, "", {1: "GND"}, _p("TP7")),
+    ("TP8", "Connector:TestPoint", "VDD_IMU", "swimtag:TestPoint_Pad_D0.8mm", "", {1: "VDD_IMU"}, _p("TP8")),   # v0.5: prova della rete commutata dell'IMU
 ]
 
 SOPRA_FISSI = ("J1", "U3")   # componenti superiori con posizione fissata a mano (oltre al modulo): header batteria in basso a sinistra, flash in basso a destra
@@ -103,6 +111,7 @@ def fissi(W, H):
         d[rif] = (round(col0 + i * g, 3), round(ys, 3), 0)
     d["TP6"] = (round(col0 + 1 * g, 3), round(yc, 3), 0)      # VIN, sotto la colonna di SWDIO
     d["TP7"] = (round(col0 + 3 * g, 3), round(yc, 3), 0)      # GND, sotto la colonna di RESET
+    d["TP8"] = (round(col0 + 5 * g, 3), round(ys, 3), 0)      # VDD_IMU, a destra di GND (stessa riga SWD)
     d["U3"] = (round(W - 0.35 - 4.7, 2), round(H - 0.35 - 2.94, 2), 0)   # flash SOIC-8 (9,4 x 5,9 mm) nell'angolo in basso a destra
     d["J1"] = (round(0.35 + 2.7, 2), round(H - 0.35 - 1.4, 2), 90)   # header in orizzontale nell'angolo in basso a sinistra
     return d
@@ -113,5 +122,5 @@ ATTRAZIONI = {
     "C1": (("U1", "19"), 4.0),
     "C2": (("U2", "5"), 4.0), "C4": (("U2", "8"), 4.0), "C3": (("U3", "8"), 4.0),
     "C5": (("U4", "A2"), 4.0), "C6": (("U4", "A1"), 4.0), "R1": (("U4", "B2"), 3.0), "R2": (("U4", "B1"), 3.0),
-    "R4": (("U3", "3"), 2.0), "R5": (("U3", "1"), 1.5), "R6": (("U2", "12"), 1.5), "R3": (("D1", "1"), 3.0), "U6": (("U2", "5"), 3.0), "R7": (("U6", "B2"), 2.0), "U2": (("U1", "15"), 3.0),
+    "R4": (("U3", "3"), 2.0), "R5": (("U3", "1"), 1.5), "R6": (("U2", "12"), 1.5), "R3": (("D1", "1"), 3.0), "U6": (("U2", "5"), 3.0), "R7": (("U6", "B2"), 2.0), "R8": (("D2", "2"), 2.0), "D3": (("D2", "2"), 3.0), "Q1": (("J1", "1"), 3.0), "R9": (("Q1", "1"), 2.0), "U2": (("U1", "15"), 3.0),
 }

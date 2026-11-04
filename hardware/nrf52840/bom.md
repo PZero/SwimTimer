@@ -123,13 +123,20 @@ Distinta effettiva: `kicad/jlc/v0.4_swimtag_economica/bom_jlc.csv` (12 righe, 20
 | D1 | LED rosso 0603 KT-0603R (Vf ~1,9 V), anodo su VDD, R3 1 k (~1,4 mA) | C2286 | **basic** | 6,98 M | 0,008 | **cambiato il 2026-11-03** (era 0402 NCD0402R1 C130719, extended: −3,07 $) |
 | D2 | Schottky 1N5819WS SOD-323 40 V 1 A | C191023 | **basic** | 3,37 M | 0,012 | **nuovo**, al posto di TVS + B5819WS |
 | J1 | Header SMD 1,27 mm 1 × 2 (PZ1.27-1x2PLT-L7.2-R) | C55213900 | extended | 3803 | 0,008 | **nuovo**, al posto del JST SH C160402 |
-| C1, C5-C7 | 10 µF 0402 (CL05A106MQ5NUNC) | C15525 | basic | 10 M | 0,026 | |
+| C1 | 10 µF 0402 6,3 V (CL05A106MQ5NUNC), VDD | C15525 | basic | 9,87 M | 0,026 | |
+| C5, C6 | **4,7 µF 0402 10 V X5R (CL05A475MP5NRNC)**: ingresso (5 V) e uscita del BQ25101 | C23733 | basic | 1,2 M | 0,015 | **v0.5**: C5 era 10 µF 6,3 V su 5 V; C7 tolto (VDDH ha 4,7 µF nel modulo) |
+| U6 | TI TPS22916CYFPR, interruttore di carico dell'IMU (VDD → VDD_IMU) | C2680319 | extended | 1619 | 0,40 | **v0.5**, DSBGA-4 0,78 mm; "Standard only" come E73/IMU/BQ25101 |
+| Q1 | AO3401A P-MOSFET SOT-23, protezione dall'inversione della cella | C15127 | **basic** | 1,64 M | 0,096 | **v0.5**; 85 mΩ a 2,5 V |
+| D3 | TVS bidirezionale PTVSLC3D5VB SOD-323, 5 V, 200 nA, sul contatto VIN | C41408025 | extended | 3384 | 0,029 | **v0.5**; alternative: C918847 (1 µA), SD05 C85201 (v0.3) |
 | C2-C4 | 100 nF 0402 | C1525 | basic | 35 M | 0,003 | |
 | R1, R2, R4 | 10 kΩ 0402 | C25744 | basic | 16 M | 0,003 | ISET, TS, pull-up IO2/IO3 |
 | R3 | 1 kΩ 0402 | C11702 | basic | 21 M | 0,001 | LED |
-| R5, R6 | 100 kΩ 0402 | C25741 | basic | 8 M | 0,001 | CS flash e IMU alti all'avvio |
+| R5, R6, R8, R9 | 100 kΩ 0402 | C25741 | basic | 8 M | 0,001 | R5 CS flash a VDD; R6 CS IMU a **VDD_IMU**; **R8 VIN-GND**; **R9 gate di Q1 a GND** |
+| R7 | 1 MΩ 0402 | C26083 | basic | 2,7 M | 0,001 | pull-down su ON del TPS22916C (v0.5) |
 
-Non montati da JLC (solo rame): 5 piazzole pogo Ø 2,0 mm (VDD, SWDIO, SWDCLK, RESET, GND) e 2 contatti di ricarica Ø 2,5 mm (VIN, GND), tutti sul lato sotto.
+**v0.5: 25 componenti montati per scheda, 6 tipi extended** (E73, IMU, BQ25101, header, TPS22916C, TVS). Distinta effettiva: `kicad/jlc/v0.5_swimtag_economica/bom_jlc.csv` (BOM senza intervalli; la cartella `v0.4_swimtag_economica/` è congelata).
+
+Non montati da JLC (solo rame): TP8 VDD_IMU Ø 0,8 mm (v0.5), 5 piazzole pogo Ø 2,0 mm (VDD, SWDIO, SWDCLK, RESET, GND) e 2 contatti di ricarica Ø 2,5 mm (VIN, GND), tutti sul lato sotto.
 
 **Alternative valutate (v0.4):**
 - **Flash:** C97521 SOIC-8 *basic* 2,46 $ (scelto) · C190862 W25Q128JVPIQ WSON 5 × 6, extended, 3,38 $ · C3202839 XT25F128FWOIGT WSON 5 × 6, extended, 1,56 $ · GD25Q128ESIG SOP-8 C2758105, extended, 1,78 $. Il SOIC non paga il caricamento (3,07 $): costo per 2 schede 4,93 $ contro 9,83 $ (Winbond WSON) e 6,19 $ (XTX WSON); il WSON riduce l'ingombro di circa 3-4 mm in larghezza (non provato). Alcune varianti della stessa Winbond (C2456297 6 × 8, C401662) sono a stock 0 o più grandi.
@@ -137,4 +144,4 @@ Non montati da JLC (solo rame): 5 piazzole pogo Ø 2,0 mm (VDD, SWDIO, SWDCLK, R
 - **LED:** nessun 0402 *basic*; scelto il 0603 KT-0603R C2286 *basic* (−3,07 $ di caricamento).
 - **Protezione contatti:** TVS SD05 C85201 (extended) tolto; Schottky B5819WS C22624 (extended) sostituito dal *basic* 1N5819WS C191023.
 
-**Costo (2 schede):** vedi la tabella in [progetto.md](progetto.md#v04-economica-2026-11-02--registrazione-dei-dati-grezzi-dellimu-budget--100-): ~84,5 $ + IVA 22 % ≈ 103 $ ≈ **91-95 €** con PCB (5 pz, 2 strati, HASL senza piombo, 0,8 mm) e spedizione stimati (non verificati nel carrello JLC).
+**Costo (2 schede, v0.5: ~125 € dal carrello JLC ricalcolato, vedi progetto.md); stima v0.4 originale:** vedi la tabella in [progetto.md](progetto.md#v04-economica-2026-11-02--registrazione-dei-dati-grezzi-dellimu-budget--100-): ~84,5 $ + IVA 22 % ≈ 103 $ ≈ **91-95 €** con PCB (5 pz, 2 strati, HASL senza piombo, 0,8 mm) e spedizione stimati (non verificati nel carrello JLC).

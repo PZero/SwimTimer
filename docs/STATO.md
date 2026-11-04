@@ -1,13 +1,12 @@
 # Stato del progetto
 
-**Ultimo aggiornamento:** 2026-11-04 — **v0.4 economica ricompattata il 2026-11-03 (21,59 × 26 mm, 2 strati, DRC 0, LED 0603 basic con anodo su VDD, ~87-91 € per 2 schede, file JLC rigenerati, anteprima JLC da fare)**;  2026-11-01 — Fase 1 (prototipo ESP32 sul tavolo) + scheda su misura nRF52840: **tag v0.3 di collaudo sbrogliato, pronto per l'anteprima JLC** (ramo `claude/scheda-nrf52840-08642d`, solo sul repository privato `PZero/SwimTimer-nrf52840`, mai su `origin`).
+**Ultimo aggiornamento:** 2026-11-04 — **scheda v0.5 (TPS22916C, TVS, protezione inversione cella, 100 kΩ VIN-GND, TP8 VDD_IMU; 21,59 × 28 mm, DRC 0, ERC 0 errori, file JLC rigenerati in `jlc/v0.5_swimtag_economica/`; costo ~125 € con montaggio Standard, tetto 100 € non raggiunto)**; 2026-11-01 — Fase 1 (prototipo ESP32 sul tavolo) + scheda su misura nRF52840: **tag v0.3 di collaudo sbrogliato** (ramo `claude/scheda-nrf52840-08642d`, solo sul repository privato `PZero/SwimTimer-nrf52840`, mai su `origin`).
 
 
-## Ripresa (sessione chiusa il 2026-11-03 sera)
-- **Lavoro interrotto a metà:** aggiunta del TPS22916C che commuta l'alimentazione dell'IMU (decisione dell'utente; MAX17048 no). Schema/PCB/script nel commit "WIP" sono **non verificati** (DRC non rifatto): riprendere da lì, poi C5 ≥ 10 V, uscita caricatore 1–10 µF, piste sotto l'E73 su B.Cu, serigrafia ≥ 1 mm, R6 (pull-up CS IMU) su VDD_IMU o tolta, nota firmware (SPI/INT bassi prima di spegnere l'IMU).
-- Poi: DRC/ERC, `kicad/verifica_v04.py` con tabella ATTESA aggiornata, file JLC, costi (≤ 100 €), `hardware/programmatore/genera_kicad.py --drc` + `genera_pdf.py` se le piazzole cambiano, `hardware/wallpaper_v0.4/genera.py` (20 sfondi tecnici).
-- Fatto oggi: verifica indipendente `hardware/nrf52840/verifica_v0.4.md` (65 test, 0 bloccanti, su 8fd6cc0); programmatore HAT per Raspberry Pi 3/4 in `hardware/programmatore/` (PDF con stampe 1:1); generatore sfondi in `hardware/wallpaper_v0.4/`.
-- Scelta dell'utente all'ordine: finitura HASL o ENIG (la verifica consiglia ENIG per BQ25101 0,4 mm e IMU 0,5 mm).
+## Ripresa (aggiornata il 2026-11-04)
+- **Fatto (v0.5):** TPS22916C per l'IMU (R6 su VDD_IMU, ON su P0.04 con 1 MΩ), C5 4,7 µF 10 V, C7 tolto e C6 4,7 µF, 100 kΩ VIN-GND, TVS C41408025 sul contatto VIN, AO3401A contro l'inversione della cella, TP8 VDD_IMU, IMU_MISO/CS su P0.08/P0.12 (XL1/XL2 liberi), serigrafia ≥ 1 mm, zona senza piste F.Cu sotto il modulo. DRC 0, parità 0, ERC 0 errori, `kicad/verifica_v05.py` 100/100. Dettagli in `hardware/nrf52840/progetto.md` (blocco "Revisione v0.5").
+- **Da fare prima dell'ordine:** decisione sul costo (~125 € con i coupon, vedi tagli in `progetto.md`), anteprima JLC (rotazioni di U2, U4, U6, Q1 SOT-23, D1, D2, D3, J1; JLC accetta l'header e le parti "Standard only"), scelta HASL/ENIG, prova a banco di Q1 con cella dritta e invertita, prova di portata (antenna a 0,3 mm dal bordo, scheda 28 mm).
+- Non rigenerati: `hardware/wallpaper_v0.4/genera.py` (20 sfondi) e PDF del programmatore (le piazzole TP1–TP7 non sono cambiate, quindi l'adattatore vale ancora; TP8 non serve al programmatore).
 - Da cancellare a mano: cartella temporanea `C:\swt_chk`.
 
 ## Fatto
