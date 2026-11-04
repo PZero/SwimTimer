@@ -24,7 +24,7 @@ env:
 
 jobs:
   pubblica:
-    # solo nel repository pubblico: nel privato SwimTimer-nrf52840 Pages non è attivo (piano gratuito)
+    # solo nel repository pubblico (Pages gratuito); non gira in eventuali copie private o fork
     if: github.repository == 'PZero/SwimTimer'
     runs-on: ubuntu-latest
     environment:

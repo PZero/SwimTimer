@@ -1,10 +1,10 @@
-# SwimTimer (repository privato della scheda nRF52840)
+# SwimTimer
 
 Tempi automatici in piscina: un tag sotto la cuffia e un display a bordo vasca riconoscono partenza e arrivo, senza pulsanti.
 
-![Stato](https://img.shields.io/badge/stato-prototipo%20ESP32%20funzionante-yellow) ![Scheda](https://img.shields.io/badge/tag%20nRF52840-v0.5%20pronta%20da%20ordinare-green) ![Repository](https://img.shields.io/badge/repository-privato-red) ![Licenza](https://img.shields.io/badge/licenza-da%20definire-lightgrey)
+![Stato](https://img.shields.io/badge/stato-prototipo%20ESP32%20funzionante-yellow) ![Scheda](https://img.shields.io/badge/tag%20nRF52840-v0.5%20pronta%20da%20ordinare-green) ![Repository](https://img.shields.io/badge/repository-pubblico-blue) ![Licenza](https://img.shields.io/badge/licenza-da%20definire-lightgrey)
 
-Aggiornato al **2026-11-04**. Questo è il repository **privato** `PZero/SwimTimer-nrf52840`: contiene tutto il repository pubblico `PZero/SwimTimer` più il progetto hardware della scheda su misura (KiCad, Gerber, programmatore, sfondi tecnici).
+Aggiornato al **2026-11-04**. Repository unico e pubblico `PZero/SwimTimer`: prototipo ESP32, firmware, pagina di analisi (GitHub Pages: https://pzero.github.io/SwimTimer/), tag nRF52840 (KiCad, Gerber, file JLC), programmatore HAT, sfondi tecnici e video.
 
 ### Video di presentazione (2 minuti)
 
@@ -313,7 +313,7 @@ Venti tavole da disegno 1170 × 2532 px, generate dai PCB reali (blueprint, OLED
 ## Struttura delle cartelle
 
 ```
-SwimTimer-nrf52840/
+SwimTimer/
 ├── docs/                         idea, stato, decisioni, domande aperte, requisiti, design, lezioni, algoritmi
 ├── firmware/
 │   ├── test-collegamenti/        tag ESP32-S3: firmware 0.4.3
@@ -389,7 +389,7 @@ Dettagli: [`docs/STATO.md`](docs/STATO.md). Decisioni: [`docs/DECISIONI.md`](doc
 
 - Nessuna credenziale nel repository: se servono, solo in `.env` (escluso da git) e come secrets in CI.
 - Nessun dato personale reale: le sessioni di nuoto sono dati di salute e restano in locale (`dati/`, esclusa da git). Nei test solo dati inventati.
-- Il progetto hardware della scheda nRF52840 vive solo in questo repository **privato**; il repository pubblico `PZero/SwimTimer` ospita pagina e firmware (GitHub Pages).
+- Dal 2026-11-04 tutto il progetto, hardware compreso, è in questo unico repository pubblico; il vecchio repository privato `PZero/SwimTimer-nrf52840` è dismesso.
 - Eventuale app: Firebase piano gratuito Spark, senza Cloud Functions.
 
 ## Licenza e autore

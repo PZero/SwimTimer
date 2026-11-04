@@ -1,6 +1,6 @@
 # Stato del progetto
 
-**Ultimo aggiornamento:** 2026-11-04. Ramo `claude/scheda-nrf52840-08642d`, solo sul repository privato `PZero/SwimTimer-nrf52840` (mai su `origin` pubblico).
+**Ultimo aggiornamento:** 2026-11-04. Tutto il progetto è nel repository unico e pubblico `PZero/SwimTimer` (`main`); il repository privato `SwimTimer-nrf52840` è dismesso.
 
 ## Fotografia
 - **Scheda nRF52840 v0.5 pronta** (commit 01c6b8b): 21,59 × 28,0 mm, 2 strati 0,8 mm, DRC 0, ERC 0 errori, parità schema/PCB 0, `kicad/verifica_v05.py` 100/100 pin, 369 piste, 36 via. File JLC in `hardware/nrf52840/kicad/jlc/v0.5_swimtag_economica/`; la v0.4 è congelata in `jlc/v0.4_swimtag_economica/` (rigenerabile dal commit 8fd6cc0).

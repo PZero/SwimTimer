@@ -12,9 +12,10 @@ Chiudiamo la sessione. Senza rileggere file che non servono:
 5. Rigenera i file prodotti da script che dipendono da quanto è cambiato (file JLC, PDF del programmatore, sfondi `hardware/wallpaper_v0.4/genera.py`, render): su GitHub devono finire le versioni aggiornate, non quelle vecchie.
 6. Affida all'agente `git-readme` (con una sintesi di cosa è cambiato oggi): aggiornare `README.md` (molto dettagliato e professionale, con gli sfondi e le immagini attuali) e `CHANGELOG.md`, controllare che non ci siano chiavi, token, password, `.env` o dati personali reali.
 7. **Tutto va su GitHub**, senza chiedere conferma: `git add -A` di tutti i file del progetto (immagini, PDF, file JLC compresi; restano fuori solo quelli in `.gitignore`), commit in italiano, poi `git status` deve risultare pulito.
-   - Ramo della scheda (`claude/scheda-nrf52840-08642d`, contiene `hardware/nrf52840/`, `hardware/programmatore/`, `hardware/wallpaper_v0.4/`): push **solo sul remote `privato`** (`PZero/SwimTimer-nrf52840`), sia del ramo sia di `main` (`git push privato HEAD:main`, così la pagina principale del repository privato mostra l'ultima versione). **Mai** su `origin`.
-   - Repository pubblico (`origin`, `PZero/SwimTimer`): solo le parti pubbliche (firmware del prototipo, pagina, documenti senza la scheda), da `main`; prima di ogni push su `origin` controlla che non contenga `hardware/nrf52840/`, `hardware/programmatore/` o `hardware/wallpaper_v0.4/`. Se `origin/main` ha commit nuovi, uniscili nel ramo della scheda (`git merge origin/main`) così il repository privato resta completo.
-   - Verifica alla fine con `git ls-remote` che i remote puntino allo stesso commit locale. Da sessione cloud: branch `cloud/<data>-<argomento>` + Pull Request.
+   - Repository **unico e pubblico** `PZero/SwimTimer` (remote `origin`), ramo `main`: lì va tutto (prototipo, firmware, pagina, tag nRF52840, programmatore, sfondi). Se lavori su un altro ramo, prima `git merge origin/main`, poi `git push origin HEAD:main`.
+   - Il repository pubblico è visibile a tutti: prima del push controlla con `git grep` che non ci siano email, percorsi con il nome utente, segreti o dati personali.
+   - Il vecchio repository privato `SwimTimer-nrf52840` è dismesso: non fare più push lì.
+   - Verifica alla fine con `git ls-remote origin` che `main` remoto punti al commit locale. Da sessione cloud: branch `cloud/<data>-<argomento>` + Pull Request.
 8. Rispondimi con 5 righe al massimo: cosa è stato salvato (commit e remote) e da dove ripartire la prossima volta.
 
 Dopo questo comando posso chiudere la chat o usare `/clear`.
