@@ -1,6 +1,6 @@
 """Genera i PDF dell'adattatore dal modello geometrico (modello.py, che legge il PCB del tag).
 
-  Programmatore_SwimTag_v0.4.pdf     documento unico (spiegazione, schema, distinta, stampe 1:1, procedura)
+  Programmatore_SwimTag_v0.5.pdf     documento unico (spiegazione, schema, distinta, stampe 1:1, procedura)
   stampa/rame_speculare_1a1.pdf      solo le copie del rame, speculare, per il toner transfer
   stampa/componenti_1a1.pdf          solo la pagina non speculare (posizioni e serigrafia)
 
@@ -17,7 +17,7 @@ from modello import QUI, FORO_POGO, LARG_PISTA, ALT_BATTUTE, HAT_FORI, costruisc
 from pdfbase import (A4, MM, NERO, BIANCO, GRIGIO, GRIGIO_CH, ROSSO, VERDE, BLU, ARANCIO, GIALLO, Doc, Mappa, testo,
                      testo_speculare, tl, reg_font, fname, wrap)
 
-NOME_PDF = QUI / "Programmatore_SwimTag_v0.4.pdf"
+NOME_PDF = QUI / "Programmatore_SwimTag_v0.5.pdf"
 KICAD_CLI = os.environ.get("KICAD_CLI", str(Path.home() / "AppData/Local/Programs/KiCad/10.0/bin/kicad-cli.exe"))
 PERNO = 4.0     # altezza della punta del pogo libero sopra la basetta (mm) = ALT_BATTUTE + compressione
 COMPR = PERNO - ALT_BATTUTE
@@ -86,7 +86,7 @@ def pagina_rame(d, m):
     righe = max(int((A4[1] - marg - zona_alta - 30 + gap) // (bh * MM + gap)), 1)
     testo(pg, marg, 22, "RAME SPECULARE - STAMPARE AL 100% (scala reale), NERO PIENO", 11, "b", ROSSO)
     testo(pg, marg, 35, "Disattivare 'adatta alla pagina' / 'riduci'. Misurare la barra: deve essere 50,0 mm (+-0,3). Laser, carta lucida, toner al massimo.", 7.5, "r")
-    testo(pg, marg, 45, "Il rame e' SUL LATO COMPONENTI (sopra): la carta si gira sul rame. Dopo il trasferimento 'JIG 0.4' e 'USB->' si leggono dritte e il pin 1 e' a sinistra.", 7.5, "r")
+    testo(pg, marg, 45, "Il rame e' SUL LATO COMPONENTI (sopra): la carta si gira sul rame. Dopo il trasferimento 'JIG 0.5' e 'USB->' si leggono dritte e il pin 1 e' a sinistra.", 7.5, "r")
     barra_scala(pg, marg + 12, 62, 50)
     testo(pg, marg + 12 + 50 * MM + 10, 65, "<- barra di controllo scala: 50 mm", 7.5, "r", GRIGIO)
     barra_scala(pg, A4[0] - 22, 40, 50, verticale=True)
@@ -102,7 +102,7 @@ def pagina_rame(d, m):
             disegna_rame(M, m)
             segni_taglio(M, m, GRIGIO)
             n += 1
-    testo(pg, marg, A4[1] - 14, f"SwimTag programmatore v0.4 (HAT) - {n} copie 1:1 della stessa basetta ({bw:.1f} x {bh:.1f} mm) - generato da genera_pdf.py", 6.5, "r", GRIGIO)
+    testo(pg, marg, A4[1] - 14, f"SwimTag programmatore v0.5 (HAT) - {n} copie 1:1 della stessa basetta ({bw:.1f} x {bh:.1f} mm) - generato da genera_pdf.py", 6.5, "r", GRIGIO)
     return n, (bw, bh)
 
 
@@ -589,7 +589,7 @@ def costruisci_documento(m):
     d.li("Aprire la pagina 5a (o stampa/rame_speculare_1a1.pdf); stampare al 100 % ('dimensione reale'), mai 'adatta alla pagina'. Stampante LASER, qualita' massima, toner scuro, nessun risparmio toner.", num="1.")
     d.li("Carta: carta lucida da rivista patinata (la piu' economica) o carta fotografica 'glossy' a getto d'inchiostro; il toner deve restare sopra, senza assorbirsi.", num="2.")
     d.li("Controllo della scala: misurare con un righello la barra da 50 mm in alto e la barra verticale a destra: devono dare 50,0 +- 0,3 mm.", num="3.")
-    d.li("Controllo del verso: sul foglio le scritte 'USB->' e 'JIG 0.4' sono scritte al rovescio e il pin 1 e' a destra: e' giusto. Dopo il trasferimento sul rame (guardandolo da sopra) si leggono dritte e il pin 1 e' a sinistra.", num="4.")
+    d.li("Controllo del verso: sul foglio le scritte 'USB->' e 'JIG 0.5' sono scritte al rovescio e il pin 1 e' a destra: e' giusto. Dopo il trasferimento sul rame (guardandolo da sopra) si leggono dritte e il pin 1 e' a sinistra.", num="4.")
     d.li("Ritagliare UNA copia lungo i segni di taglio (angoli), lasciando 3-5 mm di carta intorno. Le altre copie servono come scorta.", num="5.")
     d.h2("6.2 Preparare il rame")
     d.li("Tagliare la basetta a misura (%.1f x %.1f mm, angoli arrotondati r = 3 mm come da specifica HAT) con seghetto o cutter da PCB incidendo piu' volte e spezzando; limare i bordi e gli angoli." % dim, num="1.")
@@ -786,7 +786,7 @@ def costruisci_documento(m):
         y += 16
     y += 10
     testo(pg, 42, y, f"Le stampe 1:1 sono a pagina {pag_rame} (rame speculare, {n_copie} copie), {pag_comp} (posizioni componenti) e {pag_comp + 2} (mappa fori).", 10, "b", ROSSO)
-    d.piedi("SwimTag - adattatore di programmazione e collaudo v0.4 (HAT)")
+    d.piedi("SwimTag - adattatore di programmazione e collaudo v0.5 (HAT)")
     return d, dict(rame=pag_rame, comp=pag_comp, fori=pag_comp + 2, copie=n_copie, dim=dim)
 
 
@@ -795,7 +795,7 @@ def main():
     for a in m["avvisi"]:
         print("AVVISO:", a)
     d, info = costruisci_documento(m)
-    d.d.set_metadata({"title": "SwimTag - adattatore di programmazione e collaudo v0.4", "author": "SwimTimer", "subject": "pogo jig nRF52840"})
+    d.d.set_metadata({"title": "SwimTag - adattatore di programmazione e collaudo v0.5", "author": "SwimTimer", "subject": "pogo jig nRF52840"})
     d.d.save(str(NOME_PDF), garbage=3, deflate=True)
     print("scritto", NOME_PDF.name, len(d.d), "pagine;", info)
     # PDF di stampa separati

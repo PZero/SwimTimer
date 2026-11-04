@@ -1,4 +1,4 @@
-# Distinta componenti dell'adattatore HAT (v0.4)
+# Distinta componenti dell'adattatore HAT (v0.5)
 
 Prezzi indicativi (novembre 2026), IVA e spedizione escluse. I link sono ricerche di catalogo: controllare codice e giacenza al momento dell'acquisto. Spedizioni dalla Cina (AliExpress, LCSC) 1-3 settimane; distributori europei (Mouser, Farnell, RS) 2-4 giorni.
 

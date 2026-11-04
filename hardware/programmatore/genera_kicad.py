@@ -12,7 +12,7 @@ from pathlib import Path
 from modello import QUI, LARG_PISTA, DIST_MIN, HAT_R, costruisci, uid
 
 NOME = "swimtag_programmatore"
-VERSIONE = "0.4"
+VERSIONE = "0.5"
 OFF = (60.0, 100.0)    # spostamento sul foglio A4 di KiCad (le coordinate dell'adattatore possono essere negative)
 KICAD_CLI = os.environ.get("KICAD_CLI", str(Path.home() / "AppData/Local/Programs/KiCad/10.0/bin/kicad-cli.exe"))
 

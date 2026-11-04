@@ -130,7 +130,7 @@ def costruisci(percorso=PCB_TAG):
     if abs(col["TP7"] - col["TP6"] - PASSO * 2) > 0.02 or abs(tp["TP6"][1] - tp["TP7"][1]) > 0.01:
         avvisi.append("TP6-TP7 non a 5,08 mm sulla stessa riga: lo sbroglio della ricarica va rivisto")
     if abs(tp["TP6"][0] - col["TP2"]) > 0.02 or abs(tp["TP7"][0] - col["TP4"]) > 0.02:
-        avvisi.append("TP6/TP7 non sotto SWDIO/RESET come nella v0.4 attuale: controllare lo sbroglio")
+        avvisi.append("TP6/TP7 non sotto SWDIO/RESET come nella v0.5 attuale: controllare lo sbroglio")
     if y1 + 3 > HAT_H - 1:
         avvisi.append(f"il tag ({H:.1f} mm) non sta nell'HAT con questa posizione OV={OV}")
     for n in tp:
@@ -248,7 +248,7 @@ def costruisci(percorso=PCB_TAG):
     # testi in rame (in KiCad su F.Cu): sono riferimenti, non serigrafia
     testi = [dict(s="1", cx=5.6, cy=6.4, h=2.6, nota="pin 1 del connettore"),
              dict(s="USB->", cx=52.0, cy=16.0, h=2.6, nota="lato USB/Ethernet del Pi"),
-             dict(s="JIG 0.4", cx=50.0, cy=44.0, h=3.2, nota="controllo del verso")]
+             dict(s="JIG 0.5", cx=50.0, cy=44.0, h=3.2, nota="controllo del verso")]
 
     return dict(tag=t, W=W, H=H, x0=x0, y0=y0, x1=x1, y1=y1, tp=tp, pads=p, fp=fp, piste=piste, avvisi=avvisi,
                 bordo=(0.0, 0.0, HAT_W, HAT_H), battute=battute, appoggi=appoggi, testi=testi, col=col, vp=vp,

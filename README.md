@@ -285,7 +285,7 @@ Basetta a una faccia, da costruire a mano con il **toner transfer**, con forma e
 - **Non provato fisicamente:** la basetta non è stata costruita. Rischi noti: livelli a 1,8 V sul tag (le 1 kΩ non sono una traduzione di livello), foro dei pogo da verificare sul pezzo, posizione del connettore da verificare su un Pi reale.
 
 **Documentazione:**
-- [`hardware/programmatore/Programmatore_SwimTag_v0.4.pdf`](hardware/programmatore/Programmatore_SwimTag_v0.4.pdf): schema, distinta, procedura, OpenOCD. Le stampe 1:1 sono alle pagine 6 (rame speculare), 7 (componenti), 8 (ingrandimento 2:1) e 9 (mappa fori).
+- [`hardware/programmatore/Programmatore_SwimTag_v0.5.pdf`](hardware/programmatore/Programmatore_SwimTag_v0.5.pdf): schema, distinta, procedura, OpenOCD. Le stampe 1:1 sono alle pagine 6 (rame speculare), 7 (componenti), 8 (ingrandimento 2:1) e 9 (mappa fori).
 - [`hardware/programmatore/README.md`](hardware/programmatore/README.md): dettagli, piedinatura, procedura e limiti.
 - [`hardware/programmatore/bom.md`](hardware/programmatore/bom.md): distinta con prezzi.
 - [`hardware/programmatore/stampa/`](hardware/programmatore/stampa/): fogli di stampa 1:1.

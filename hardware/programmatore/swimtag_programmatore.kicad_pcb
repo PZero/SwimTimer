@@ -1301,10 +1301,10 @@
 		(layer "F.Cu")
 		(uuid "ca222c00-6cee-5cfa-8609-99618421786e")
 		(effects (font (size 2.6 2.6) (thickness 0.5))))
-	(gr_text "JIG 0.4"
+	(gr_text "JIG 0.5"
 		(at 110 144 0)
 		(layer "F.Cu")
-		(uuid "16f312b8-c85d-56c6-8c31-d4df6173af54")
+		(uuid "a73f52d6-2169-5265-aede-d30924b26550")
 		(effects (font (size 3.2 3.2) (thickness 0.5))))
 	(gr_text "TAG (faccia in giu')"
 		(at 93.295 121.5 0)

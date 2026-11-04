@@ -1,10 +1,10 @@
-# Adattatore di programmazione e collaudo (pogo jig, forma di HAT) per il tag SwimTimer v0.4
+# Adattatore di programmazione e collaudo (pogo jig, forma di HAT) per il tag SwimTimer v0.5
 
 Basetta a una faccia, a foro passante, da realizzare a mano con il **toner transfer**, con **forma e fori di un HAT del Raspberry Pi** (65 x 56,5 mm, angoli r = 3 mm, 4 fori M2,5 a 58 x 49 mm). Si **innesta direttamente sul connettore a 40 pin** del Pi 3 o 4 (header femmina 2x20 completo, niente cavetti); sulla faccia superiore 7 molle (pogo pin) cadono sulle piazzole sotto il tag: 5 di debug SWD (VDD, SWDIO, SWCLK, RESET, GND) e 2 di ricarica (VIN, GND). Il Pi programma con OpenOCD in bit-bang sui GPIO e puo' anche **ricaricare la cella** del tag mentre e' collegato.
 
 > **MAI il 3,3 V del Raspberry Pi sul VDD del tag.** Il tag si alimenta dalla sua cella; la piazzola VDD (pin J4 dell'adattatore) serve solo al tester e non e' collegata al connettore. Sul connettore sono collegati **solo** i pin 2 (5 V, attraverso PTC e ponticello), 12, 18, 20 (GND) e 22; gli altri 35 restano scollegati. Al primo avvio il VDD del tag e' 1,8 V (UICR vuoto), dopo `UICR.REGOUT0` e un reset 3,3 V.
 
-Documento completo (schema, distinta, stampe 1:1, procedura illustrata, innesto, OpenOCD, problemi): **[`Programmatore_SwimTag_v0.4.pdf`](Programmatore_SwimTag_v0.4.pdf)**. Le **stampe 1:1 sono alle pagine 6 (rame speculare, 8 copie), 7 (posizioni componenti), 8 (ingrandimento 2:1 con tutte le etichette) e 9 (mappa fori)**; gli stessi fogli sono anche in [`stampa/`](stampa/).
+Documento completo (schema, distinta, stampe 1:1, procedura illustrata, innesto, OpenOCD, problemi): **[`Programmatore_SwimTag_v0.5.pdf`](Programmatore_SwimTag_v0.5.pdf)**. Le **stampe 1:1 sono alle pagine 6 (rame speculare, 8 copie), 7 (posizioni componenti), 8 (ingrandimento 2:1 con tutte le etichette) e 9 (mappa fori)**; gli stessi fogli sono anche in [`stampa/`](stampa/).
 
 ## File
 
@@ -83,7 +83,7 @@ I pogo P6 (VIN) e P7 (GND) caricano la cella 401012 da 40 mAh tramite il BQ25101
 
 ## Procedura sintetica (dettagli nel PDF)
 
-1. **Stampa** `stampa/rame_speculare_1a1.pdf` al 100 % (mai "adatta alla pagina"), laser, carta lucida; barra da 50 mm = 50,0 +- 0,3 mm. Sul foglio "USB->" e "JIG 0.4" sono a specchio e il pin 1 e' a destra: dopo il trasferimento (rame guardato da sopra) si leggono dritte, pin 1 a sinistra.
+1. **Stampa** `stampa/rame_speculare_1a1.pdf` al 100 % (mai "adatta alla pagina"), laser, carta lucida; barra da 50 mm = 50,0 +- 0,3 mm. Sul foglio "USB->" e "JIG 0.5" sono a specchio e il pin 1 e' a destra: dopo il trasferimento (rame guardato da sopra) si leggono dritte, pin 1 a sinistra.
 2. **Rame:** taglio a misura (angoli r = 3 mm), pulizia. **Trasferimento** col ferro 5-8 min, bagno, ritocchi. **Incisione** in persolfato o cloruro ferrico (occhiali, guanti, rifiuti al centro di raccolta).
 3. **Foratura** (pagina 9): 0,8 / 1,0 / 1,5 / 2,75 mm; connettore con fori solo sulla fila esterna.
 4. **Montaggio:** connettore femmina (code dispari tagliate, da sotto, saldato sopra); resistenze, header maschio da sotto, LED, PTC; battute (pin 0,64 mm); blocchetti d'appoggio incollati; pogo per ultimi all'altezza giusta.
