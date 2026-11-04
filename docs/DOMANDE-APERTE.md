@@ -21,11 +21,9 @@
 20. Scheda nRF52840 v0.2: applichiamo le 4 modifiche dalle lezioni apprese (alimentazione commutata del sensore, misuratore di carica, spegnimento vero, etichette +/−), sapendo che serve rifare parte delle piste?
 
 ### Scheda su misura nRF52840 (`hardware/nrf52840/`)
-Risolte: modulo MDBT50Q-1MV2, IMU LSM6DSV16X ±4 g, sensore di pressione, cella 15–20 mAh con 32 MB, forma B compatta, stampante Bambu Lab A1 mini, programmatore da costruire, protezione dei contatti e reset all'inserimento (v0.2).
-14. Budget JLC: 50 € non bastano; il tag di collaudo v0.3 costa ~120–130 $ per 2 tag (IVA e spedizione escluse) più cella e cavo Tag-Connect. Confermi?
+Risolte: modulo E73 (Raytac a stock 0), IMU LSM6DSV16X, flash 16 MB, interruttore TPS22916C sì e MAX17048 no, protezioni (TVS, MOSFET contro l'inversione, 100 kΩ su VIN), programmatore = HAT per Raspberry Pi 3/4 fatto in casa, 2 strati, repository unico pubblico.
+14. Budget JLC: la v0.5 costa ~125 € (ENIG +5–10 €) contro il tetto di 100 €. Accetti la cifra o tagli raggi X / TVS / header (fino a ~100 €)? HASL o ENIG?
 18. Avviso in acqua: provi vibratore e cicalino sul prototipo ESP32 (~5 €)? Per cosa deve avvisare (fine ripetuta, ritmo, tempo)?
-23. Carichi tu i file di `kicad/jlc/v0.3_swimtag_collaudo/` nell'anteprima JLC (rotazioni, stock, prezzo)?
-25. Programmazione del tag v0.3: cavo Tag-Connect TC2030-NL (~40 $) con J-Link EDU Mini (si adatta a 1,8 V) o Raspberry Pi Pico + traslatore di livello?
-26. Cella Ampul 401012 con spina JST SH 1,0 mm: la vende così o serve un'altra cella equivalente?
-27. v0.4 economica: ~91-95 € stimati per 2 schede (PCB e spedizione non verificati nel carrello JLC). Taglio possibile: LED 0603 *basic* (−3,07 $). Confermi LED 0402 e flash SOIC-8 16 MB (22,86 × 26 mm)? Caricare tu `kicad/jlc/v0.4_swimtag_economica/` nell'anteprima JLC (header C55213900 nell'Economic, rotazioni, prezzi reali).
-28. v0.4: 16 MB bastano per la registrazione? ~24 min a 960 Hz sei assi, ~97 min a 240 Hz; quale frequenza e quanto dura una registrazione?
+26. Cella Ampul 401012 (3,31 €, senza connettore, polo +/− da verificare col tester): ne ordini 4?
+29. 16 MB bastano? ~97 min a 240 Hz, ~24 min a 960 Hz sei assi: quale frequenza usiamo per le prime registrazioni?
+30. Traslatore di livello sul programmatore (SWD 3,3 V del Pi contro 1,8 V del tag al primo avvio): lo aggiungiamo (1–2 €) o ti basta il metodo con le 1 kΩ e REGOUT0 scritto subito?
