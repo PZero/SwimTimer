@@ -6,6 +6,12 @@ Tempi automatici in piscina: un tag sotto la cuffia e un display a bordo vasca r
 
 Aggiornato al **2026-11-04**. Questo è il repository **privato** `PZero/SwimTimer-nrf52840`: contiene tutto il repository pubblico `PZero/SwimTimer` più il progetto hardware della scheda su misura (KiCad, Gerber, programmatore, sfondi tecnici).
 
+### Video di presentazione (2 minuti)
+
+[![SwimTimer: video di presentazione su YouTube](media/video/miniatura_youtube.png)](https://youtu.be/_2UzpOqblVI)
+
+Guarda il video su YouTube: **https://youtu.be/_2UzpOqblVI** (musica originale generata per il video; sorgenti in [`media/video/`](media/video/)).
+
 ![Render del tag v0.5, vista dall'alto](hardware/nrf52840/kicad/jlc/v0.5_swimtag_economica/render_sopra.png)
 
 ## Indice
