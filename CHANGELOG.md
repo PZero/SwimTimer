@@ -2,7 +2,9 @@
 
 ## 2026-11-04
 - Allineamento del ramo della scheda con `main` del repository pubblico (firmware 0.4.3, pagina di analisi `tools/index.html`, documenti).
-- Tag v0.4: aggiunta del TPS22916C per commutare l'alimentazione dell'IMU (lavoro in corso, schema/PCB/script nel commit WIP **non verificati**, DRC non rifatto): non ordinare. Da fare: C5 >= 10 V, uscita caricatore 1-10 uF, piste sotto l'E73 su B.Cu, serigrafia >= 1 mm, R6 su VDD_IMU o tolta; poi `verifica_v04.py`, file JLC, costi, programmatore e sfondi.
+- **Scheda v0.5** (commit 01c6b8b), 21,59 x 28,0 mm (a 26-27,5 lo sbroglio a 2 strati non chiude), 2 strati: TPS22916C (U6) su VDD_IMU con ON su P0.04 e R7 1 MOhm, R6 su VDD_IMU, C5 4,7 uF 10 V, C7 tolto e C6 4,7 uF, R8 100 kOhm VIN-GND, TVS D3 PTVSLC3D5VB prima di D2, AO3401A (Q1) con R9 contro l'inversione della cella, TP8 VDD_IMU, IMU_MISO/CS su P0.08/P0.12 (XL1/XL2 liberi), serigrafia 1,0 mm. DRC 0, ERC 0 errori, `verifica_v05.py` 100/100 pin, 28 reti, 369 piste, 36 via. File JLC in `jlc/v0.5_swimtag_economica/` (v0.4 congelata). Costo stimato circa 125 EUR (sopra il tetto di 100): tagli possibili senza raggi X ~109, senza TVS ~105, senza header ~100,5.
+- Revisioni esterne (Gemini, Copilot) raccolte in `hardware/nrf52840/revisioni_esterne.md` (ex `revisioni_esterne_v0.4.md`): modifiche applicate nella v0.5; S1 di Copilot (TS con 10 kOhm a massa) e' un falso positivo, confermato dal foglio TI; testo inviato in `revisione_esterna_v0.4.md`.
+- Nuovi sfondi tecnici sulla v0.5 in `hardware/wallpaper_v0.5/` (20 PNG 1170 x 2532, stessi nomi della v0.4).
 - README riscritto da zero (storia v0.1-v0.4, v0.4 in dettaglio, programmatore, galleria dei 20 sfondi, rigenerazione, flusso d'ordine JLC, roadmap, privacy).
 
 ## 2026-11-03

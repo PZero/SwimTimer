@@ -755,7 +755,7 @@
 	(footprint "SwimJig:Header_1x1"
 		(layer "F.Cu")
 		(uuid "b04c2cc9-9464-5016-a34b-4f9cf3ef0cd4")
-		(at 82.08 146.86)
+		(at 82.08 149.4)
 		(property "Reference" "S2"
 			(at 0 -3.2 0)
 			(layer "F.Fab")
@@ -857,7 +857,7 @@
 	(footprint "SwimJig:Glue_3x3"
 		(layer "F.Cu")
 		(uuid "dc7cc6b2-105d-5d18-82d6-487d67d84141")
-		(at 92.66 148.1)
+		(at 92.66 150.1)
 		(property "Reference" "S6"
 			(at 0 -3.2 0)
 			(layer "F.Fab")
@@ -1285,7 +1285,7 @@
 	)
 	(gr_rect
 		(start 82.5 124)
-		(end 104.09 150)
+		(end 104.09 152)
 		(stroke (width 0.15) (type dash))
 		(fill no)
 		(layer "Dwgs.User")
