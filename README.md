@@ -1,400 +1,335 @@
-# SwimTimer
+# SwimTimer (repository privato della scheda nRF52840)
 
-Tempi automatici in piscina: un tag indossato dal nuotatore e un display a bordo vasca riconoscono partenza e arrivo, senza pulsanti.
+Tempi automatici in piscina: un tag sotto la cuffia e un display a bordo vasca riconoscono partenza e arrivo, senza pulsanti.
 
-![Stato](https://img.shields.io/badge/stato-prototipo%20(fase%201)-yellow) ![Licenza](https://img.shields.io/badge/licenza-da%20definire-lightgrey)
+![Stato](https://img.shields.io/badge/stato-prototipo%20ESP32%20funzionante-yellow) ![Scheda](https://img.shields.io/badge/tag%20nRF52840-v0.4%20in%20verifica-orange) ![Repository](https://img.shields.io/badge/repository-privato-red) ![Licenza](https://img.shields.io/badge/licenza-da%20definire-lightgrey)
 
-**Foto dei dispositivi:** da definire (da aggiungere in `docs/foto/`).
+Aggiornato al **2026-11-04**. Questo è il repository **privato** `PZero/SwimTimer-nrf52840`: contiene tutto il repository pubblico `PZero/SwimTimer` più il progetto hardware della scheda su misura (KiCad, Gerber, programmatore, sfondi tecnici).
+
+![Render del tag v0.4, vista dall'alto](hardware/wallpaper_v0.4/render/tag_alto.png)
 
 ## Indice
-- [Panoramica](#panoramica)
-- [Funzionalità](#funzionalità)
-- [Architettura](#architettura)
-- [Hardware](#hardware)
-- [Scheda su misura nRF52840](#scheda-su-misura-nrf52840)
-- [Firmware](#firmware)
-- [Costruzione e assemblaggio](#costruzione-e-assemblaggio)
-- [Uso in vasca](#uso-in-vasca)
-- [App](#app)
+- [Cos'è SwimTimer](#cosè-swimtimer)
+- [Stato attuale](#stato-attuale)
+- [Architettura del sistema](#architettura-del-sistema)
+- [Prototipo ESP32, firmware 0.4.3 e pagina di analisi](#prototipo-esp32-firmware-043-e-pagina-di-analisi)
+- [Tag nRF52840](#tag-nrf52840)
+- [Programmatore HAT per Raspberry Pi](#programmatore-hat-per-raspberry-pi-34)
+- [Galleria degli sfondi tecnici](#galleria-degli-sfondi-tecnici)
 - [Struttura delle cartelle](#struttura-delle-cartelle)
-- [Stato del progetto e roadmap](#stato-del-progetto-e-roadmap)
-- [Contribuire](#contribuire)
-- [Licenza](#licenza)
-- [Autore](#autore)
+- [Come rigenerare i file](#come-rigenerare-i-file)
+- [Flusso d'ordine JLCPCB](#flusso-dordine-jlcpcb)
+- [Roadmap e problemi aperti](#roadmap-e-problemi-aperti)
+- [Privacy e sicurezza](#privacy-e-sicurezza)
+- [Licenza e autore](#licenza-e-autore)
 
-## Panoramica
+## Cos'è SwimTimer
 
-**Problema.** In piscina i tempi per vasca e i riposi si perdono. Il cronometro a muro non sempre c'è, e guardare l'orologio interrompe l'allenamento.
+**Problema.** In piscina i tempi per vasca e i riposi si perdono. Guardare l'orologio o premere un pulsante interrompe l'allenamento.
 
-**A chi serve.** A chi nuota in vasca e vuole tempi e riposi senza toccare nulla durante la prova.
+**Soluzione.** Un piccolo tag con sensore inerziale (accelerometro e giroscopio) si indossa sotto la cuffia. Riconosce da solo la spinta dal muro (partenza), le virate e la calma all'arrivo. Un display a bordo vasca mostra i tempi.
 
-**Cosa fa.** Un piccolo tag, fissato alla cuffia o all'elastico degli occhialini, misura il movimento con un sensore inerziale. Riconosce la spinta dal muro (partenza), la calma all'arrivo (stop) e le virate. Un display a bordo vasca mostra i tempi.
+**Vincolo fisico.** Il BLE a 2,4 GHz non attraversa l'acqua. Il tempo non si misura col segnale radio: lo decide il sensore sul tag. Il BLE serve solo fuori dall'acqua, per riconoscere la vicinanza al display e inviare i dati. Analisi completa: [`docs/IDEA.md`](docs/IDEA.md).
 
-Il BLE non attraversa l'acqua: il tempo non si misura con il segnale radio. Il BLE serve a riconoscere la vicinanza al display e a inviare i dati.
+## Stato attuale
 
-Analisi completa e ipotesi di logica: [`docs/IDEA.md`](docs/IDEA.md).
-
-## Funzionalità
-
-| Funzione | Stato |
+| Area | Stato |
 |---|---|
-| Lettura di accelerazione (3 assi) e rotazione (3 assi) dal sensore BMI160 | Prototipo verificato |
-| Invio dei dati grezzi via USB a circa 50 Hz | Prototipo verificato |
-| Servizio BLE (GATT) con i campioni a 25 Hz, per la pagina Web Bluetooth | Prototipo, da verificare sul campo |
-| Annuncio BLE con l'ultimo campione a 20 Hz, letto dal display senza collegarsi | Prototipo sul tavolo |
-| Visualizzazione dei 3 assi con grafici nel browser, via USB o Bluetooth | Funzionante (`tools/assi.html`) |
-| Corona dei 3 assi sul display (un giro ogni 15 s) | Prototipo sul tavolo (`firmware/display-prova`) |
-| Cronometro di prova sul display: partenza, arrivo, azzeramento | Prototipo sul tavolo, non ancora provato in vasca |
-| Riconoscimento della partenza dalla spinta | Prototipo sul display; da portare sul tag |
-| Riconoscimento dell'arrivo (tag vicino e calmo per 3 s) | Prototipo sul display; soglia di vicinanza da tarare |
-| Conteggio delle virate, registrate come parziali | Da sviluppare |
-| Percentuale della batteria e stato di carica | Da sviluppare (serve il partitore 2×100 kΩ) |
-| Registrazione dei dati in memoria per le prove in vasca | Da sviluppare |
-| Display a bordo vasca con i tempi | Prototipo (LilyGO T-RGB 2,8″) |
-| App di accompagnamento e storico | Da definire (facoltativa) |
+| Prototipo ESP32-S3 + BMI160, firmware **0.4.3**, pagina di analisi | Funzionante sul tavolo; prove in vasca non ancora fatte |
+| Display LilyGO T-RGB (pace clock a 4 lancette) | Funzionante sul tavolo |
+| Tag nRF52840 **v0.4 "economica"** | In chiusura. 21,59 × 26 mm, 2 strati, DRC 0 prima dell'ultima modifica |
+| **Aggiunta del TPS22916C** (interruttore di alimentazione dell'IMU) | **In corso**: schema, PCB e script sono nel commit WIP, **non verificati** (DRC non rifatto) |
+| Ordine a JLCPCB | **Non ordinare** finché la scheda con il TPS22916C non è verificata |
+| Programmatore HAT per Raspberry Pi 3/4 | Progettato, DRC 0; **non ancora costruito** |
 
-## Architettura
-
-Schema a blocchi dei componenti del prototipo e dei collegamenti previsti:
+## Architettura del sistema
 
 ```mermaid
 flowchart LR
-  subgraph TAG[Tag sul nuotatore]
-    S[BMI160<br/>accelerometro + giroscopio] -- I2C --> M[ESP32-S3<br/>BLE e USB]
-    B[LiPo 3,7 V] -- pad BAT+/BAT- --> M
+  subgraph TAG[Tag sotto la cuffia]
+    IMU[IMU 6 assi] -- SPI --> MCU[nRF52840 / ESP32-S3<br/>BLE]
+    FL[Flash] -- SPI --> MCU
+    CEL[Cella LiPo] --> MCU
   end
-  M -- "annuncio BLE 20 Hz, dati nel campo produttore" --> D[Display a bordo vasca<br/>LilyGO T-RGB 2,8″]
-  M -- "GATT notify 25 Hz" --> P[tools/assi.html<br/>Web Bluetooth]
-  M -- "USB seriale 50 Hz" --> Q[tools/assi.html<br/>Web Serial]
-  M -. BLE, facoltativo .-> A[App sul telefono<br/>da definire]
+  MCU -- "annuncio BLE (fuori dall'acqua)" --> DSP[Display a bordo vasca<br/>LilyGO T-RGB 2,8 pollici]
+  MCU -- "GATT / OTA (fuori dall'acqua)" --> WEB[Pagina di analisi<br/>Web Bluetooth]
+  MCU -. "registrazione in flash,<br/>scaricata dopo" .-> WEB
+  DSP -- "pace clock, tempi" --> NUO[Nuotatore]
+  CUS[Base di ricarica / programmatore] -- "contatti sotto il tag" --> TAG
 ```
 
-### Tag
-- **Microcontrollore:** ESP32-S3 SuperMini (USB-C, LED RGB, pulsanti BOOT e RST).
-- **Sensore:** Bosch BMI160 su modulo GY-BMI160, 6 assi, indirizzo I2C `0x68`. Non ha magnetometro.
-- **Alimentazione:** LiPo a una cella sui pad BAT+ e BAT- dell'ESP32-S3. Il caricatore è integrato nella scheda.
-- **Bluetooth:** libreria BLE del core `esp32` 3.3.12. NimBLE-Arduino non è usata: con questo core va in crash.
-- **Contenitore:** da definire.
+- **Tag.** Sotto la cuffia, premuto sul cranio. Decide da solo START, virate e STOP con l'IMU e registra i dati grezzi in flash.
+- **Display a bordo vasca.** Riceve gli annunci BLE del tag senza collegarsi. Mostra un pace clock a 4 lancette. Va in sonno dopo 5 minuti senza tag.
+- **Pagina web.** `tools/index.html`: dati dal vivo, registrazioni, calibrazione, aggiornamento firmware via Bluetooth.
+- **BLE fuori dall'acqua.** Sott'acqua il segnale sparisce in pochi centimetri: durante la nuotata il tag lavora da solo e consegna i dati quando emerge o a fine sessione.
 
-### Display
-LilyGO T-RGB 2,8″: ESP32-S3, display rotondo IPS 480×480 con controller ST7701S, touch GT911, microSD e connettore batteria. Non si collega al tag: legge gli annunci BLE e calcola il tempo. Il firmware di prova è in `firmware/display-prova`. Va protetto con una custodia trasparente e a tenuta, da definire.
+## Prototipo ESP32, firmware 0.4.3 e pagina di analisi
 
-### Canali di comunicazione del tag
+Il prototipo serve a mettere a punto gli algoritmi prima della scheda su misura.
 
-| Canale | Contenuto | Frequenza | Chi lo legge |
-|---|---|---|---|
-| Seriale USB | riga `D,` per campione (valori convertiti) | circa 50 Hz | `tools/assi.html` (Web Serial) |
-| Servizio GATT `7a1e0001-…` | 16 byte: millis e 6 valori grezzi | 25 Hz, con client collegato | `tools/assi.html` (Web Bluetooth) |
-| Annuncio BLE `SwimTag` | 1 byte contatore e 6 valori grezzi nel campo produttore `0xFFFF` | 20 Hz, senza collegamento | display T-RGB |
+**Tag (prototipo).** ESP32-S3 SuperMini + BMI160 (GY-BMI160), LiPo con interruttore generale. Distinta: [`hardware/bom.md`](hardware/bom.md). Collegamenti: [`hardware/schema.md`](hardware/schema.md).
 
-Formato dei dati (valori grezzi, little-endian): accelerazione in unità di 1/16384 g, giroscopio in unità di 1/16,4 °/s.
+**Firmware 0.4.3** (`firmware/test-collegamenti`, arduino-cli, core `esp32:esp32` 3.3.12):
+- ±16 g e 100 Hz, impostati a sensori accesi e riletti (fino a 5 tentativi);
+- flash con due copie del programma e circa 1,9 MB di LittleFS (circa 40 minuti a 50 Hz);
+- doppio tap = inizio registrazione, triplo tap = fine (rilevamento software, poco affidabile: circa 1 volta su 10);
+- BLE con dati, stato, comandi, OTA e versione; stessi comandi via USB; aggiornamento via Bluetooth con ritorno automatico alla versione precedente;
+- sblocco automatico del bus I2C, LED RGB come riscontro, motivo dell'ultimo riavvio, partitori su GPIO 1 (batteria) e GPIO 2 (pin 5V).
 
-### Flusso dei dati, dal sensore al tempo
-1. Il BMI160 misura accelerazione e rotazione.
-2. L'ESP32-S3 legge il sensore via I2C (GPIO 8 SDA, GPIO 9 SCL).
-3. Il tag trasmette i campioni sui tre canali della tabella sopra.
-4. Il display riceve gli annunci `SwimTag`. Il contatore rileva i campioni persi e l'RSSI (media mobile) stima la vicinanza.
-5. Il cronometro di prova sul display applica la logica di rilevamento. START: variazione del modulo dell'accelerazione oltre 0,8 g rispetto a 1 g. STOP: tag vicino (RSSI sopra −72 dBm) e fermo per 3 s. L'ora dello STOP è quella dell'ultimo movimento, non quella della fine della calma.
-6. Il display mostra il tempo.
+**Pagina di analisi** [`tools/index.html`](tools/index.html), online su <https://pzero.github.io/SwimTimer/> (GitHub Pages del repository **pubblico**, firmware 0.4.3 pubblicato):
+- schede "Dal vivo" (batteria, orientamento 3D, radar con scia di 15 s, interpretazione, eventi, grafici) e "Registrazioni";
+- calibrazione automatica, finestre Firmware e LED, modalità Demo;
+- Bluetooth (Chrome, Edge, Bluefy su iPhone) o USB;
+- card batteria con grafico di GPIO 1, GPIO 2 e tensione stimata a riposo.
 
-Previsto ma non ancora realizzato: il tag rileva START e STOP, salva gli eventi con l'ora e li invia al display via BLE. Oggi la logica gira sul display, per le prove sul tavolo.
+`tools/assi.html` è la vecchia pagina dei 3 assi, conservata.
 
-## Hardware
+**Display** (`firmware/display-prova`): LilyGO T-RGB 2,8 pollici, PlatformIO con espressif32 6.9.0, driver copiato e adattato in `src/trgb/` (licenza MIT, Xinyuan-LilyGO).
 
-Distinta completa: [`hardware/bom.md`](hardware/bom.md). Schema e collegamenti: [`hardware/schema.md`](hardware/schema.md).
-
-| Componente | Modello | Funzione |
-|---|---|---|
-| Microcontrollore | ESP32-S3 SuperMini | logica, BLE, USB |
-| Sensore inerziale | GY-BMI160 | accelerazione e rotazione |
-| Batteria | LiPo 3,7 V, una cella (capacità da scegliere, indicativamente 300–500 mAh) | alimentazione |
-| Partitore (facoltativo) | 2 resistenze da 100 kΩ | lettura del livello batteria |
-| Display | LilyGO T-RGB 2,8″ (ESP32-S3, rotondo 480×480, touch GT911) | tempi a bordo vasca |
-
-### Collegamenti del tag (prototipo)
-
-| Da | A | Note |
-|---|---|---|
-| ESP32-S3 3V3 | BMI160 3V3 | alimentazione del sensore |
-| ESP32-S3 GND | BMI160 GND | |
-| ESP32-S3 GPIO 8 | BMI160 SDA | I2C |
-| ESP32-S3 GPIO 9 | BMI160 SCL | I2C |
-| ESP32-S3 GPIO 4 | BMI160 INT1 | risveglio al movimento (per il risparmio energia) |
-| ESP32-S3 3V3 | BMI160 CS | CS alto: modalità I2C |
-| ESP32-S3 GND | BMI160 SAO | indirizzo `0x68` |
-| GPIO 1 | partitore sulla batteria | facoltativo, non ancora montato |
-
-Lo schema dettagliato è in [`hardware/schema.md`](hardware/schema.md).
-
-### Alimentazione e autonomia
-- La LiPo del tag va sui pad BAT+ e BAT- dell'ESP32-S3. La scheda gestisce la carica dalla USB-C.
-- Usare una LiPo con protezione propria: il caricatore integrato non protegge dalla scarica eccessiva.
-- Con la batteria scarica il regolatore dà meno di 3,3 V: il firmware deve spegnersi sotto circa 3,3 V.
-- Il display usa una LiPo da 1000 mAh sul connettore della T-RGB (caricatore TP4065). Controllare la polarità prima di collegarla.
-- Il display va in sonno profondo dopo 5 minuti senza tag.
-- Capacità della batteria del tag, autonomia e metodo di spegnimento: da definire.
-
-### Impermeabilità
-Da definire. Ipotesi: involucro sigillato con resina o guscio, da provare in vasca con sacchetto stagno.
-
-## Scheda su misura nRF52840
-
-**Obiettivo.** Sostituire il prototipo ESP32 con un tag miniaturizzato da portare sotto la cuffia. Ricarica a contatto in una custodia tipo AirPods. Scheda prodotta e montata da JLCPCB. Stato: **tag v0.3 di collaudo (variante 1c)** pronto per l'anteprima JLC, **nessun acquisto fatto**.
-
-Documenti (non duplicati qui):
-- [`hardware/nrf52840/progetto.md`](hardware/nrf52840/progetto.md): schema a blocchi, consumi, rischi, piano a tappe.
-- [`hardware/nrf52840/bom.md`](hardware/nrf52840/bom.md): distinta con codici LCSC e alternative valutate.
-- [`hardware/nrf52840/verifiche.md`](hardware/nrf52840/verifiche.md): controlli sui datasheet e correzioni.
-- [`hardware/nrf52840/ingombro.svg`](hardware/nrf52840/ingombro.svg): pianta in scala 1:1, generata dal PCB reale (`genera_ingombro.py`).
-- [`hardware/nrf52840/SwimTag_v0.3_collaudo.pdf`](hardware/nrf52840/SwimTag_v0.3_collaudo.pdf): PDF di progetto, 14 pagine.
-
-### Componenti scelti (v0.3 collaudo)
-
-| Funzione | Componente | Nota |
-|---|---|---|
-| Microcontrollore e BLE | Ebyte E73 (nRF52840) | modulo certificato; sostituisce il Raytac MDBT50Q (stock 0) |
-| IMU 6 assi | ST LSM6DSV16X | fondo scala ±4 g, circa 3 volte meno rumore del BMI160 |
-| Memoria dati | Winbond W25Q256JV, NOR da 32 MB | 3–4 allenamenti da 3 h senza scaricare |
-| Profondità | TE MS5837-02BA | sensore di pressione con porta esposta (O-ring) |
-| Alimentazione sensori | interruttore di carico TPS22916C | i sensori si spengono quando non servono |
-| Cella | Ampul 401012, 40 mAh, PCM, 1 C | su connettore JST SH |
-| Caricatore | TI BQ25101 | pin TS pilotato da GPIO |
-| Misuratore di carica | MAX17048 | su secondo bus I2C, separato dai sensori |
-| Condensatori | 2 × 47 µF | |
-| Collegamento cella | resistenza 0 Ω tra cella e circuito | separazione per le misure di collaudo |
-| Programmazione | Tag-Connect TC2030-NL (SWD) | VDD usato solo come riferimento |
-| Avviso in acqua | pilotaggio MOSFET e piazzole MOT+/MOT− | **vibratore non montato** sui 2 tag di collaudo |
-| Protezione dei contatti | TVS SD05 e Schottky B5819WS | contatti di ricarica esposti |
-| Reset in custodia | rete 100 nF, MOSFET, 1 MΩ | reset all'inserimento, nessun terzo contatto in acqua |
-| Segnalazione | LED rosso | |
-| Collaudo | piazzole di prova | accesso ai segnali principali |
-
-Contatti di ricarica a 4,2 mm, per una futura base a più posti.
-
-**Vibratore.** Nessun motore SMD è montabile da JLC a rifusione: sui 2 tag di collaudo restano solo il pilotaggio e le piazzole MOT+/MOT−, per il montaggio a mano.
-
-Autonomia richiesta: 3 ore di nuoto. Consumi stimati e autonomia: da misurare sui primi tag (vedi `progetto.md`).
-
-### Dimensioni
-- Scheda: 26 × 30 mm, 4 strati, 0,8 mm.
-- Tag finito (con resina): circa 29 × 33 × 9,2 mm.
-- Tutti i componenti su una sola faccia (variante 1c).
-
-### Immagini
-Render del tag: [`render_3d.png`](hardware/nrf52840/kicad/jlc/v0.3_swimtag_collaudo/render_3d.png), [`render_sopra.png`](hardware/nrf52840/kicad/jlc/v0.3_swimtag_collaudo/render_sopra.png), [`render_sotto.png`](hardware/nrf52840/kicad/jlc/v0.3_swimtag_collaudo/render_sotto.png).
-
-Otto wallpaper tecnici PNG 1170 × 2532, generati dal PCB reale, in [`hardware/nrf52840/wallpaper/png/`](hardware/nrf52840/wallpaper/png/): `01_pianta`, `02_strati`, `03_macro_modulo`, `04_lato_sotto`, `05_sezione`, `06_iso_sopra`, `07_iso_sotto`, `08_foratura`.
-
-| Script (in `hardware/nrf52840/wallpaper/`) | Funzione |
-|---|---|
-| `info_pcb.py` | estrae i dati dal PCB |
-| `genera_wallpaper.py` | genera gli 8 PNG |
-| `genera_pdf.py` | genera il PDF di progetto (14 pagine) |
-
-### Flusso di lavoro dei file KiCad
-In [`hardware/nrf52840/kicad/`](hardware/nrf52840/kicad/), schema e PCB sono generati da script. `dati_scheda.py` è l'unica fonte dei dati.
-
-| Script | Funzione |
-|---|---|
-| `dati_scheda.py` | componenti, codici LCSC, collegamenti, posizioni (si modifica solo questo) |
-| `genera_schema.py` | scrive lo schema |
-| `genera_pcb.py` | scrive il PCB |
-| `sbroglia.py` | sbroglio con Freerouting 2.5.0 (richiede Java 25) |
-| `verifica_netlist.py` | confronta la netlist con i dati |
-| `esporta_jlc.py` | esporta i file per JLC |
-
-I file per l'ordine sono in [`hardware/nrf52840/kicad/jlc/v0.3_swimtag_collaudo/`](hardware/nrf52840/kicad/jlc/v0.3_swimtag_collaudo/): Gerber (zip e cartella), `bom_jlc.csv`, `cpl_jlc.csv`, render e `schema.pdf`.
-
-### Stato della scheda
-- Netlist 36/36, DRC 0 errori, 609 piste, 80 via.
-- Nessun acquisto fatto.
-- Da fare: anteprima JLC (rotazioni, stock dei componenti *extended*).
-- Costo stimato per 2 tag JLC: circa 120–130 $, più cella e cavo Tag-Connect (non ancora ordinati).
-- Il modulo E73, il TVS e lo Schottky possono non avere modello 3D nei render.
-
-### Piano a tappe
-1. Prototipo ESP32 per mettere a punto algoritmi e avviso in acqua.
-2. Anteprima JLC e ordine di 2 tag di collaudo, senza pannello.
-3. Firmware su Zephyr / nRF Connect SDK, con MCUboot e aggiornamento via BLE.
-4. Custodia di ricarica e attrezzo di programmazione, stampati con Bambu Lab A1 mini.
-5. Stampo per la resina: più avanti.
-
-## Firmware
-
-Il repository contiene due firmware di prova e una pagina di controllo. Il firmware di registrazione in memoria non è ancora scritto.
-
-### `firmware/test-collegamenti/` (tag)
-Sketch per il tag. Esegue in sequenza:
-- scansione del bus I2C sui pin 8 e 9, anche con SDA e SCL scambiati;
-- lettura del chip ID del BMI160, atteso `0xD1`;
-- accensione di accelerometro e giroscopio in modalità normale, con verifica dello stato (`0x14`);
-- invio di una riga dati USB per campione, a circa 50 Hz. Fondo scala: ±2 g e ±2000 °/s;
-- servizio GATT BLE, con nome `SwimTag`:
-  - servizio `7a1e0001-5b1d-4c8e-9f3a-1d2c3b4a5e60`, caratteristica `7a1e0002-5b1d-4c8e-9f3a-1d2c3b4a5e60` (lettura e notifica);
-  - 16 byte: `uint32` con i millisecondi, poi sei `int16` grezzi `ax, ay, az, gx, gy, gz`. Notifica a 25 Hz con un client collegato;
-- annuncio BLE a 20 Hz, con nome `SwimTag` e dati nel campo produttore `0xFFFF` (sperimentale): 1 byte contatore, poi sei `int16` grezzi nello stesso ordine. Il servizio GATT è indicato nella risposta alla scansione;
-- diagnostica una volta al secondo: stato del sensore, livello di INT1 e tensione della batteria (se il partitore è montato).
-
-Formato delle righe dati USB:
-```
-D,<millisecondi>,<ax g>,<ay g>,<az g>,<gx °/s>,<gy °/s>,<gz °/s>
-```
-Le altre righe sono diagnostica.
-
-### `firmware/display-prova/` (display)
-Sketch per la LilyGO T-RGB 2,8″. Riceve gli annunci `SwimTag` senza collegarsi al tag.
-- **Corona:** le 3 linee dell'accelerazione (X rosso, Y verde, Z blu) in senso orario. Un giro dura 15 s (300 campioni a 20 Hz). Un campione perso lascia un'interruzione.
-- **Cronometro di prova:** parte con un colpo secco. Si ferma quando il tag è vicino e fermo per 3 s, con l'ora dell'ultimo movimento. Un tocco azzera.
-- **Doppio framebuffer:** il disegno avviene nel buffer nascosto, che viene mostrato al vsync. Niente tremolio.
-- **Diagnostica USB** a 115200 baud, una riga `R,` al secondo: RSSI, media, campioni ricevuti, stato del cronometro, tempo.
-
-- **Sonno profondo:** dopo 5 minuti senza tag il display si spegne. Si risveglia con il tocco (GPIO 1, INT del touch, con pull-up RTC durante il sonno) o con il pulsante BOOT (GPIO 0, ext0). I confronti dei tempi sono con segno: corretto il bug che lo rimandava subito in sonno dopo il risveglio.
-- **Motivo dell'avvio:** per 2 s all'accensione il display mostra la causa (accensione, tocco, BOOT, errore, tensione bassa, watchdog). Sonno e risveglio al tocco verificati sulla scheda.
-- **Batteria:** tensione e percentuale sul display, dal partitore interno della T-RGB.
-- **Da collegare:** accelerometro I2C (SDA 8, SCL 48).
-
-Parametri principali, in testa allo sketch: soglia di vicinanza −72 dBm, tag perso dopo 3 s, spinta 0,8 g, calma sotto 0,10 g e 20 °/s per 3 s. Da tarare in vasca.
-
-Driver del display: `firmware/display-prova/src/trgb/`. È una copia adattata di LilyGo-T-RGB 1.0.5, senza `LV_Helper`, con SensorLib 0.3 e doppio framebuffer. Licenza MIT, Copyright 2024 Xinyuan-LilyGO: vedi `firmware/display-prova/src/trgb/LICENSE`.
-
-### `tools/assi.html` (pagina di controllo)
-Pagina HTML che mostra valori e grafici dei 3 assi di accelerazione e rotazione.
-- **USB:** pulsante **Collega il tag**. Richiede Chrome o Edge (Web Serial API) e mostra solo le porte con vendor USB `0x303a` (Espressif). Finestra del grafico di 5 s a circa 50 Hz.
-- **Bluetooth:** pulsante **Collega via Bluetooth**. Richiede Chrome o Edge su desktop e Android (Web Bluetooth). Cerca il dispositivo `SwimTag` e legge il servizio GATT a 25 Hz. Non si riconnette da sola: alla disconnessione torna allo stato iniziale.
-- Se il browser non ha un'API, il pulsante corrispondente resta disabilitato con un avviso.
-
-### Compilazione e caricamento
-Requisiti: [Arduino CLI](https://arduino.github.io/arduino-cli/) e il core `esp32:esp32` versione 3.3.12 (per esempio con `arduino-cli core install esp32:esp32@3.3.12`).
-
-Librerie per il display, da installare dal Library Manager o con `arduino-cli lib install`:
-- **Adafruit GFX Library** (tela e font);
-- **SensorLib**, serie 0.3 (touch GT911).
-
-Sostituire `<COM>` con la porta seriale (per esempio `COM5`).
-
-Tag, dalla USB dell'ESP32-S3:
+**Compilare e caricare il tag:**
 ```
 arduino-cli compile --fqbn esp32:esp32:esp32s3:CDCOnBoot=cdc --upload -p <COM> firmware/test-collegamenti
 ```
 
-Display, dalla USB della T-RGB. La prima compilazione è lunga:
-```
-arduino-cli compile --fqbn "esp32:esp32:esp32s3:CDCOnBoot=cdc,FlashSize=16M,PartitionScheme=app3M_fat9M_16MB,PSRAM=opi" --upload -p <COM> firmware/display-prova
-```
+Documenti collegati: [`docs/RICERCA-ALGORITMI.md`](docs/RICERCA-ALGORITMI.md), [`docs/LEZIONI-APPRESE.md`](docs/LEZIONI-APPRESE.md) (13 lezioni del prototipo per la scheda miniaturizzata), [`docs/REQUISITI.md`](docs/REQUISITI.md), [`docs/DESIGN.md`](docs/DESIGN.md).
 
-L'opzione `CDCOnBoot=cdc` manda la seriale sulla USB dell'ESP32-S3. Il monitor seriale va impostato a 115200 baud.
+## Tag nRF52840
 
-### Funzioni previste
-- Registrazione in memoria di accelerazione, rotazione e segnale BLE per le prove in vasca.
-- Logica di START, STOP e virate sul tag, con la soglia di calma (circa 3 s).
-- Percentuale della batteria, con il partitore montato.
-- Sonno profondo con risveglio dal BMI160 su INT1.
+**Obiettivo.** Sostituire il prototipo con un tag miniaturizzato per la cuffia, montato da JLCPCB, con ricarica a contatto e programmazione dalle piazzole sul lato sotto. Documento di progetto: [`hardware/nrf52840/progetto.md`](hardware/nrf52840/progetto.md).
 
-Test automatici: da definire (`pio test` non è ancora impostato).
+### Storia delle versioni
 
-## Costruzione e assemblaggio
+| Versione | Data | Scheda | Contenuto | Esito |
+|---|---|---|---|---|
+| v0.1 | 2026-10-25 | 17,5 × 20,5 mm, 4 strati | Raytac MDBT50Q, LSM6DSV16X, MS5837, flash 32 MB, BQ25101, vibratore | Sostituita |
+| v0.2 | 2026-10-25 | 17,5 × 22,5 mm, 4 strati | Aggiunti TVS, Schottky e reset all'inserimento nella custodia; DRC 0 | Storico |
+| v0.3 collaudo (1c) | 2026-11-01 | 26 × 30 mm, 4 strati 0,8 mm | Ebyte E73 (Raytac a stock 0), TPS22916C, MAX17048, cella Ampul 401012 su JST SH, Tag-Connect, piazzole di prova; vibratore non montato; DRC 0, 609 piste, 80 via | Pronta, mai ordinata (~120–130 $) |
+| v0.4 economica | 2026-11-02 | 22,86 × 26 mm, 2 strati | Solo registrazione IMU, budget ≤ 100 €: tolti pressione, MAX17048, TPS22916C, vibratore, Tag-Connect, TVS; flash 16 MB | Ricompattata |
+| v0.4 ricompattata | 2026-11-03 | **21,59 × 26 mm**, 2 strati | LED 0603 *basic* con anodo su VDD, pinout cambiato, DRC 0, file JLC rigenerati | Verificata (65 test, 0 bloccanti) |
+| v0.4 con TPS22916C | 2026-11-03/04 | come sopra | Interruttore di alimentazione dell'IMU (richiesta dell'utente; MAX17048 no) | **In corso, non verificata** |
 
-Procedura del prototipo:
-1. Verificare i componenti con [`hardware/bom.md`](hardware/bom.md).
-2. Saldare il BMI160 all'ESP32-S3 secondo la tabella [Collegamenti del tag](#collegamenti-del-tag-prototipo).
-3. Collegare la LiPo ai pad BAT+ e BAT- e verificare la polarità prima di collegarla.
-4. Caricare `firmware/test-collegamenti` e controllare il messaggio `BMI160 chip ID: 0xD1 (OK)`.
-5. Aprire `tools/assi.html` e verificare i valori con il tag fermo, via USB o Bluetooth:
-   - un asse di accelerazione vale circa ±1 g e gli altri circa 0 g;
-   - il giroscopio vale circa 0 °/s su tutti gli assi.
-6. Muovere il tag e verificare che ogni asse risponda.
-7. Collegare la batteria alla T-RGB e caricare `firmware/display-prova`. Con il tag acceso, il display mostra la corona e il tag vicino.
+### v0.4 in dettaglio
 
-Involucro e fissaggio al nuotatore: da definire.
+**Scopo.** Due prototipi per registrare i dati grezzi dell'IMU e mettere a punto i filtri, spesi il meno possibile. Dati in `kicad/dati_economica.py`, posizioni in `kicad/posizioni_economica.py`, disegno quotato in [`hardware/nrf52840/ingombro_v0.4.svg`](hardware/nrf52840/ingombro_v0.4.svg).
 
-## Uso in vasca
+**Misure.** Scheda **21,59 × 26,0 mm** (8,5 passi da 2,54 mm), **2 strati**, 0,8 mm, componenti solo sopra, 313 piste, 29 via. Tag finito circa 25 × 29 mm con 1,5 mm di resina. A 20,32 mm lo sbroglio a 2 strati non chiude (circa 100 prove con Freerouting, mai DRC 0).
 
-Stato: il cronometro di prova funziona sul tavolo. Le prove in vasca non sono ancora state fatte.
+**Componenti (codici LCSC):**
 
-Ipotesi di funzionamento (dettagli in [`docs/IDEA.md`](docs/IDEA.md)):
-- **Posizione:** cuffia o elastico degli occhialini, dietro la testa. È la parte che emerge più spesso e più vicina al muro.
-- **Partenza (START):** picco di spinta dal muro, misurato dall'accelerometro.
-- **Virata:** dura meno di 1–2 s ed è seguita da una nuova spinta. Viene registrata come virata parziale e non ferma il cronometro.
-- **Arrivo (STOP):** tag vicino al display e calma per almeno circa 3 s. L'ora è quella della decelerazione all'arrivo.
-- **Riposo:** dallo STOP alla spinta successiva.
-- **Display:** previsto sul lato di partenza, con distanze multiple di 100 m.
+| Funzione | Componente | LCSC | Tipo JLC |
+|---|---|---|---|
+| Microcontrollore e BLE | Ebyte E73-2G4M08S1C (nRF52840), VDDH dalla cella, REGOUT0 a 3,3 V da UICR | C356849 | extended |
+| IMU 6 assi | ST LSM6DSV16X, SPI con INT1/INT2 | C5267406 | extended |
+| Flash 16 MB | Winbond W25Q128JVSIQ, SOIC-8, SPI semplice | C97521 | basic |
+| Caricatore | TI BQ25101 (TS 10 kΩ a massa, ISET 10 kΩ = 13,5 mA) | C478468 | extended |
+| LED | KT-0603R rosso, anodo su VDD | C2286 | basic |
+| Protezione ricarica | Schottky 1N5819WS in serie ai contatti | C191023 | basic |
+| Cella | Header SMD 1,27 mm 1 × 2 (fili saldati alla cella) | C55213900 | extended |
+| Passivi | 6 resistenze, 7 condensatori | vedi `bom_jlc.csv` | basic |
+| In corso | TPS22916C per l'alimentazione dell'IMU (nel WIP) | C2680319 | da verificare |
 
-Domande aperte per le prove (piscina da 25 o 50 m, tipo di prova, custodia del display): [`docs/DOMANDE-APERTE.md`](docs/DOMANDE-APERTE.md).
+Distinta completa e rotazioni: `hardware/nrf52840/kicad/jlc/v0.4_swimtag_economica/` (`bom_jlc.csv`, `cpl_jlc.csv`). Altre alternative valutate (flash WSON, JST SH, NTC): [`hardware/nrf52840/progetto.md`](hardware/nrf52840/progetto.md).
 
-## App
+**Lato sotto, griglia 2,54 mm** (millefori e pogo):
 
-Da definire. L'app è facoltativa e servirebbe per lo storico sul telefono. La pagina `tools/assi.html` è uno strumento di controllo, non l'app.
+| Piazzola | Rete | x (mm) | y (mm) | Ø |
+|---|---|---|---|---|
+| TP1 | VDD (solo riferimento) | 5,08 | 12,70 | 2,0 |
+| TP2 | SWDIO | 7,62 | 12,70 | 2,0 |
+| TP3 | SWDCLK | 10,16 | 12,70 | 2,0 |
+| TP4 | RESET | 12,70 | 12,70 | 2,0 |
+| TP5 | GND | 15,24 | 12,70 | 2,0 |
+| TP6 | VIN (ricarica) | 7,62 | 17,78 | 2,5 |
+| TP7 | GND (ricarica) | 12,70 | 17,78 | 2,5 |
 
-Se verrà sviluppata, seguirà questi vincoli del progetto:
-- backend Firebase con piano gratuito Spark, senza Cloud Functions e senza spese;
-- sicurezza affidata alle regole di Firestore.
+Coordinate dall'angolo in alto a sinistra (lato antenna), scheda vista da sopra. Tacche di serigrafia ogni 2,54 mm sui bordi sinistro e alto.
 
-Installazione, avvio, test e deploy: da definire.
+**Pinout per il firmware** (tutti i segnali a 3,3 V dopo REGOUT0). Tabella completa in [`hardware/nrf52840/verifica_v0.4.md`](hardware/nrf52840/verifica_v0.4.md), sezione 3.
+
+| Pad E73 | GPIO | Rete | Note |
+|---|---|---|---|
+| 11 | P0.00 | IMU_CS | R6 100 kΩ a VDD; pin XL1: **LFCLK non da XTAL** |
+| 13 | P0.01 | IMU_MISO | pin XL2 |
+| 15 | P0.05 | IMU_MOSI | |
+| 17 | P1.09 | IMU_SCK | SPI fino a 8 MHz |
+| 12 | P0.26 | IMU_INT1 | |
+| 14 | P0.06 | IMU_INT2 | |
+| 30 | P0.17 | FL_CS | R5 100 kΩ a VDD |
+| 28 | P0.15 | FL_MISO | |
+| 33 | P0.13 | FL_MOSI | |
+| 35 | P0.24 | FL_SCK | /WP e /HOLD alti: solo SPI semplice |
+| 32 | P0.20 | CHG_N | pull-up interno; basso = in carica |
+| 34 | P0.22 | LED | acceso a livello basso, circa 1,4 mA |
+| 26 | P0.18 | RESET | dopo la scrittura di `UICR.PSELRESET` |
+| 37 / 39 | SWDIO / SWDCLK | SWD | pogo TP2 / TP3 |
+| 23 | VDDH | VBAT | batteria con canale SAADC `VDDHDIV5`, nessun partitore |
+
+Il pinout è cambiato il 2026-11-03 (CHG_N, LED, INT1, INT2). Il pin di abilitazione del TPS22916C sarà aggiunto a verifica conclusa. Registri UICR da scrivere una volta via SWD: `REGOUT0` (0x10001304) = `0xFFFFFFFD` (3,3 V), `PSELRESET[0]` e `[1]` (0x10001200 / 0x10001204) = `0x12`.
+
+**Scelte principali.**
+- **Flash 16 MB** SOIC-8 *basic*: 4,93 $ per 2 schede contro 9,83 $ del WSON. Durata: circa 24 minuti a 960 Hz (sei assi, 16 bit), circa 97 minuti a 240 Hz, circa 3 ore a 120 Hz.
+- **LED 0603 *basic*** con anodo su VDD: toglie 3,07 $ di caricamento extended e non inietta corrente nel pin al primo avvio (VDD a 1,8 V con UICR vuoto).
+- **Header SMD 1,27 mm** al posto del JST SH: 10,4 contro 26,6 mm², costa meno.
+- **2 strati, HASL senza piombo**: lo sbroglio chiude senza toccare la zona antenna (3,7 mm senza rame).
+- **Tolti:** pressione (manca la profondità; avvisare l'agente app se serve), MAX17048, vibratore, Tag-Connect, TVS, reset all'inserimento.
+
+**Costi reali dal carrello JLC** (2026-11-03, scheda 22,86 × 26 mm, prima del LED *basic* e del TPS22916C). E73, IMU (LGA) e BQ25101 (BGA) sono montabili **solo in Standard PCBA**, non nell'Economic:
+
+| Voce | € |
+|---|---|
+| 5 PCB 2 strati HASL (offerta) | 1,79 |
+| Setup Standard | 23,02 |
+| Stencil | 7,39 |
+| Componenti per 2 schede | 26,95 |
+| Caricamento extended (5 tipi) | 16,63 |
+| Montaggio SMT | 0,66 |
+| Raggi X | 8,85 |
+| Imballo | 0,45 |
+| Spedizione | 9,62 |
+| IVA, dazio temporaneo e diritti di gestione Ue | 31,32 |
+| **Totale** | **128,46** |
+
+Riduzioni: coupon *PCBA Special Offer* (−8,05 €, scade il 2026-11-29) e *JLCONE PCB* (fino a −1,79 €), LED *basic* già fatto (circa −4 € con IVA). Il TPS22916C aggiunge un caricamento extended (circa +4,5 € con IVA). Stima attuale circa **110–115 €** con raggi X: il tetto di 100 € si raggiunge solo togliendo i raggi X (sconsigliato) o l'header della cella.
+
+### Verifica indipendente
+
+Documento: [`hardware/nrf52840/verifica_v0.4.md`](hardware/nrf52840/verifica_v0.4.md). Eseguita il 2026-11-03 da un agente revisore sul commit `8fd6cc0`, con `kicad-cli` 10.0.6 e lo script `kicad/verifica_v04.py` (tabella attesa scritta a mano dai fogli tecnici).
+
+**Esito: 65 test, 0 difetti bloccanti.** Netlist 85 pin attesi, 0 differenze; PCB e schema coincidono; piedinature e impronte coerenti con i fogli tecnici.
+
+Punti ⚠️ principali:
+- **Finitura HASL o ENIG.** HASL con il BGA del BQ25101 a 0,4 mm è sconsigliata da JLC; la verifica raccomanda ENIG (costa di più). È una scelta dell'utente da fare all'ordine.
+- **LGA dell'IMU (U2):** orientamento da confermare nell'anteprima JLC e quote dei pad da confrontare col disegno meccanico del DS13510 (non raggiunto).
+- **Polarità di LED (D1), Schottky (D2) e header (J1)** e rotazioni di E73, IMU, BQ25101: da confermare nell'anteprima JLC. L'header è simmetrico: nessuna protezione contro l'inversione della cella (marcare i fili).
+- **Margine di tensione:** VDD segue VDDH − 0,3 V sotto 3,6 V e la flash vuole almeno 2,7 V: taglio batteria nel firmware a 3,2–3,3 V.
+- **Corrente esterna da VDD:** 5 mA con radio sopra +4 dBm: non scrivere in flash mentre il BLE trasmette a potenza alta.
+- **Caricatore:** C5 con tensione ≥ 10 V, valutare di togliere C6 o C7; con ingresso 5,0 V e Schottky il margine su VIN-DPM è stretto; il carico durante la carica impedisce la terminazione (timer 10 h).
+- **Antenna:** il foglio Ebyte non quota la zona libera; la prova di portata prima della resina è obbligatoria.
+- **Firmware:** niente DC/DC, LFCLK dall'RC (P0.00/P0.01 sono usati come GPIO), niente eventi USB.
+- **Dopo il TPS22916C** la verifica va rifatta (sezione 4 del documento): rete IMU commutata, pull-up di IMU_CS, ordine di accensione, SPI e INT a livello basso prima di togliere l'alimentazione.
+
+### Documenti collegati
+- [`hardware/nrf52840/bom.md`](hardware/nrf52840/bom.md): distinta con codici LCSC e alternative.
+- [`hardware/nrf52840/verifiche.md`](hardware/nrf52840/verifiche.md): controlli sui fogli tecnici (v0.2/v0.3).
+- [`hardware/nrf52840/SwimTag_v0.3_collaudo.pdf`](hardware/nrf52840/SwimTag_v0.3_collaudo.pdf): PDF storico della v0.3.
+- Render v0.4: `hardware/nrf52840/kicad/jlc/v0.4_swimtag_economica/render_sopra.png`, `render_sotto.png`, `render_3d.png`.
+
+## Programmatore HAT per Raspberry Pi 3/4
+
+Basetta a una faccia, da costruire a mano con il **toner transfer**, con forma e fori di un HAT del Raspberry Pi (65 × 56,5 mm). Si innesta sul connettore a 40 pin del Pi 3 o 4. Sette molle **pogo** cadono sulle piazzole sotto il tag: 5 di debug SWD e 2 di ricarica. Il Pi programma con **OpenOCD** in bit-bang sui GPIO e può ricaricare la cella mentre il tag è collegato.
+
+![Programmatore, render](hardware/programmatore/img/render_top.png)
+
+- **Collegamenti sul connettore:** pin 2 (5 V, solo ricarica, via PTC e ponticello), 12 (RESET, GPIO18), 18 (SWDIO, GPIO24), 20 (GND), 22 (SWCLK, GPIO25). Resistenze in serie da 1 kΩ su SWD e RESET.
+- **Regola fondamentale:** mai il 3,3 V del Pi sul VDD del tag. Il tag si alimenta dalla cella; al primo avvio il suo VDD è 1,8 V finché non si scrive `UICR.REGOUT0`.
+- **Ricarica:** pogo VIN e GND caricano la cella 401012 tramite il BQ25101 (13,5 mA, circa 3–3,5 ore da vuota). Ponticello JP1: nessuno = ricarica spenta (predefinito), 1-2 = 5 V del Pi, 2-3 = 5 V esterno.
+- **Centraggio:** tre pin di battuta sui bordi con le tacche del tag, errore stimato circa ±0,3 mm.
+- **OpenOCD:** file `swimtag_pi.cfg` (driver `bcm2835gpio`, base periferiche 0x3F000000 per Pi 3 e 0xFE000000 per Pi 4). Pi 5 non supportato.
+- **DRC 0, ERC 0** con `kicad-cli` 10.0.6.
+- **Non provato fisicamente:** la basetta non è stata costruita. Rischi noti: livelli a 1,8 V sul tag (le 1 kΩ non sono una traduzione di livello), foro dei pogo da verificare sul pezzo, posizione del connettore da verificare su un Pi reale.
+
+**Documentazione:**
+- [`hardware/programmatore/Programmatore_SwimTag_v0.4.pdf`](hardware/programmatore/Programmatore_SwimTag_v0.4.pdf): schema, distinta, procedura, OpenOCD. Le stampe 1:1 sono alle pagine 6 (rame speculare), 7 (componenti), 8 (ingrandimento 2:1) e 9 (mappa fori).
+- [`hardware/programmatore/README.md`](hardware/programmatore/README.md): dettagli, piedinatura, procedura e limiti.
+- [`hardware/programmatore/bom.md`](hardware/programmatore/bom.md): distinta con prezzi.
+- [`hardware/programmatore/stampa/`](hardware/programmatore/stampa/): fogli di stampa 1:1.
+
+## Galleria degli sfondi tecnici
+
+Venti tavole da disegno 1170 × 2532 px, generate dai PCB reali (blueprint, OLED, carta tecnica, rame su verde). Fotografie intere in [`hardware/wallpaper_v0.4/png/`](hardware/wallpaper_v0.4/png/) (esistono anche le versioni 1080 × 2400); anteprima d'insieme: [`anteprima.png`](hardware/wallpaper_v0.4/anteprima.png).
+
+| &nbsp; | &nbsp; | &nbsp; | &nbsp; |
+|---|---|---|---|
+| <img src="hardware/wallpaper_v0.4/png\01_tag_pianta_1170x2532.png" width="180"><br>**01** Pianta del tag | <img src="hardware/wallpaper_v0.4/png\02_tag_esploso_1170x2532.png" width="180"><br>**02** Esploso | <img src="hardware/wallpaper_v0.4/png\03_tag_sezione_1170x2532.png" width="180"><br>**03** Sezione | <img src="hardware/wallpaper_v0.4/png\04_tag_dettagli_1170x2532.png" width="180"><br>**04** Dettagli |
+| <img src="hardware/wallpaper_v0.4/png\05_e73_antenna_1170x2532.png" width="180"><br>**05** E73 e antenna | <img src="hardware/wallpaper_v0.4/png\06_e73_piedinatura_1170x2532.png" width="180"><br>**06** E73, piedinatura | <img src="hardware/wallpaper_v0.4/png\07_rame_superiore_1170x2532.png" width="180"><br>**07** Rame superiore | <img src="hardware/wallpaper_v0.4/png\08_rame_inferiore_1170x2532.png" width="180"><br>**08** Rame inferiore |
+| <img src="hardware/wallpaper_v0.4/png\09_maschera_serigrafia_1170x2532.png" width="180"><br>**09** Maschera e serigrafia | <img src="hardware/wallpaper_v0.4/png\10_quattro_strati_1170x2532.png" width="180"><br>**10** Strati (vista a pila) | <img src="hardware/wallpaper_v0.4/png\11_mappa_fori_1170x2532.png" width="180"><br>**11** Mappa dei fori | <img src="hardware/wallpaper_v0.4/png\12_zona_carica_1170x2532.png" width="180"><br>**12** Zona di carica |
+| <img src="hardware/wallpaper_v0.4/png\13_quote_posizione_1170x2532.png" width="180"><br>**13** Quote e posizioni | <img src="hardware/wallpaper_v0.4/png\14_piazzole_servizio_1170x2532.png" width="180"><br>**14** Piazzole di servizio | <img src="hardware/wallpaper_v0.4/png\15_tre_viste_1170x2532.png" width="180"><br>**15** Tre viste | <img src="hardware/wallpaper_v0.4/png\16_isometrica_distinta_1170x2532.png" width="180"><br>**16** Isometrica con distinta |
+| <img src="hardware/wallpaper_v0.4/png\17_programmatore_pianta_1170x2532.png" width="180"><br>**17** Programmatore, pianta | <img src="hardware/wallpaper_v0.4/png\18_programmatore_pogo_1170x2532.png" width="180"><br>**18** Programmatore, pogo | <img src="hardware/wallpaper_v0.4/png\19_programmatore_hat_1170x2532.png" width="180"><br>**19** Programmatore, HAT | <img src="hardware/wallpaper_v0.4/png\20_programmatore_toner_1170x2532.png" width="180"><br>**20** Programmatore, toner transfer |
+
+**Come rigenerarli.** `python hardware/wallpaper_v0.4/genera.py` (richiede `kicad-cli` e PyMuPDF). Opzioni: `--solo 1 3 12`, `--bozza`, `--forza` per rifare anche i render 3D. Gli sfondi vanno **rigenerati** sulla scheda con il TPS22916C, quando sarà verificata. Gli sfondi della v0.3, vecchi e solo storici, sono in [`hardware/nrf52840/wallpaper/png/`](hardware/nrf52840/wallpaper/png/).
 
 ## Struttura delle cartelle
 
 ```
-SwimTimer/
-├── docs/                    idea, stato, decisioni, domande aperte, requisiti, design
-├── hardware/                distinta componenti (bom.md), schema (schema.md); involucro da creare
-│   └── nrf52840/            scheda su misura: progetto.md, bom.md, verifiche.md, ingombro.svg, PDF, wallpaper/
-│       └── kicad/           script, progetto KiCad e file per JLC (jlc/)
+SwimTimer-nrf52840/
+├── docs/                         idea, stato, decisioni, domande aperte, requisiti, design, lezioni, algoritmi
 ├── firmware/
-│   ├── test-collegamenti/   tag: test del BMI160, uscita USB, servizio GATT e annuncio BLE
-│   └── display-prova/       display T-RGB: ricezione degli annunci, corona e cronometro di prova
-│       └── src/trgb/        driver del display (copia adattata, licenza MIT)
-├── tools/                   assi.html: visualizzazione dei 3 assi via USB o Bluetooth
-├── .claude/                 agenti e comandi per Claude Code (non è codice del prodotto)
-├── CHANGELOG.md             modifiche per data
-├── CLAUDE.md                regole di lavoro del progetto
-├── .gitignore               esclude segreti, dati personali e file di build
-└── README.md                questo file
+│   ├── test-collegamenti/        tag ESP32-S3: firmware 0.4.3
+│   └── display-prova/            display T-RGB
+├── tools/                        index.html (pagina di analisi), assi.html (vecchia)
+├── hardware/
+│   ├── bom.md, schema.md         prototipo ESP32
+│   ├── nrf52840/                 scheda su misura: progetto.md, bom.md, verifiche.md, verifica_v0.4.md,
+│   │   │                         ingombro*.svg, PDF e wallpaper della v0.3
+│   │   └── kicad/                script, progetti KiCad (swimtag, _collaudo, _economica), jlc/ (file per JLC)
+│   ├── programmatore/            HAT per Raspberry Pi: KiCad, PDF, stampe 1:1, script
+│   └── wallpaper_v0.4/           genera.py, estrai_dati.py, render/, png/ (20 sfondi)
+├── CHANGELOG.md                  modifiche per data
+├── CLAUDE.md                     regole di lavoro del progetto
+└── README.md                     questo file
 ```
 
-Esclusi da git (vedi `.gitignore`): file con segreti (`.env`, chiavi, account di servizio) e la cartella `dati/` per le sessioni di nuoto reali.
+## Come rigenerare i file
 
-## Stato del progetto e roadmap
+| Cosa | Comando | Note |
+|---|---|---|
+| Schema e PCB v0.4 | `SWIMTAG_VARIANTE=economica python hardware/nrf52840/kicad/genera_schema.py` e `genera_pcb.py` | dati in `dati_economica.py`, posizioni in `posizioni_economica.py` |
+| Sbroglio | `sbroglia.py` | Freerouting 2.5.0, Java 25; non deterministico: ripetere finché il DRC è 0 |
+| Controllo netlist | `verifica_netlist.py` | confronta la netlist con i dati |
+| Verifica indipendente | `python hardware/nrf52840/kicad/verifica_v04.py <pcb> <net.xml> [cpl.csv bom.csv]` | la tabella ATTESA va aggiornata a mano dai fogli tecnici dopo il TPS22916C |
+| File JLC | `SWIMTAG_VARIANTE=economica python hardware/nrf52840/kicad/esporta_jlc.py` | scrive in `jlc/v0.4_swimtag_economica/` |
+| Programmatore | `cd hardware/programmatore; python genera_kicad.py --drc` poi `python genera_pdf.py` | rilegge TP1–TP7 dal PCB del tag; PDF richiede PyMuPDF e `kicad-cli` |
+| Sfondi | `python hardware/wallpaper_v0.4/genera.py` | vedi galleria |
 
-**Fase 1: prototipo di tag e display.** Il tag trasmette i dati via USB, GATT e annuncio BLE. Il display di prova riceve l'annuncio e mostra la corona e il cronometro di prova. Entrambi funzionano sul tavolo.
+La v0.3 si rigenera con `SWIMTAG_VARIANTE=collaudo` (predefinita).
 
-Prossimi passi:
-1. Caricare sul tag l'ultimo firmware (annuncio con i dati) e provare corona e cronometro sul tavolo.
-2. Montare il partitore 2×100 kΩ (BAT+ → GPIO 1 → GND), poi percentuale della batteria e stato di carica su tag, display e pagina.
-3. Tarare la soglia di vicinanza e la calma; firmware di registrazione in memoria per la prova in vasca.
-4. Involucro impermeabile e fissaggio al nuotatore, con custodia del display.
-5. App di accompagnamento, se confermata.
+## Flusso d'ordine JLCPCB
 
-Scheda su misura nRF52840 (dettagli in [`hardware/nrf52840/progetto.md`](hardware/nrf52840/progetto.md)):
-1. Anteprima JLC e ordine di 2 tag v0.3 di collaudo (~120–130 $ più cella e cavo Tag-Connect).
-2. Montaggio a mano del vibratore e prime misure di consumo.
-3. Firmware Zephyr / nRF Connect SDK con MCUboot e aggiornamento via BLE.
-4. Custodia di ricarica e attrezzo di programmazione (stampa 3D); stampo per la resina più avanti.
+**Non ordinare** finché la scheda con il TPS22916C non è verificata (DRC/ERC, `verifica_v04.py`, costi ≤ 100 €).
 
-Problemi aperti (dettagli in [`docs/STATO.md`](docs/STATO.md)):
-- il BLE non attraversa l'acqua: la logica usa l'accelerometro, il BLE serve per vicinanza e invio;
-- il display a batteria, senza USB, non si accende: da verificare polarità e tensione;
-- protezione della batteria e metodo di spegnimento del tag da definire;
-- capacità della LiPo del tag e autonomia da definire;
-- la compilazione è lenta perché le librerie sono in OneDrive: valutare lo spostamento;
-- nessun test automatico;
-- scheda nRF52840: budget JLC (~120–130 $ per 2 tag di collaudo contro i 50 € desiderati); vibratore non montabile da JLC.
+1. Rigenerare i file JLC e controllare `bom_jlc.csv` e `cpl_jlc.csv`.
+2. Caricare lo zip dei Gerber (`swimtag_gerber.zip`) nell'ordine PCB: 2 strati, 0,8 mm, **HASL senza piombo oppure ENIG** (scelta dell'utente, vedi verifica).
+3. Servizio di montaggio **Standard PCBA** (obbligatorio: E73, IMU e BQ25101 sono "Standard only"), lato sopra, **PCBA Qty = 2**; se chiesto, bordi di lavorazione "Added by JLCPCB".
+4. Caricare BOM e CPL e controllare nell'anteprima rotazioni e pin 1 di E73, IMU (LGA), BQ25101 (BGA), flash (U3 a 270°: piedini sulle piazzole), LED (catodo), Schottky e header; stock dell'E73.
+5. Applicare i **coupon** dal Coupon Center: *PCBA Special Offer* (8,05 €) e *JLCONE PCB* (ordine dall'app JLCONE).
+6. Attivare **Confirm Parts Placement** (0,45 €) per approvare il posizionamento prima della produzione.
+7. Aggiungere i raggi **X-ray** per E73, IMU, BQ25101 e gli altri componenti con pad nascosti (circa +10 $).
+8. Verificare il totale (obiettivo ≤ 100 € con IVA), poi pagare. Cella, pogo e programmatore sono esclusi.
 
-Decisioni: [`docs/DECISIONI.md`](docs/DECISIONI.md). Modifiche: [`CHANGELOG.md`](CHANGELOG.md).
+## Roadmap e problemi aperti
 
-## Contribuire
+**Scheda nRF52840**
+1. Completare il TPS22916C: DRC/ERC, C5 ≥ 10 V, uscita del caricatore 1–10 µF, piste sotto l'E73 su B.Cu, serigrafia ≥ 1 mm, R6 su VDD_IMU o tolta.
+2. Aggiornare `verifica_v04.py`, rigenerare file JLC, costi, programmatore e sfondi.
+3. Anteprima JLC, scelta HASL/ENIG, ordine di 2 schede.
+4. Costruire il programmatore, scrivere UICR, prova di portata dell'antenna prima della resina.
+5. Firmware su Zephyr / nRF Connect SDK (SPI, flash, registrazione, MCUboot, sonno con INT dell'IMU), poi prova in vasca.
+6. Variante definitiva: vibratore, pressione, custodia di ricarica a più posti.
 
-Il progetto è in fase di prototipo. Segnalazioni e proposte sono benvenute come issue. Linee guida per le pull request: da definire.
+**Prototipo ESP32**
+- A sola batteria il tag non fa il lampo blu e non si vede in Bluetooth (LED rosso acceso, 3,87 V ai pad).
+- Latch-up del BMI160 dopo spegnimenti bruschi: si usa l'interruttore generale.
+- Display a batteria che non si accende senza USB.
+- Tap software poco affidabile; lettura dalla FIFO del BMI160 (circa 44 Hz reali).
+- Sessioni registrate con video, messa a punto degli algoritmi, prova in vasca.
 
-Regole del repository:
-- nessuna credenziale nel codice o nei documenti;
-- nessun dato personale reale: le sessioni di nuoto sono dati di salute e restano in locale, nella cartella `dati/` esclusa da git. Nei test si usano solo dati inventati.
+**Rischi generali**
+- Brevetti nel settore (FORM US 11833392): verifica di libertà di operare prima di un uso commerciale.
+- Il BLE non attraversa l'acqua; custodia stagna e resina da definire.
+- Nessun test automatico.
+- `docs/STATO.md`, `docs/DECISIONI.md`, `docs/DOMANDE-APERTE.md` possono confliggere con il repository pubblico: unire a mano.
 
-## Licenza
+Dettagli: [`docs/STATO.md`](docs/STATO.md). Decisioni: [`docs/DECISIONI.md`](docs/DECISIONI.md). Modifiche: [`CHANGELOG.md`](CHANGELOG.md).
 
-Progetto: da definire. Il repository non contiene ancora un file `LICENSE`.
+## Privacy e sicurezza
 
-Componenti di terze parti: il driver in `firmware/display-prova/src/trgb/` è distribuito con licenza MIT (Copyright 2024 Xinyuan-LilyGO), con il suo file [`LICENSE`](firmware/display-prova/src/trgb/LICENSE).
+- Nessuna credenziale nel repository: se servono, solo in `.env` (escluso da git) e come secrets in CI.
+- Nessun dato personale reale: le sessioni di nuoto sono dati di salute e restano in locale (`dati/`, esclusa da git). Nei test solo dati inventati.
+- Il progetto hardware della scheda nRF52840 vive solo in questo repository **privato**; il repository pubblico `PZero/SwimTimer` ospita pagina e firmware (GitHub Pages).
+- Eventuale app: Firebase piano gratuito Spark, senza Cloud Functions.
 
-## Autore
+## Licenza e autore
 
-PZero (GitHub `PZero`).
+Licenza del progetto: da definire (nessun file `LICENSE`). Il driver in `firmware/display-prova/src/trgb/` è sotto licenza MIT (Copyright 2024 Xinyuan-LilyGO), con il proprio file `LICENSE`.
+
+Autore: PZero (GitHub `PZero`).

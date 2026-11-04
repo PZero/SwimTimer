@@ -1,5 +1,22 @@
 # Changelog
 
+## 2026-11-04
+- Allineamento del ramo della scheda con `main` del repository pubblico (firmware 0.4.3, pagina di analisi `tools/index.html`, documenti).
+- Tag v0.4: aggiunta del TPS22916C per commutare l'alimentazione dell'IMU (lavoro in corso, schema/PCB/script nel commit WIP **non verificati**, DRC non rifatto): non ordinare. Da fare: C5 >= 10 V, uscita caricatore 1-10 uF, piste sotto l'E73 su B.Cu, serigrafia >= 1 mm, R6 su VDD_IMU o tolta; poi `verifica_v04.py`, file JLC, costi, programmatore e sfondi.
+- README riscritto da zero (storia v0.1-v0.4, v0.4 in dettaglio, programmatore, galleria dei 20 sfondi, rigenerazione, flusso d'ordine JLC, roadmap, privacy).
+
+## 2026-11-03
+- v0.4 ricompattata a 21,59 x 26,0 mm (era 22,86): E73 a 0,3 mm dal bordo sinistro, pinout cambiato (CHG_N P0.20, LED P0.22, INT1 P0.26, INT2 P0.06). 2 strati, DRC 0, 313 piste, 29 via. 20,32 mm non chiude lo sbroglio.
+- LED 0603 KT-0603R (C2286, basic) con anodo su VDD: -3,07 $ di caricamento extended. File JLC rigenerati; costo stimato circa 87-91 EUR per 2 schede.
+- Verifica indipendente `hardware/nrf52840/verifica_v0.4.md` (65 test, 0 bloccanti, sul commit 8fd6cc0) e script `kicad/verifica_v04.py`; consiglia ENIG per BQ25101 (0,4 mm) e IMU (0,5 mm).
+- Programmatore HAT per Raspberry Pi 3/4 in `hardware/programmatore/` (pogo sulle 7 piazzole, toner transfer, OpenOCD, ricarica con PTC e ponticello, PDF con stampe 1:1); DRC 0, ERC 0; non costruito.
+- Generatore dei 20 sfondi tecnici in `hardware/wallpaper_v0.4/` (PNG 1170 x 2532 e 1080 x 2400).
+- Decisione: regola "niente saldature" solo per il tag; il programmatore lo salda l'utente.
+
+## 2026-11-02
+- Nuova scheda v0.4 "economica" (budget <= 100 EUR): E73, LSM6DSV16X, flash 16 MB W25Q128JVSIQ (basic), BQ25101 con TS 10 k a massa, 1 LED, header batteria SMD 1,27 mm (C55213900), Schottky 1N5819WS sui contatti di ricarica, lettura batteria con VDDHDIV5. Tolti pressione, MAX17048, TPS22916C, vibratore, Tag-Connect, TVS, reset all'inserimento.
+- 2 strati 0,8 mm HASL senza piombo, scheda 22,86 x 26 mm, DRC 0. Sotto: 5 pogo SWD e 2 contatti di ricarica su griglia 2,54 mm. File in `kicad/jlc/v0.4_swimtag_economica/`, disegno `ingombro_v0.4.svg`.
+
 ## 2026-11-01
 - Tag v0.3 di collaudo, variante 1c: scheda 26 x 30 mm, 4 strati 0,8 mm, una faccia, tag finito circa 29 x 33 x 9,2 mm. Netlist 36/36, DRC 0 errori, 609 piste, 80 via. File JLC in `hardware/nrf52840/kicad/jlc/v0.3_swimtag_collaudo/`.
 - Modulo Ebyte E73 al posto del Raytac (stock 0); cella Ampul 401012 (40 mAh, PCM, 1 C) su JST SH; sensori su interruttore di carico TPS22916C; MAX17048 su secondo bus I2C; TS del BQ25101 da GPIO; 2 x 47 uF; 0 ohm tra cella e circuito; Tag-Connect TC2030-NL per SWD (VDD solo come riferimento); piazzole di prova; contatti di ricarica a 4,2 mm per una futura base a più posti.
