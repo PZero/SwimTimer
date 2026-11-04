@@ -32,3 +32,10 @@ desktop.ini
 
 # Scritto dalla CI al momento della compilazione
 firmware/test-collegamenti/versione.h
+
+# Video: non nel repository (pubblicato su YouTube, link nel README)
+media/video/*.mp4
+media/video/*.wav
+media/video/*.mov
+media/video/fotogrammi/
+media/video/tmp/
