@@ -41,6 +41,28 @@
 | 2026-10-25 | Reset del tag all'inserimento nella custodia (nessun terzo contatto esposto); watchdog nel firmware per i blocchi in acqua | Un contatto RESET in acqua rischia corrosione e reset spontanei |
 | 2026-10-25 | Sbroglio automatico con Freerouting 2.5.0 (Java 25, jar verificato col checksum di GitHub) | Scheda di 17,5 × 22,5 mm con BGA a passo 0,4 mm: a mano troppo lungo |
 | 2026-10-25 | Verifiche sui datasheet: due 100 nF sull'IMU, pull-up I2C 10 kΩ, 10 µF sull'uscita del caricatore, condensatori del modulo vicini a VDD e VDDH | Indicazioni di ST (AN5763), TE, TI e Raytac; vedi `hardware/nrf52840/verifiche.md` |
+| 2026-10-25 | Pagina di analisi unica `tools/index.html` (3D, radar, interpretazione, registrazioni), al posto di `assi.html` | Un solo posto per vedere i dati, calibrare e rielaborare le registrazioni |
+| 2026-10-25 | Calibrazione automatica: fermo in piedi 2 s per l'asse "su", cenno in avanti per l'asse "avanti" | Il tag sotto la cuffia non è mai montato nello stesso modo; senza magnetometro |
+| 2026-10-25 | Registrazione sul tag con doppio tap (inizio) e triplo tap (fine), file su LittleFS; la pagina scarica e rielabora | Il BLE non passa l'acqua; la logica sta nella pagina finché gli algoritmi si mettono a punto |
+| 2026-10-25 | Tap riconosciuti dai campioni (salto oltre 0,8 g), non dal motore tap del BMI160 | Il bit del motore tap non si attivava mai senza pin mappato |
+| 2026-10-25 | Accelerometro a ±16 g e 100 Hz | Il ±2 g satura su tuffi e urti; la letteratura usa 100 Hz o più |
+| 2026-10-25 | Flash con due copie del programma e aggiornamento via Bluetooth con ritorno automatico; ~40 min di registrazione | Non servono più cavo e tasto BOOT (con la batteria sempre collegata non si entrava in modalità BOOT) |
+| 2026-10-25 | Versione numerica con marcatore nel .bin; stessa versione rifiutata, precedente con conferma; controllo sia nella pagina sia nel tag | Il firmware lo rilasciamo noi; evita caricamenti inutili o file sbagliati |
+| 2026-10-25 | Firmware compilato da GitHub e pubblicato con la pagina (`firmware/tag.bin`, `tag.json`) | La pagina può aggiornare "all'ultima" anche dall'iPhone |
+| 2026-10-25 | Partitore su GPIO 2 dal pin 5V; percentuale in carica stimata con correzione di 0,15 V | Sapere se è in carica; il misuratore MAX17048 resta l'alternativa precisa |
+| 2026-10-25 | LED RGB del tag come riscontro (legenda nella pagina) | Prima il tag era muto: non si capiva se registrasse o dormisse |
+| 2026-10-25 | Sblocco automatico del bus I2C all'avvio e dopo 20 letture fallite | Il BMI160 si era incantato tenendo SDA a 0 V |
+| 2026-10-25 | Algoritmi propri, ispirati alla letteratura; origine annotata | Brevetti sul campo (es. FORM): verifica di libertà di operare prima di vendere |
+| 2026-10-25 | Scheda su misura nRF52840 affidata a una sessione dedicata; prototipo resta l'ESP32 finché gli algoritmi non funzionano | Gli algoritmi sono indipendenti dall'hardware; si evita di cambiare due cose insieme |
+| 2026-10-25 | Fondo scala ±16 g impostato a sensori accesi e riletto (fino a 5 tentativi) | Con il BMI160 sospeso le scritture si perdevano: ±2 g sul sensore, ±16 g nella pagina, 8 g da fermo |
+| 2026-10-25 | La pagina avvisa se da fermo il modulo non vale circa 1 g | Scale incoerenti tra tag e pagina falsano calibrazione, tap ed eventi |
+| 2026-10-25 | Vibrazione sospesa (serve un modulo con transistor; GPIO 5 libero) | Nessun modulo trovato da saldare; riscontro per ora dal LED |
+| 2026-10-25 | Latch-up del BMI160: sul prototipo interruttore generale per spegnere tutto; firmware 0.4.4 (sensore alimentato da GPIO 5) scartato. Sulla nRF52840 load switch o P-MOSFET sul sensore | Dopo uno spegnimento brusco il sensore si sblocca solo togliendogli tensione; sul prototipo basta l'interruttore in fase di test |
+| 2026-10-25 | Lezioni apprese dal prototipo in `docs/LEZIONI-APPRESE.md`, da applicare alla scheda nRF52840 | Confronto con la v0.2: mancano alimentazione commutata del sensore, misuratore di carica, spegnimento vero, etichette +/− |
+| 2026-10-25 | Correzione in carica della percentuale da 0,15 a 0,05 V | Misurato col tester: 3,84 V a riposo, 3,87 V in carica; con 0,15 V la pagina segnava 29% invece di ~65% |
+| 2026-10-26 | Card batteria della pagina con grafico di GPIO 1, GPIO 2, tensione stimata a riposo e livello target in % | Distinguere a colpo d'occhio partitori, batteria vera e carica mancante; il valore in carica falsava la percentuale |
+| 2026-10-26 | GitHub Pages attivo (Source: GitHub Actions) | Pagina e firmware raggiungibili da iPhone (Bluefy) e aggiornamento "all'ultima" dalla pagina |
+| 2026-10-26 | Il progetto della scheda nRF52840 vive nel repository privato `PZero/SwimTimer-nrf52840`; `SwimTimer` resta pubblico | Hardware della miniaturizzazione riservato; rendere privato tutto spegnerebbe GitHub Pages (piano gratuito), che serve pagina e firmware |
 | 2026-11-01 | Cella LiPo **401012 Ampul** (4 × 10 × 12 mm, 40 mAh dichiarati, 4,2 V, PCM integrato, 1 C) al posto della 301012 da 20 mAh; tag stimato ~19 × 24 × 8,2 mm | Nessuna cella da 3 mm regge 2 C e nessuna 401015 con PCM trovata: stesso ingombro in pianta, 40 mA per il vibratore; capacità reale da misurare |
 | 2026-11-01 | Tag v0.3 di collaudo variante **1c**: 26 × 30 mm, una faccia, modulo Ebyte E73 (Raytac a stock 0), senza header, Tag-Connect TC2030-NL sotto, BAT/VBAT con 0 Ω | Indossato a lungo sotto la cuffia per le registrazioni: forma quasi quadrata, niente sporgenze |
 | 2026-11-01 | Vibratore **non montato** sui 2 tag di collaudo; pilotaggio e piazzole MOT+/MOT− restano | L'utente non salda e nessun motore SMD adatto è montabile da JLC a rifusione; per le registrazioni non serve |

@@ -29,3 +29,6 @@ desktop.ini
 
 # Impostazioni locali di Claude Code
 .claude/settings.local.json
+
+# Scritto dalla CI al momento della compilazione
+firmware/test-collegamenti/versione.h
