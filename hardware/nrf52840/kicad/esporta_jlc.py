@@ -19,6 +19,9 @@ SCH = QUI / f"{NOME}.kicad_sch"
 # correzioni di rotazione per impronte della libreria KiCad il cui modello JLC è orientato diversamente
 # (le impronte swimtag: vengono da EasyEDA/LCSC e non ne hanno bisogno); verificato nell'anteprima JLC
 CORREZIONE_ROT = {"Package_SO:SOIC-": 270}
+# correzioni per designatore, dall'anteprima JLC della v0.5 (2026-11-05): il modello JLC dell'AO3401A ha i due pin
+# dal lato opposto (+180°); il TPS22916C JLC a 0° ha A1 in basso a sinistra, il nostro A1 (VOUT) è in basso a destra (+90°)
+CORREZIONE_REF = {"Q1": 180, "U6": 90}
 STRATI = ("F.Cu,In1.Cu,In2.Cu,B.Cu" if N_STRATI == 4 else "F.Cu,B.Cu") + ",F.Paste,B.Paste,F.Silkscreen,B.Silkscreen,F.Mask,B.Mask,Edge.Cuts"
 
 
@@ -52,6 +55,7 @@ def main():
         w.writerow(["Designator", "Mid X", "Mid Y", "Layer", "Rotation"])
         for r in csv.DictReader(f):
             rot = float(r["Rot"]) + sum(v for k, v in CORREZIONE_ROT.items() if r["Package"].startswith(k.split(":")[1]))
+            rot += CORREZIONE_REF.get(r["Ref"], 0)
             w.writerow([r["Ref"], f'{float(r["PosX"]):.3f}mm', f'{float(r["PosY"]):.3f}mm',
                         "Top" if r["Side"] == "top" else "Bottom", f'{rot % 360:.0f}'])
     pos.unlink()
