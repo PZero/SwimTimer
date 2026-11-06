@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SwimTimer - Display a bordo vasca (mockup)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  /* Tema scuro ad alto contrasto. Colori ripresi dal cronometro del display tondo (display-prova.ino):
+     verde, giallo, rosso, azzurro su fondo blu notte, ma piu' luminosi per la lettura a distanza. */
+  :root {
+    --bg: #04080c; --riga: #0b131b; --riga-2: #0e1822; --bordo: #1b2a38;
+    --testo: #f2f7fb; --tenue: #9fb2c4; --debole: #5f7387;
+    --verde: #2ee27a; --giallo: #ffd400; --rosso: #ff4046; --azzurro: #44a0ff; --arancio: #ff9f1c;
+    --sans: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, Consolas, "Courier New", monospace;
+    /* 1rem = 10px a 1920x1080; tutto scala con la finestra (rapporto 16:9) */
+    font-size: max(5px, min(calc(100vw / 192), calc(100vh / 108)));
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; background: var(--bg); color: var(--testo); font-family: var(--sans); overflow: hidden; }
+  body { display: flex; flex-direction: column; padding: 1.6rem 2.4rem 1.2rem; gap: 1.2rem; }
+  .num { font-family: var(--mono); font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+
+  /* ---- Testata ---- */
+  header { display: flex; align-items: center; gap: 3rem; min-height: 13rem; }
+  .cron { display: flex; flex-direction: column; }
+  .cron small { font-size: 1.8rem; color: var(--tenue); text-transform: uppercase; letter-spacing: .14em; font-weight: 600; }
+  #cronometro { font-size: 11.5rem; line-height: 1; font-weight: 800; color: var(--testo); }
+  #cronometro .dec { color: var(--azzurro); }
+  .info { margin-left: auto; text-align: right; display: flex; flex-direction: column; gap: .8rem; align-items: flex-end; }
+  #oraData { font-size: 2.6rem; color: var(--tenue); font-weight: 500; }
+  #oraData b { color: var(--testo); font-family: var(--mono); font-weight: 600; font-size: 3.6rem; margin-right: 1.2rem; }
+  .tagstato { display: inline-flex; align-items: center; gap: 1rem; font-size: 3rem; font-weight: 700; }
+  .tagstato i { width: 1.8rem; height: 1.8rem; border-radius: 50%; background: var(--verde); box-shadow: 0 0 1.2rem var(--verde); }
+  .tagstato.parziale i { background: var(--giallo); box-shadow: 0 0 1.2rem var(--giallo); }
+  .tagstato.assente i { background: var(--rosso); box-shadow: 0 0 1.2rem var(--rosso); }
+  .demo { display: flex; gap: .8rem; align-items: center; font-size: 1.7rem; }
+  .demo .etichetta { color: var(--debole); text-transform: uppercase; letter-spacing: .12em; font-weight: 600; margin-right: .4rem; }
+  button { font: inherit; font-weight: 600; color: var(--testo); background: #14212d; border: .2rem solid var(--bordo);
+           padding: .7rem 1.5rem; border-radius: .8rem; cursor: pointer; }
+  button:hover { border-color: var(--azzurro); }
+  button.attivo { background: var(--azzurro); color: #02101c; border-color: var(--azzurro); }
+  button.principale { background: var(--verde); color: #021a0b; border-color: var(--verde); }
+  button.principale.in-corso { background: var(--rosso); color: #1c0204; border-color: var(--rosso); }
+
+  /* ---- Tabella nuotatori ---- */
+  .griglia { display: grid; align-items: center; column-gap: 1.6rem;
+             grid-template-columns: 19rem 15rem 8rem 13rem 24rem 15rem 17rem minmax(18rem, 1fr); }
+  .intest { font-size: 1.5rem; color: var(--debole); text-transform: uppercase; letter-spacing: .12em; font-weight: 600; padding: 0 2rem; }
+  #righe { flex: 1; min-height: 0; display: grid; grid-auto-rows: minmax(0, 1fr); gap: .6rem; }
+  .riga { background: var(--riga); border-radius: 1rem; padding: 0 2rem; max-height: 9.6rem; border: .2rem solid transparent; position: relative; overflow: hidden; }
+  .riga:nth-child(even) { background: var(--riga-2); }
+  .nome { font-size: 3.4rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .stato { font-size: 2rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; display: inline-flex; align-items: center; gap: .8rem; }
+  .stato::before { content: ""; width: 1.4rem; height: 1.4rem; border-radius: 50%; background: currentColor; flex: none; }
+  .st-attesa { color: var(--debole); }
+  .st-vasca { color: var(--azzurro); }
+  .st-riposo { color: var(--giallo); }
+  .st-finito { color: var(--verde); }
+  .rip { font-size: 3rem; font-weight: 700; color: var(--tenue); }
+  .rip b { color: var(--testo); font-weight: 800; }
+  .incorso { font-size: 3.4rem; font-weight: 600; color: var(--azzurro); }
+  .incorso.fermo { color: var(--debole); }
+  .ultimo { font-size: 6.6rem; font-weight: 800; line-height: 1; color: var(--testo); white-space: nowrap; }
+  .ultimo.vuoto { color: var(--debole); }
+  .inter { display: flex; flex-direction: column; line-height: 1.15; }
+  .inter .a { font-size: 3rem; font-weight: 700; color: var(--arancio); }
+  .inter .b { font-size: 1.7rem; color: var(--tenue); font-weight: 500; }
+  .inter .a.vuoto { color: var(--debole); }
+  .storia svg { width: 100%; height: 5.6rem; display: block; }
+  .fatica { display: flex; align-items: center; gap: 1.4rem; }
+  .fatica .val { font-size: 3rem; font-weight: 800; min-width: 7.5rem; text-align: right; }
+  .barra { flex: 1; height: 2.4rem; border-radius: 1.2rem; position: relative; overflow: hidden;
+           background: linear-gradient(90deg, var(--verde) 0%, var(--giallo) 55%, var(--rosso) 100%); }
+  /* il "coperchio" scuro a destra nasconde la parte non raggiunta: il gradiente resta fisso sulla scala 0-100 */
+  .barra .coperchio { position: absolute; top: 0; right: 0; bottom: 0; background: #1a2733; transition: width .5s linear; }
+
+  /* Flash all'arrivo: la riga si illumina e poi torna normale */
+  .riga.flash { animation: lampo 2.8s ease-out; }
+  @keyframes lampo {
+    0%   { background: #1f6f43; border-color: var(--verde); box-shadow: 0 0 3rem rgba(46,226,122,.55); }
+    25%  { background: #17503a; border-color: var(--verde); }
+    100% { box-shadow: none; border-color: transparent; }
+  }
+
+  footer { font-size: 1.5rem; color: var(--debole); display: flex; gap: 2.4rem; align-items: center; padding: 0 .4rem; }
+  footer b { color: var(--giallo); font-weight: 600; }
+
+  /* Finestre piu' strette o piu' alte che larghe: nascondi lo storico per far stare il resto */
+  @media (max-aspect-ratio: 13/9) {
+    .griglia { grid-template-columns: 19rem 15rem 8rem 13rem 24rem 15rem minmax(18rem, 1fr); }
+    .storia, .intest.storia { display: none; }
+  }
+  @media (prefers-reduced-motion: reduce) { .riga.flash { animation-duration: 1ms; } }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="cron">
+    <small>Tempo di sessione</small>
+    <div id="cronometro" class="num">00:00<span class="dec">.0</span></div>
+  </div>
+  <div class="info">
+    <div id="oraData"></div>
+    <div id="tagStato" class="tagstato"><i></i><span id="tagTesto">0/0 tag</span></div>
+    <div class="demo">
+      <span class="etichetta">Demo</span>
+      <button id="btnDemo" class="principale">Avvia demo</button>
+      <button data-vel="1" class="attivo">1&times;</button>
+      <button data-vel="5">5&times;</button>
+      <button data-vel="10">10&times;</button>
+      <button id="btnAzzera">Azzera</button>
+    </div>
+  </div>
+</header>
+
+<div class="griglia intest" aria-hidden="true">
+  <div>Nuotatore</div><div>Stato</div><div>Rip.</div><div>In corso</div>
+  <div>Ultimo tempo</div><div>Intertempo</div><div class="storia">Storico</div><div>Fatica</div>
+</div>
+
+<main id="righe"></main>
+
+<footer>
+  <span><b>Provvisorio:</b> la fatica e' una stima di prova (carico cumulato tipo sTSS da velocita' critica CSS inventata); il test di riferimento va ancora concordato.</span>
+  <span>Barra: 0 = fresco, 100 = carico molto alto per questa sessione. Valore numerico = carico cumulato.</span>
+  <span style="margin-left:auto">Dati inventati - mockup</span>
+</footer>
+
+<script>
+"use strict";
+
+/* =====================================================================
+   CONFIGURAZIONE
+   ===================================================================== */
+const VASCA_M = 50;            // vasca da 50 m: la virata e' al lato opposto, quindi intertempo ai 50 m
+const RIPETUTE_TOT = 10;       // 10 x 100
+const PARTENZA_OGNI_MS = 90000;// partenza ogni 1:30
+const NUOTATORI = [            // nomi e CSS (s/100 m) INVENTATI
+  { tag: 'T01', nome: 'Marco R.',    css: 80 },
+  { tag: 'T02', nome: 'Giulia B.',   css: 83 },
+  { tag: 'T03', nome: 'Luca F.',     css: 78 },
+  { tag: 'T04', nome: 'Sara M.',     css: 85 },
+  { tag: 'T05', nome: 'Paolo D.',    css: 76 },
+  { tag: 'T06', nome: 'Elena C.',    css: 82 },
+  { tag: 'T07', nome: 'Davide G.',   css: 79 },
+];
+
+/* =====================================================================
+   UTILITA' DI FORMATO
+   ===================================================================== */
+// ms -> "m:ss.d" (decimi troncati, come un cronometro)
+function fmtTempo(ms) {
+  if (ms == null) return '-:--.-';
+  const dec = Math.floor(ms / 100) % 10;
+  const s = Math.floor(ms / 1000);
+  return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0') + '.' + dec;
+}
+// ms -> "mm:ss" e decimo separato (cronometro di sessione)
+function fmtSessione(ms) {
+  const dec = Math.floor(ms / 100) % 10;
+  const s = Math.floor(ms / 1000);
+  return [String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0'), '.' + dec];
+}
+
+/* =====================================================================
+   (2) MODELLO: stato per nuotatore, aggiornato SOLO da ricevi(evento)
+   ===================================================================== */
+const modello = new Map();   // tag -> stato nuotatore
+const tagConnessi = new Set();
+
+function nuovoStato(n) {
+  return {
+    tag: n.tag, nome: n.nome, css: n.css,
+    stato: 'attesa',          // attesa | vasca | riposo | finito
+    rip: 0,                   // numero della ripetuta in corso (o dell'ultima, se a riposo)
+    tStart: null,             // t_ms della partenza della ripetuta in corso
+    tVirata: null,            // t_ms della virata (arriva insieme all'arrivo)
+    ultimo: null,             // ultimo tempo 100 m (ms)
+    inter: null,              // intertempo ai 50 m dell'ultima ripetuta (ms)
+    secondo50: null,          // secondo 50 m dell'ultima ripetuta (ms)
+    storia: [],               // tempi delle ripetute completate (ms)
+    flashId: 0,               // incrementato a ogni arrivo, per riavviare l'animazione
+  };
+}
+function azzeraModello() {
+  modello.clear(); tagConnessi.clear();
+  NUOTATORI.forEach(n => { modello.set(n.tag, nuovoStato(n)); });
+}
+
+/* PUNTO DI INGRESSO DEGLI EVENTI.
+   Qualsiasi sorgente (demo ora; BLE/seriale in futuro) chiama ricevi({tag, tipo, t_ms}).
+   t_ms e' nel tempo di sessione: il tag registra gli eventi col proprio clock e li trasmette quando
+   e' vicino al display, quindi la virata ai 50 m arriva INSIEME all'arrivo (con t_ms precedente). */
+function ricevi(ev) {
+  const s = modello.get(ev.tag);
+  if (!s) return;                       // tag sconosciuto: ignorato
+  tagConnessi.add(ev.tag);
+  switch (ev.tipo) {
+    case 'partenza':
+      s.stato = 'vasca'; s.rip += 1; s.tStart = ev.t_ms; s.tVirata = null;
+      break;
+    case 'virata':
+      if (s.tStart != null) s.tVirata = ev.t_ms;   // solo memorizzata: si mostra all'arrivo
+      break;
+    case 'arrivo': {
+      if (s.tStart == null) break;
+      const tot = ev.t_ms - s.tStart;
+      s.ultimo = tot;
+      s.inter = s.tVirata != null ? s.tVirata - s.tStart : null;
+      s.secondo50 = s.inter != null ? tot - s.inter : null;
+      s.storia.push(tot);
+      s.tStart = null; s.tVirata = null;
+      s.stato = s.rip >= RIPETUTE_TOT ? 'finito' : 'riposo';
+      s.flashId++;
+      break;
+    }
+  }
+  segnaDaAggiornare(s.tag);
+}
+
+/* ---------------------------------------------------------------------
+   FATICA - CALCOLO PROVVISORIO (da concordare con l'utente)
+   Il test di riferimento NON e' ancora deciso. Qui una stima di prova, isolata in questa funzione
+   cosi' da poterla sostituire senza toccare il resto:
+     - ogni nuotatore ha una CSS (Critical Swim Speed) inventata, in s/100 m;
+     - per ogni ripetuta: IF = CSS / tempo_100 (intensity factor, >1 = piu' veloce della CSS);
+     - carico cumulato stile sTSS = somma( IF^3 * durata_ore * 100 ), includendo la ripetuta in corso;
+     - la ripetuta in corso usa il ritmo dell'ultima ripetuta completata (o IF=0.95 se e' la prima)
+       e la durata gia' trascorsa, quindi il valore cresce mentre si nuota;
+     - scala barra 0-100: lineare fino a SSTSS_FONDO_SCALA (valore di prova), poi saturata.
+   Ritorna { valore: sTSS cumulato, scala: 0..100 }.
+   --------------------------------------------------------------------- */
+const SSTSS_FONDO_SCALA = 25;   // PROVVISORIO: sTSS che porta la barra al 100% (10x100 a ritmo CSS ~ 20)
+function calcolaFatica(s, tSessioneMs) {
+  let sstss = 0;
+  for (const t of s.storia) {
+    const sec = t / 1000;
+    const IF = s.css / sec;
+    sstss += Math.pow(IF, 3) * (sec / 3600) * 100;
+  }
+  if (s.stato === 'vasca' && s.tStart != null) {
+    const trascorsi = Math.max(0, tSessioneMs - s.tStart) / 1000;
+    const ultimoSec = s.ultimo != null ? s.ultimo / 1000 : null;
+    const IF = ultimoSec ? s.css / ultimoSec : 0.95;
+    sstss += Math.pow(IF, 3) * (trascorsi / 3600) * 100;
+  }
+  return { valore: sstss, scala: Math.min(100, (sstss / SSTSS_FONDO_SCALA) * 100) };
+}
+
+/* =====================================================================
+   (1) SORGENTE EVENTI: DEMO
+   Pianifica tutti gli eventi di 7 nuotatori che fanno 10x100 con partenza ogni 1:30 e li emette
+   a tempo di sessione. Una sorgente reale (BLE/seriale) avra' lo stesso effetto: chiamare ricevi().
+   ===================================================================== */
+const rnd = (a, b) => a + Math.random() * (b - a);
+
+function pianificaDemo() {
+  const piano = [];
+  let offset = 2000;                                   // il primo parte a 0:02
+  NUOTATORI.forEach((n, i) => {
+    if (i > 0) offset += rnd(3000, 5000);              // sfalsati di 3-5 s l'uno dall'altro
+    // totale 100 m "base" del nuotatore, 77-84 s: intorno alla sua CSS
+    const base = Math.min(82, Math.max(77.5, n.css + rnd(-1.5, 1.5)));
+    for (let k = 0; k < RIPETUTE_TOT; k++) {
+      const start = offset + k * PARTENZA_OGNI_MS;
+      // affaticamento progressivo + rumore, limitato a 77-86 s (recupero 4-13 s)
+      let tot = base + k * 0.4 + rnd(-1.0, 1.0);
+      tot = Math.min(86, Math.max(77, tot));
+      // primo 50 in 40-50 s; il secondo e' il resto e un po' piu' lento (coerente col totale)
+      let p1 = tot / 2 + rnd(-1.0, 1.5);
+      p1 = Math.min(50, Math.max(40, p1));
+      const virata = start + p1 * 1000;
+      const arrivo = start + tot * 1000;
+      const latenzaBle = 400;                          // il tag trasmette poco dopo l'arrivo
+      piano.push({ emettiA: start,                 ev: { tag: n.tag, tipo: 'partenza', t_ms: start } });
+      piano.push({ emettiA: arrivo + latenzaBle,   ev: { tag: n.tag, tipo: 'virata',   t_ms: virata } });
+      piano.push({ emettiA: arrivo + latenzaBle,   ev: { tag: n.tag, tipo: 'arrivo',   t_ms: arrivo } });
+    }
+  });
+  piano.sort((a, b) => a.emettiA - b.emettiA);
+  return piano;
+}
+
+const demo = {
+  attiva: false, vel: 1, t: 0, piano: [], idx: 0,
+  avvia() {
+    if (this.piano.length === 0 || this.idx >= this.piano.length) { this.azzera(); this.piano = pianificaDemo(); }
+    // un solo tag "annunciato" subito: i tag si collegano in vasca (qui tutti all'avvio)
+    NUOTATORI.forEach(n => tagConnessi.add(n.tag));
+    this.attiva = true;
+  },
+  ferma() { this.attiva = false; },
+  azzera() { this.attiva = false; this.t = 0; this.idx = 0; this.piano = []; azzeraModello(); aggiornaTutto(); },
+  // avanza il tempo di sessione demo e consegna gli eventi scaduti
+  avanza(dtMs) {
+    if (!this.attiva) return;
+    this.t += dtMs * this.vel;
+    while (this.idx < this.piano.length && this.piano[this.idx].emettiA <= this.t) {
+      ricevi(this.piano[this.idx].ev); this.idx++;
+    }
+    if (this.idx >= this.piano.length) this.attiva = false;   // demo conclusa
+  },
+};
+// Tempo di sessione corrente. Con una sorgente reale sara' l'orologio di sessione sincronizzato coi tag.
+function tempoSessione() { return demo.t; }
+
+/* =====================================================================
+   (3) RENDERING
+   Le righe si costruiscono una volta; poi si aggiornano solo i testi cambiati.
+   ===================================================================== */
+const elRighe = document.getElementById('righe');
+const refs = new Map();      // tag -> riferimenti DOM + cache dei testi
+const sporchi = new Set();   // righe da ridisegnare per evento
+
+function costruisciRighe() {
+  elRighe.innerHTML = '';
+  refs.clear();
+  NUOTATORI.forEach(n => {
+    const r = document.createElement('div');
+    r.className = 'riga griglia';
+    r.innerHTML =
+      '<div class="nome"></div>' +
+      '<div><span class="stato"></span></div>' +
+      '<div class="rip num"></div>' +
+      '<div class="incorso num"></div>' +
+      '<div class="ultimo num"></div>' +
+      '<div class="inter"><span class="a num"></span><span class="b num"></span></div>' +
+      '<div class="storia"></div>' +
+      '<div class="fatica"><div class="barra"><div class="coperchio"></div></div><div class="val num"></div></div>';
+    elRighe.appendChild(r);
+    const q = s => r.querySelector(s);
+    refs.set(n.tag, {
+      riga: r, nome: q('.nome'), stato: q('.stato'), rip: q('.rip'), incorso: q('.incorso'),
+      ultimo: q('.ultimo'), interA: q('.inter .a'), interB: q('.inter .b'), storia: q('.storia'),
+      coperchio: q('.coperchio'), val: q('.fatica .val'), cache: {}, flashId: 0,
+    });
+  });
+}
+
+// Scrive il testo solo se cambiato (evita lavoro inutile a ogni frame)
+function imposta(ref, chiave, el, testo) {
+  if (ref.cache[chiave] !== testo) { ref.cache[chiave] = testo; el.textContent = testo; }
+}
+function impostaClasse(ref, chiave, el, classe) {
+  if (ref.cache[chiave] !== classe) { ref.cache[chiave] = classe; el.className = classe; }
+}
+
+const ETICHETTA_STATO = { attesa: 'In attesa', vasca: 'In vasca', riposo: 'A riposo', finito: 'Finito' };
+const CLASSE_STATO = { attesa: 'st-attesa', vasca: 'st-vasca', riposo: 'st-riposo', finito: 'st-finito' };
+
+// Mini-storico: una barretta per ripetuta (10 posti). Piu' alta = piu' lenta; scala sul range del nuotatore.
+function svgStoria(storia) {
+  const W = 170, H = 56, n = RIPETUTE_TOT, gap = 4, bw = (W - gap * (n - 1)) / n;
+  let min = Infinity, max = -Infinity;
+  storia.forEach(t => { min = Math.min(min, t); max = Math.max(max, t); });
+  const range = Math.max(6000, max - min);          // almeno 6 s di range, per non esagerare il rumore
+  let out = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Storico dei tempi">';
+  for (let i = 0; i < n; i++) {
+    const x = i * (bw + gap);
+    if (i < storia.length) {
+      const h = 14 + ((storia[i] - min) / range) * (H - 18);
+      const ultima = i === storia.length - 1;
+      out += '<rect x="' + x.toFixed(1) + '" y="' + (H - h).toFixed(1) + '" width="' + bw.toFixed(1) + '" height="' + h.toFixed(1) +
+             '" rx="2" fill="' + (ultima ? '#f2f7fb' : '#44a0ff') + '"><title>Rip. ' + (i + 1) + ': ' + fmtTempo(storia[i]) + '</title></rect>';
+    } else {
+      out += '<rect x="' + x.toFixed(1) + '" y="' + (H - 3) + '" width="' + bw.toFixed(1) + '" height="3" rx="1.5" fill="#1b2a38"/>';
+    }
+  }
+  return out + '</svg>';
+}
+
+// Aggiorna i campi che cambiano solo per eventi (non a ogni frame)
+function disegnaEventi(tag) {
+  const s = modello.get(tag), ref = refs.get(tag);
+  imposta(ref, 'nome', ref.nome, s.nome);
+  impostaClasse(ref, 'stCls', ref.stato, 'stato ' + CLASSE_STATO[s.stato]);
+  imposta(ref, 'stTxt', ref.stato, ETICHETTA_STATO[s.stato]);
+  const ripTxt = s.rip + '/' + RIPETUTE_TOT;
+  if (ref.cache.ripTxt !== ripTxt) { ref.cache.ripTxt = ripTxt; ref.rip.innerHTML = '<b>' + s.rip + '</b>/' + RIPETUTE_TOT; }
+  impostaClasse(ref, 'ultCls', ref.ultimo, 'ultimo num' + (s.ultimo == null ? ' vuoto' : ''));
+  imposta(ref, 'ult', ref.ultimo, fmtTempo(s.ultimo));
+  impostaClasse(ref, 'interACls', ref.interA, 'a num' + (s.inter == null ? ' vuoto' : ''));
+  imposta(ref, 'interA', ref.interA, s.inter == null ? '-:--.-' : fmtTempo(s.inter));
+  imposta(ref, 'interB', ref.interB, s.secondo50 == null ? VASCA_M + ' m' : VASCA_M + ' m  |  2°: ' + fmtTempo(s.secondo50));
+  const sv = svgStoria(s.storia);
+  if (ref.cache.storia !== sv) { ref.cache.storia = sv; ref.storia.innerHTML = sv; }
+  // Flash all'arrivo: riavvia l'animazione CSS
+  if (s.flashId < ref.flashId) ref.flashId = s.flashId;   // dopo un azzeramento: nessun flash
+  if (s.flashId !== ref.flashId) {
+    ref.flashId = s.flashId;
+    ref.riga.classList.remove('flash'); void ref.riga.offsetWidth; ref.riga.classList.add('flash');
+  }
+}
+function segnaDaAggiornare(tag) { sporchi.add(tag); }
+function aggiornaTutto() { modello.forEach((_, tag) => sporchi.add(tag)); }
+
+// Colore del valore di fatica in base alla scala 0-100
+function coloreFatica(scala) { return scala < 40 ? 'var(--verde)' : scala < 75 ? 'var(--giallo)' : 'var(--rosso)'; }
+
+// Disegno a ogni frame: cronometro di sessione, tempi che girano, fatica
+function disegna(tSess) {
+  sporchi.forEach(disegnaEventi); sporchi.clear();
+  const [mmss, dec] = fmtSessione(tSess);
+  if (cron.cache !== mmss + dec) { cron.cache = mmss + dec; cron.el.innerHTML = mmss + '<span class="dec">' + dec + '</span>'; }
+  modello.forEach((s, tag) => {
+    const ref = refs.get(tag);
+    const inVasca = s.stato === 'vasca' && s.tStart != null;
+    impostaClasse(ref, 'incCls', ref.incorso, 'incorso num' + (inVasca ? '' : ' fermo'));
+    imposta(ref, 'inc', ref.incorso, inVasca ? fmtTempo(Math.max(0, tSess - s.tStart)) : '-:--.-');
+    const f = calcolaFatica(s, tSess);
+    imposta(ref, 'fv', ref.val, f.valore.toFixed(1));
+    ref.val.style.color = coloreFatica(f.scala);
+    const w = (100 - f.scala).toFixed(1) + '%';
+    if (ref.cache.cop !== w) { ref.cache.cop = w; ref.coperchio.style.width = w; }
+  });
+  // stato connessione tag
+  const tot = NUOTATORI.length, conn = tagConnessi.size;
+  const txt = conn + '/' + tot + ' tag';
+  if (tagUi.cache !== txt) {
+    tagUi.cache = txt; tagUi.testo.textContent = txt;
+    tagUi.box.className = 'tagstato' + (conn === tot ? '' : conn === 0 ? ' assente' : ' parziale');
+  }
+}
+
+/* =====================================================================
+   CABLAGGIO: cronometro con requestAnimationFrame, controlli demo, ora/data
+   ===================================================================== */
+const cron = { el: document.getElementById('cronometro'), cache: '' };
+const tagUi = { box: document.getElementById('tagStato'), testo: document.getElementById('tagTesto'), cache: '' };
+const btnDemo = document.getElementById('btnDemo');
+
+let ultimoFrame = null;
+function frame(ts) {
+  if (ultimoFrame != null) demo.avanza(Math.min(100, ts - ultimoFrame));  // limita i salti quando la scheda e' in background
+  ultimoFrame = ts;
+  disegna(tempoSessione());
+  requestAnimationFrame(frame);
+}
+
+function aggiornaBottoneDemo() {
+  btnDemo.textContent = demo.attiva ? 'Ferma demo' : 'Avvia demo';
+  btnDemo.classList.toggle('in-corso', demo.attiva);
+}
+btnDemo.addEventListener('click', () => { demo.attiva ? demo.ferma() : demo.avvia(); aggiornaBottoneDemo(); });
+document.getElementById('btnAzzera').addEventListener('click', () => { demo.azzera(); aggiornaBottoneDemo(); });
+document.querySelectorAll('button[data-vel]').forEach(b => b.addEventListener('click', () => {
+  demo.vel = Number(b.dataset.vel);
+  document.querySelectorAll('button[data-vel]').forEach(x => x.classList.toggle('attivo', x === b));
+}));
+// se la demo si conclude da sola, aggiorna il bottone
+setInterval(aggiornaBottoneDemo, 500);
+
+function aggiornaOra() {
+  const d = new Date();
+  document.getElementById('oraData').innerHTML =
+    '<b class="num">' + d.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }) + '</b>' +
+    d.toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' });
+}
+setInterval(aggiornaOra, 1000); aggiornaOra();
+
+// Avvio
+azzeraModello();
+costruisciRighe();
+aggiornaTutto();
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
