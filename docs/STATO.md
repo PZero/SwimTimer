@@ -10,13 +10,15 @@
 - **XIAO nRF52840 Sense** come tag di prova o definitivo: documentazione in `hardware/xiao/` (cella LP-401230 100 mAh, minimo 50 mA di carica, riavvio IMU via P1.08, sacchetto sottovuoto).
 - Associazione nuotatore–tag con base di ricarica a slot + gettone NFC (decisione 2026-11-05); versione finale senza flash esterna (buffer RAM ~10 s, solo eventi).
 - Prototipo ESP32-S3 + BMI160 (firmware 0.4.3, `tools/index.html`, display LilyGO T-RGB): funzionante sul tavolo, nessuna prova in vasca. Firmware nRF52840: da scrivere.
-- README solo in inglese, senza ringraziamenti; `docs/` in italiano.
+- README solo in inglese, senza ringraziamenti; `docs/` in italiano; da oggi commit e descrizione del repo in inglese.
+- Video di presentazione in inglese (https://youtu.be/EVrdSybpnE4; `genera_video.py --lingua en`, testi in `media/video/testi_en.py`), linkato nel README; italiano https://youtu.be/_2UzpOqblVI.
+- **Pagina `tools/index.html`, tab XIAO**: modellino 3D della XIAO orientato dall'IMU, calibrazione del montaggio sulla tempia destra (Calibra + Annuisci), mezzo busto wireframe con testa scansionata Lee Perry-Smith (CC BY 3.0, da CDN, ripiego procedurale), occhi rossi e testa che segue i movimenti; Demo testa. Provata solo con la demo passo-passo.
 
 ## Prossimi passi
 1. Aspettare il contatto di Viviane (NextPCB, programma sponsorizzazione); scadenza consigliata mercoledì 2026-11-11, poi ordinare o meno.
 2. Prima di ordinare: incollare `NOTE_ORDINE.md` nelle note, scrivere a Shelly (V-cut e U1), leggere i termini "No Touch" del Rev0, annotare gli MPN scelti per C2–C6 e R3.
 3. A schede arrivate: prova a banco (Q1, accensione a ~50 mA), REGOUT0 a 3,0 V (livello CHG_N 0,4 V contro VIL 0,54 V), costruire il programmatore, prova di portata antenna.
-4. Decidere l'acquisto dei XIAO Sense (3 pezzi Amazon, variante da confermare) e delle celle LP-401230.
+4. **XIAO in arrivo il 2026-11-07:** sketch Arduino minimo che manda il protocollo BLE 'SwimTag' (16 byte, 25 Hz, gyro scalato a 16,4 LSB/dps); poi in pagina «Verifica assi» (segno di Z, `XIAO_ASSE_USB`) e prova delle 3 fasi. Celle LP-401230 da ordinare.
 5. Firmware: SPI, registrazione, sonno con INT dell'IMU, power-cycle dell'IMU (P1.08, SDA/SCL a 0), NFC/base a slot.
 6. Prototipo ESP32: sessioni con video, prova in vasca. Versione inglese del video/miniatura (da confermare).
 7. Cancellare a mano la cartella temporanea `C:\swt_chk`.

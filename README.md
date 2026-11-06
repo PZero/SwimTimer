@@ -94,6 +94,8 @@ The prototype is used to tune the algorithms before the custom board exists.
 - automatic calibration, Firmware and LED windows, Demo mode;
 - Bluetooth (Chrome, Edge, Bluefy on iPhone) or USB;
 - battery card with GPIO 1, GPIO 2 and estimated resting voltage charts.
+- "XIAO" tab: 3D XIAO model oriented live by the IMU; head-mounting calibration (right temple, Calibra / Annuisci buttons); wireframe half-bust whose head follows the movements (red eyes at start), Ricentra, Demo testa and axis check. It waits for a XIAO sketch that sends the same `SwimTag` BLE protocol.
+- Head model: scan by Lee Perry-Smith (Infinite-Realities), licensed CC BY 3.0, loaded from the three.js CDN; neck and shoulders are procedural.
 
 `tools/assi.html` is the old 3-axis page, kept for reference.
 
