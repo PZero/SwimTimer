@@ -8,6 +8,7 @@ python media/video/genera_video.py                 # musica + miniatura + video
 python media/video/genera_video.py --no-musica     # riusa musica_originale.wav
 python media/video/genera_video.py --solo-musica   # solo la colonna sonora
 python media/video/genera_video.py --anteprima 12 47.5 --dir cartella   # fotogrammi PNG a tempi scelti
+python media/video/genera_video.py --lingua en     # versione inglese: SwimTimer_presentazione_en.mp4 e miniatura_youtube_en.png
 ```
 Servono Python 3.11 con numpy e Pillow, ffmpeg nel PATH e il font Bahnschrift di Windows.
 Il video usa solo le tavole in `hardware/wallpaper_v0.5/png/`, i render della scheda
@@ -35,3 +36,22 @@ Codice e documenti: repository GitHub PZero/SwimTimer.
 **Tag:** SwimTimer, nuoto, cronometro, tag BLE, nRF52840, elettronica, progetto fai da te, piscina
 
 *Musica originale generata per questo video.*
+
+## Versione inglese
+Stesse scene, musica e durata; cambiano solo i testi a schermo (`testi_en.py`, dizionario italiano → inglese).
+Le tavole tecniche di sfondo restano quelle originali, con alcune scritte in italiano.
+
+**Title:** SwimTimer: your lap times in the pool, no stopping and no buttons (prototype v0.5)
+
+**Description:**
+SwimTimer is an open project to time your swim without stopping and without pressing buttons.
+A small Bluetooth tag under the swim cap, with a 6-axis motion sensor, detects starts, turns and finishes.
+Data is downloaded out of the water and a poolside display shows your times.
+In this video: the v0.5 board (nRF52840, LSM6DSV16X IMU, 16 MB flash, 40 mAh LiPo cell, 21.59 x 28 mm),
+its protections, the design checks (0 DRC errors, 100/100 netlist pins) and the Raspberry Pi HAT programmer.
+The boards are designed and on the way: this is the prototype stage, with the first pool tests still to come.
+Code and documents: GitHub repository PZero/SwimTimer.
+
+**Tags:** SwimTimer, swimming, lap timer, BLE tag, nRF52840, electronics, DIY project, swimming pool, wearable
+
+*Original music generated for this video.*

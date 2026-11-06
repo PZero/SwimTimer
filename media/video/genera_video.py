@@ -1,6 +1,7 @@
 """Genera il video di presentazione di SwimTimer (1920x1080, 30 fps, 120 s).
 
 Uso:  python media/video/genera_video.py            (musica + video + miniatura)
+      python media/video/genera_video.py --lingua en --no-musica   (versione inglese, file con suffisso _en)
       python media/video/genera_video.py --anteprima 12 47.5 63 --dir CARTELLA   (solo fotogrammi PNG)
       python media/video/genera_video.py --solo-musica | --solo-miniatura
 Tutti i fotogrammi sono disegnati con Pillow; la codifica e' fatta da ffmpeg.
@@ -8,6 +9,7 @@ Tutti i fotogrammi sono disegnati con Pillow; la codifica e' fatta da ffmpeg.
 import argparse
 import glob
 import math
+import os
 import subprocess
 import sys
 from functools import lru_cache
@@ -25,6 +27,19 @@ RPROG = ROOT / 'hardware' / 'programmatore' / 'img'
 FONT = 'C:/Windows/Fonts/bahnschrift.ttf'
 W, H, FPS, DUR = 1920, 1080, 30, 120.0
 NFRAMES = int(DUR * FPS)
+
+# Lingua dei testi a schermo: 'it' (originale) o 'en' (testi in testi_en.py).
+# Letta dall'ambiente perche' i processi del Pool la ereditano.
+LANG = os.environ.get('SWIMTIMER_LANG', 'it')
+if LANG == 'en':
+    sys.path.insert(0, str(HERE))
+    from testi_en import EN as _TR
+else:
+    _TR = {}
+
+
+def tr(s):
+    return _TR.get(s, s)
 
 BG0, BG1 = (4, 9, 28), (9, 30, 74)
 CYAN = (40, 210, 255)
@@ -62,6 +77,7 @@ def font(size, wght=700, width=100):
 
 
 def text_len(s, size, wght, track=0, width=100):
+    s = tr(s)
     f = font(size, wght, width)
     if not track:
         return f.getlength(s)
@@ -85,6 +101,7 @@ def tlayer(parts, size, wght, track=0, width=100):
     d = ImageDraw.Draw(im)
     x = pad
     for txt, col in parts:
+        txt = tr(txt)
         if track:
             for c in txt:
                 d.text((x, dy), c, font=f, fill=col + (255,))
@@ -100,7 +117,7 @@ def T(cv, s, x, y, size, t, t0, wght=700, color=WHITE, track=0, anchor='l', dur=
     if t < t0:
         return
     parts = s if isinstance(s, tuple) else ((s, color),)
-    full = ''.join(p[0] for p in parts)
+    full = ''.join(tr(p[0]) for p in parts)
     if maxw:
         size = fit_size(full, maxw, size, wght, track, width)
     lay, pad, dy, tw = tlayer(parts, size, wght, track, width)
@@ -811,14 +828,20 @@ def main():
     ap.add_argument('--solo-musica', action='store_true')
     ap.add_argument('--solo-miniatura', action='store_true')
     ap.add_argument('--no-musica', action='store_true')
+    ap.add_argument('--lingua', choices=['it', 'en'], default='it')
     a = ap.parse_args()
+    if a.lingua != LANG:
+        # rilancia con la lingua nell'ambiente, cosi' anche i processi del Pool la vedono
+        env = dict(os.environ, SWIMTIMER_LANG=a.lingua)
+        sys.exit(subprocess.call([sys.executable, __file__] + sys.argv[1:], env=env))
+    suf = '' if LANG == 'it' else '_' + LANG
     if a.anteprima:
         Path(a.dir).mkdir(parents=True, exist_ok=True)
         for tsec in a.anteprima:
             frame_image(int(tsec * FPS)).save(Path(a.dir) / f'prev_{tsec:06.2f}.png')
         return
     if a.solo_miniatura:
-        miniatura(HERE / 'miniatura_youtube.png')
+        miniatura(HERE / f'miniatura_youtube{suf}.png')
         return
     wav = HERE / 'musica_originale.wav'
     if not a.no_musica:
@@ -829,8 +852,8 @@ def main():
         print('\n'.join(musica.stats(y)))
     if a.solo_musica:
         return
-    miniatura(HERE / 'miniatura_youtube.png')
-    out = HERE / 'SwimTimer_presentazione.mp4'
+    miniatura(HERE / f'miniatura_youtube{suf}.png')
+    out = HERE / f'SwimTimer_presentazione{suf}.mp4'
     cmd = ['ffmpeg', '-y', '-hide_banner', '-loglevel', 'error', '-f', 'rawvideo', '-pix_fmt', 'rgb24', '-s', f'{W}x{H}', '-r', str(FPS),
            '-i', '-', '-i', str(wav), '-map', '0:v', '-map', '1:a',
            '-vf', 'scale=out_color_matrix=bt709:out_range=tv,format=yuv420p',
