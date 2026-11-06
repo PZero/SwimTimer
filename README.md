@@ -10,9 +10,9 @@ Updated on **2026-11-06**. Single public repository `PZero/SwimTimer`: ESP32 pro
 
 ### Presentation video (2 minutes)
 
-[![SwimTimer: presentation video on YouTube](media/video/miniatura_youtube.png)](https://youtu.be/_2UzpOqblVI)
+[![SwimTimer: presentation video on YouTube](media/video/miniatura_youtube_en.png)](https://youtu.be/EVrdSybpnE4)
 
-Watch it on YouTube: **https://youtu.be/_2UzpOqblVI** (original music generated for the video; sources in [`media/video/`](media/video/)).
+Watch it on YouTube: **https://youtu.be/EVrdSybpnE4** (Italian version: https://youtu.be/_2UzpOqblVI; original music generated for the video; sources in [`media/video/`](media/video/)).
 
 ![Render of the v0.6 Rev0 tag, top view](hardware/nrf52840/kicad/jlc/v0.6_swimtag_v06/render_sopra.png)
 

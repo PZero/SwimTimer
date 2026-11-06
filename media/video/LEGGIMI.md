@@ -38,6 +38,7 @@ Codice e documenti: repository GitHub PZero/SwimTimer.
 *Musica originale generata per questo video.*
 
 ## Versione inglese
+Pubblicata su YouTube: https://youtu.be/EVrdSybpnE4 (italiana: https://youtu.be/_2UzpOqblVI).
 Stesse scene, musica e durata; cambiano solo i testi a schermo (`testi_en.py`, dizionario italiano → inglese).
 Le tavole tecniche di sfondo restano quelle originali, con alcune scritte in italiano.
 
