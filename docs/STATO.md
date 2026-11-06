@@ -12,7 +12,7 @@
 - Prototipo ESP32-S3 + BMI160 (firmware 0.4.3, `tools/index.html`, display LilyGO T-RGB): funzionante sul tavolo, nessuna prova in vasca. Firmware nRF52840: da scrivere.
 - README solo in inglese, senza ringraziamenti; `docs/` in italiano; da oggi commit e descrizione del repo in inglese.
 - Video di presentazione in inglese (https://youtu.be/EVrdSybpnE4; `genera_video.py --lingua en`, testi in `media/video/testi_en.py`), linkato nel README; italiano https://youtu.be/_2UzpOqblVI.
-- **Pagina `tools/index.html`, tab XIAO**: modellino 3D della XIAO orientato dall'IMU, calibrazione del montaggio sulla tempia destra (Calibra + Annuisci), mezzo busto wireframe con testa scansionata Lee Perry-Smith (CC BY 3.0, da CDN, ripiego procedurale), occhi rossi e testa che segue i movimenti; Demo testa. Provata solo con la demo passo-passo.
+- **Pagina `tools/index.html`, tab XIAO**: modellino 3D della XIAO orientato dall'IMU, calibrazione del montaggio sulla tempia destra (Calibra + Annuisci), mezzo busto wireframe con testa scansionata Lee Perry-Smith (CC BY 3.0, da CDN, ripiego procedurale), occhi rossi e testa che segue i movimenti; Demo testa. Montaggio fisso (destra, componenti verso l'esterno: niente scelte), vista frontale, occhi a griglia, interno della bocca nascosto, grafici acc/gyro in «Verifica assi». Provata solo con la demo.
 
 ## Prossimi passi
 1. Aspettare il contatto di Viviane (NextPCB, programma sponsorizzazione); scadenza consigliata mercoledì 2026-11-11, poi ordinare o meno.

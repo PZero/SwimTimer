@@ -10,6 +10,7 @@
 - **English presentation video** (https://youtu.be/EVrdSybpnE4): `genera_video.py --lingua en`, `media/video/testi_en.py`, `miniatura_youtube_en.png`; linked in the README.
 - Repository description and commit messages switched to English.
 - **"XIAO" tab** in `tools/index.html`: IMU-oriented 3D XIAO model, head-mounting calibration (Calibra/Annuisci), wireframe half-bust with the Lee Perry-Smith head scan (CC BY 3.0, from CDN) and procedural neck/shoulders, Ricentra, Demo testa, axis check. Waits for a XIAO sketch using the `SwimTag` BLE protocol.
+- **XIAO tab update**: old procedural grey shoulders removed; "axis check" shows 10 s scrolling accelerometer and gyroscope charts instead of the value table; "component side" and "USB-C towards" settings removed (tag always on the right, components facing out: gravity is enough for in-plane rotation); eyes drawn as green wireframe, solid red only during the blink; inner mouth surfaces of the head scan hidden; front view perpendicular to the screen.
 - `.claude/launch.json` to serve the page locally.
 - Security check on the public repository (tracked and untracked files): no keys, tokens, passwords, `.env` or personal data. Absolute paths with the Windows user name were not found.
 
