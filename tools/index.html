@@ -508,12 +508,6 @@
         <button class="piccolo" id="xiaoRicentra" title="Guardando avanti: azzera l'imbardata">Ricentra</button>
         <button class="piccolo" id="xiaoDemo" title="Dati sintetici di una testa con il tag montato a destra, leggermente inclinato">Demo testa</button>
       </div>
-      <div class="comandi">
-        <label class="xiao-imp">Lato componenti (USB-C)
-          <select id="xiaoLato"><option value="esterno">verso l'esterno</option><option value="testa">verso la testa</option></select></label>
-        <label class="xiao-imp">USB-C verso
-          <select id="xiaoUsb"><option value="nuca">nuca</option><option value="fronte">fronte</option><option value="alto">alto</option><option value="basso">basso</option></select></label>
-      </div>
       <div class="xiao-mnt mono" id="xiaoMnt"></div>
       <div class="xiao-assi">
         <div class="etichetta">Verifica assi <span class="mono" id="xiaoModulo" style="text-transform:none;letter-spacing:0;font-weight:500"></span></div>
@@ -2127,9 +2121,9 @@ const XIAO_TESTA = { rx: 0.75, ry: 0.95, rz: 1.1 };  // semiassi della testa in 
 // Misure sul modello (unità sue): altezza 7,94, testa da y = −0,6 (mento) a 3,97 (sommità), centro testa y ≈ 1,7; collo più stretto a y ≈ −0,4…0
 const XIAO_MODELLO = { altezza: 7.94 * 0.42, dy: -1.7, dz: 0.1, taglio: -1.0, occhioX: 0.33, occhioZ: 0.08 };
 const XIAO_DUR_CAL = 3, XIAO_DUR_NOD = 3;
-let xiaoLato = pref.get('xiaoLato', 'esterno'), xiaoUsb = pref.get('xiaoUsb', 'nuca');
-if (!(xiaoLato in XIAO_SEGNO_LATO)) xiaoLato = 'esterno';
-if (!(xiaoUsb in XIAO_DIR_USB)) xiaoUsb = 'nuca';
+// Montaggio fisso: tag sempre a destra, lato componenti sempre verso l'esterno. La rotazione della scheda nel suo piano
+// si ricava dalla gravità (e dai cenni); la direzione dell'USB-C serve solo da ripiego se la normale fosse quasi verticale.
+const xiaoLato = 'esterno', xiaoUsb = 'nuca';
 const xiaoNormale = () => [0, 0, XIAO_SEGNO_LATO[xiaoLato]];
 const prodScal = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
 const combina = (a, k, b) => [a[0] + k * b[0], a[1] + k * b[1], a[2] + k * b[2]];
@@ -2306,9 +2300,6 @@ $('xiaoCalibra').addEventListener('click', xiaoCalibra);
 $('xiaoAnnuisci').addEventListener('click', xiaoAnnuisci);
 $('xiaoRicentra').addEventListener('click', xiaoRicentra);
 ['xiaoF1', 'xiaoF2', 'xiaoF3'].forEach(id => $(id).addEventListener('click', e => xiaoVaiFase(Number(e.currentTarget.dataset.f))));
-$('xiaoLato').value = xiaoLato; $('xiaoUsb').value = xiaoUsb;
-$('xiaoLato').addEventListener('change', e => { xiaoLato = e.target.value; pref.set('xiaoLato', xiaoLato); xiaoRicalcola(); });
-$('xiaoUsb').addEventListener('change', e => { xiaoUsb = e.target.value; pref.set('xiaoUsb', xiaoUsb); xiaoRicalcola(); });
 
 // Demo testa: testa sintetica con la basetta sul lato destro, inclinata di 20° e ruotata di 8° verso la nuca
 // (rispetto al montaggio ideale), con le impostazioni correnti di lato componenti e USB-C
@@ -2691,8 +2682,7 @@ function aggiornaXiaoTesti() {
   // Montaggio
   const m = x.info;
   $('xiaoMnt').innerHTML = m && x.qmnt
-    ? `Montaggio da <b>${m.metodo}</b> · normale <b>${m.elev.toFixed(0)}°</b> sopra l'orizzontale, <b>${Math.abs(m.azim).toFixed(0)}°</b> ${m.azim > 0 ? 'indietro' : 'avanti'} dal lato destro · USB-C: scarto <b>${m.scarto.toFixed(0)}°</b> dalla scelta` +
-      (m.scarto > 35 ? ' <span style="color:var(--attenzione)">(controlla «USB-C verso» e «Lato componenti»)</span>' : '')
+    ? `Montaggio da <b>${m.metodo}</b> · normale <b>${m.elev.toFixed(0)}°</b> sopra l'orizzontale, <b>${Math.abs(m.azim).toFixed(0)}°</b> ${m.azim > 0 ? 'indietro' : 'avanti'} dal lato destro`
     : '';
   // Verifica assi
   const f1 = (v, k) => (v >= 0 ? '+' : '−') + Math.abs(v).toFixed(k);
