@@ -35,6 +35,8 @@
   .cronriga { display: flex; align-items: baseline; gap: 2.4rem; }
   #giroPrec { font-size: 6.7rem; font-weight: 700; color: var(--debole); line-height: 1; }
   .info { margin-left: auto; text-align: right; display: flex; flex-direction: column; gap: .8rem; align-items: flex-end; }
+  #demoFase { font-size: 2.2rem; font-weight: 600; color: var(--azzurro); }
+  #demoFase span { color: var(--debole); font-weight: 500; }
   #oraData { font-size: 2.6rem; color: var(--tenue); font-weight: 500; }
   #oraData b { color: var(--testo); font-family: var(--mono); font-weight: 600; font-size: 3.6rem; margin-right: 1.2rem; }
   .tagstato { display: inline-flex; align-items: center; gap: 1rem; font-size: 3rem; font-weight: 700; }
@@ -125,6 +127,7 @@
   </div>
   <div class="info">
     <div id="oraData"></div>
+    <div id="demoFase" hidden></div>
     <div id="tagStato" class="tagstato"><i></i><span id="tagTesto">0/0 tag</span></div>
     <div class="demo">
       <span class="etichetta">Pool</span>
@@ -337,7 +340,7 @@ function sequenzaAllenamento(n, t0) {
   let t = t0;
   // riscaldamento 400 m facile (~1:40-1:50/100) + 30 s di pausa
   const dw = per100(400, clamp(105 + d * 0.5 + rnd(-4, 4), 100, 110));
-  segs.push({ t0: t, dur: dw, dist: 400 }); t += dw + 30000;
+  segs.push({ t0: t, dur: dw, dist: 400, fase: 'Warm-up 400 m' }); t += dw + 30000;
   // NB demo: tutti i segmenti sono multipli di 100 m, cosi' con vasca da 50 (o 25) finiscono
   // sempre al muro del display (un mattoncino per arrivo). Il caso del muro opposto resta gestito
   // da eventiConsegnati() ma qui non si presenta.
@@ -345,22 +348,22 @@ function sequenzaAllenamento(n, t0) {
   let fine = t;
   for (let k = 0; k < 4; k++) {
     const dur = clamp(124 + d * 0.6 + rnd(-5, 5), 118, 130) * 1000;
-    segs.push({ t0: t + k * 150000, dur, dist: 100 }); fine = t + k * 150000 + dur;
+    segs.push({ t0: t + k * 150000, dur, dist: 100, fase: 'Drill 100 m · ' + (k + 1) + '/4' }); fine = t + k * 150000 + dur;
   }
   t = fine + 45000;
   // core: 3 x (300 m ogni 5:00 + 4x100 veloci ogni 1:45), 1 min di pausa tra le serie
   for (let set = 0; set < 3; set++) {
     const d300 = per100(300, clamp(87 + d * 0.3 + set * 0.9 + rnd(-1, 1), 85, 92));
-    segs.push({ t0: t, dur: d300, dist: 300 });
+    segs.push({ t0: t, dur: d300, dist: 300, fase: 'Core set ' + (set + 1) + '/3 · 300 m' });
     const t100 = t + 300000;
     for (let j = 0; j < 4; j++) {
       const dur = clamp(80 + d * 0.4 + set * 0.8 + j * 0.3 + rnd(-1.5, 1.5), 75, 86) * 1000;
-      segs.push({ t0: t100 + j * 105000, dur, dist: 100 }); fine = t100 + j * 105000 + dur;
+      segs.push({ t0: t100 + j * 105000, dur, dist: 100, fase: 'Core set ' + (set + 1) + '/3 · 100 m fast ' + (j + 1) + '/4' }); fine = t100 + j * 105000 + dur;
     }
     t = fine + 60000;
   }
   // defaticamento 200 m facile
-  segs.push({ t0: t, dur: per100(200, clamp(110 + rnd(-5, 5), 100, 118)), dist: 200 });
+  segs.push({ t0: t, dur: per100(200, clamp(110 + rnd(-5, 5), 100, 118)), dist: 200, fase: 'Cool-down 200 m' });
   return segs;
 }
 
@@ -394,21 +397,23 @@ function pianificaDemo() {
   let offset = 2000;                                   // il primo parte a 0:02
   NUOTATORI.forEach((n, i) => {
     if (i > 0) offset += rnd(3000, 5000);              // sfalsati di 3-5 s l'uno dall'altro
-    eventiConsegnati(n.tag, sequenzaAllenamento(n, offset), piano);
+    const segs = sequenzaAllenamento(n, offset);
+    if (i === 0) demo.fasi = segs.map(s => ({ t0: s.t0, fine: s.t0 + s.dur, fase: s.fase }));  // fasi seguite dal primo nuotatore
+    eventiConsegnati(n.tag, segs, piano);
   });
   piano.sort((a, b) => a.emettiA - b.emettiA || (a.ev ? a.ev.t_ms : Infinity) - (b.ev ? b.ev.t_ms : Infinity));
   return piano;
 }
 
 const demo = {
-  attiva: false, vel: 1, t: 0, piano: [], idx: 0,
+  attiva: false, vel: 1, t: 0, piano: [], idx: 0, fasi: [],
   avvia() {
     if (this.piano.length === 0 || this.idx >= this.piano.length) { this.azzera(); this.piano = pianificaDemo(); }
     NUOTATORI.forEach(n => tagConnessi.add(n.tag));    // i tag si collegano all'avvio
     this.attiva = true;
   },
   ferma() { this.attiva = false; },
-  azzera() { this.attiva = false; this.t = 0; this.idx = 0; this.piano = []; azzeraModello(); aggiornaTutto(); },
+  azzera() { this.attiva = false; this.t = 0; this.idx = 0; this.piano = []; this.fasi = []; azzeraModello(); aggiornaTutto(); },
   // avanza il tempo di sessione demo e consegna gli eventi scaduti
   avanza(dtMs) {
     if (!this.attiva) return;
@@ -614,6 +619,22 @@ function aggiornaOra() {
     d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
 }
 setInterval(aggiornaOra, 1000); aggiornaOra();
+
+// Solo demo: cosa sta simulando il primo nuotatore (fase dell'allenamento), vicino alla data
+const elFase = document.getElementById('demoFase');
+function aggiornaFase() {
+  let txt = '';
+  if (demo.fasi.length) {
+    const f = demo.fasi, t = demo.t;
+    if (t < f[0].t0) txt = 'Starting soon';
+    else if (t > f[f.length - 1].fine) txt = 'Workout done';
+    else { let k = 0; while (k + 1 < f.length && f[k + 1].t0 <= t) k++; txt = f[k].fase + (t > f[k].fine ? ' · rest' : ''); }
+  }
+  const html = txt ? '<span>Simulating:</span> ' + txt : '';
+  if (elFase.innerHTML !== html) elFase.innerHTML = html;
+  elFase.hidden = !txt;
+}
+setInterval(aggiornaFase, 250);
 
 // Avvio
 azzeraModello();
