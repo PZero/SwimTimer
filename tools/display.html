@@ -48,12 +48,17 @@
 
   /* ---- Tabella nuotatori ---- */
   .griglia { display: grid; align-items: center; column-gap: 1.6rem;
-             grid-template-columns: 19rem 15rem 8rem 13rem 24rem 15rem 17rem minmax(18rem, 1fr); }
+             grid-template-columns: 23rem 15rem 8rem 13rem 24rem 15rem 17rem minmax(18rem, 1fr); }
   .intest { font-size: 1.5rem; color: var(--debole); text-transform: uppercase; letter-spacing: .12em; font-weight: 600; padding: 0 2rem; }
   #righe { flex: 1; min-height: 0; display: grid; grid-auto-rows: minmax(0, 1fr); gap: .6rem; }
   .riga { background: var(--riga); border-radius: 1rem; padding: 0 2rem; max-height: 9.6rem; border: .2rem solid transparent; position: relative; overflow: hidden; }
   .riga:nth-child(even) { background: var(--riga-2); }
   .nome { font-size: 3.4rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  /* Codice colore del nuotatore: banda a sinistra della riga + quadrato accanto al nome */
+  .riga::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 1.1rem; background: var(--col, transparent); }
+  .nome { display: flex; align-items: center; gap: 1.2rem; }
+  .nome i { flex: none; width: 2.8rem; height: 2.8rem; border-radius: .6rem; background: var(--col, transparent); }
+  .nome span { overflow: hidden; text-overflow: ellipsis; }
   .stato { font-size: 2rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; display: inline-flex; align-items: center; gap: .8rem; }
   .stato::before { content: ""; width: 1.4rem; height: 1.4rem; border-radius: 50%; background: currentColor; flex: none; }
   .st-attesa { color: var(--debole); }
@@ -91,7 +96,7 @@
 
   /* Finestre piu' strette o piu' alte che larghe: nascondi lo storico per far stare il resto */
   @media (max-aspect-ratio: 13/9) {
-    .griglia { grid-template-columns: 19rem 15rem 8rem 13rem 24rem 15rem minmax(18rem, 1fr); }
+    .griglia { grid-template-columns: 23rem 15rem 8rem 13rem 24rem 15rem minmax(18rem, 1fr); }
     .storia, .intest.storia { display: none; }
   }
   @media (prefers-reduced-motion: reduce) { .riga.flash { animation-duration: 1ms; } }
@@ -140,14 +145,28 @@
 const VASCA_M = 50;            // vasca da 50 m: la virata e' al lato opposto, quindi intertempo ai 50 m
 const RIPETUTE_TOT = 10;       // 10 x 100
 const PARTENZA_OGNI_MS = 90000;// partenza ogni 1:30
+/* Codici colore dei nuotatori (max 10): vivaci, ben distinti sul fondo scuro e facili da nominare.
+   I primi 7 sono i piu' diversi tra loro; potranno coincidere col colore del tag o della cuffia. */
+const COLORI = [
+  '#3b82f6', // blu
+  '#f97316', // arancione
+  '#a855f7', // viola
+  '#06b6d4', // ciano
+  '#ec4899', // rosa
+  '#eab308', // giallo
+  '#e5e7eb', // bianco
+  '#84cc16', // verde lime
+  '#ef4444', // rosso
+  '#a16207', // marrone
+];
 const NUOTATORI = [            // nomi e CSS (s/100 m) INVENTATI
-  { tag: 'T01', nome: 'Marco R.',    css: 80 },
-  { tag: 'T02', nome: 'Giulia B.',   css: 83 },
-  { tag: 'T03', nome: 'Luca F.',     css: 78 },
-  { tag: 'T04', nome: 'Sara M.',     css: 85 },
-  { tag: 'T05', nome: 'Paolo D.',    css: 76 },
-  { tag: 'T06', nome: 'Elena C.',    css: 82 },
-  { tag: 'T07', nome: 'Davide G.',   css: 79 },
+  { tag: 'T01', nome: 'Marco R.',    css: 80, colore: COLORI[0] },
+  { tag: 'T02', nome: 'Giulia B.',   css: 83, colore: COLORI[1] },
+  { tag: 'T03', nome: 'Luca F.',     css: 78, colore: COLORI[2] },
+  { tag: 'T04', nome: 'Sara M.',     css: 85, colore: COLORI[3] },
+  { tag: 'T05', nome: 'Paolo D.',    css: 76, colore: COLORI[4] },
+  { tag: 'T06', nome: 'Elena C.',    css: 82, colore: COLORI[5] },
+  { tag: 'T07', nome: 'Davide G.',   css: 79, colore: COLORI[6] },
 ];
 
 /* =====================================================================
@@ -330,8 +349,9 @@ function costruisciRighe() {
   NUOTATORI.forEach(n => {
     const r = document.createElement('div');
     r.className = 'riga griglia';
+    r.style.setProperty('--col', n.colore);
     r.innerHTML =
-      '<div class="nome"></div>' +
+      '<div class="nome"><i></i><span></span></div>' +
       '<div><span class="stato"></span></div>' +
       '<div class="rip num"></div>' +
       '<div class="incorso num"></div>' +
@@ -342,7 +362,7 @@ function costruisciRighe() {
     elRighe.appendChild(r);
     const q = s => r.querySelector(s);
     refs.set(n.tag, {
-      riga: r, nome: q('.nome'), stato: q('.stato'), rip: q('.rip'), incorso: q('.incorso'),
+      riga: r, nome: q('.nome span'), stato: q('.stato'), rip: q('.rip'), incorso: q('.incorso'),
       ultimo: q('.ultimo'), interA: q('.inter .a'), interB: q('.inter .b'), storia: q('.storia'),
       coperchio: q('.coperchio'), val: q('.fatica .val'), cache: {}, flashId: 0,
     });
@@ -357,7 +377,7 @@ function impostaClasse(ref, chiave, el, classe) {
   if (ref.cache[chiave] !== classe) { ref.cache[chiave] = classe; el.className = classe; }
 }
 
-const ETICHETTA_STATO = { attesa: 'In attesa', vasca: 'In vasca', riposo: 'A riposo', finito: 'Finito' };
+const ETICHETTA_STATO = { attesa: 'In attesa', vasca: 'Swimming', riposo: 'Rest', finito: 'Finito' };
 const CLASSE_STATO = { attesa: 'st-attesa', vasca: 'st-vasca', riposo: 'st-riposo', finito: 'st-finito' };
 
 // Mini-storico: una barretta per ripetuta (10 posti). Piu' alta = piu' lenta; scala sul range del nuotatore.
