@@ -25,6 +25,7 @@ Watch it on YouTube: **https://youtu.be/EVrdSybpnE4** (Italian version: https://
 - [XIAO nRF52840 Sense test tags](#xiao-nrf52840-sense-test-tags)
 - [External reviews](#external-reviews-v04)
 - [Programmer HAT for Raspberry Pi 3/4](#programmer-hat-for-raspberry-pi-34)
+- [Poolside display mockup and proposed architecture](#poolside-display-mockup-and-proposed-architecture)
 - [Planned features and ideas](#planned-features-and-ideas)
 - [Technical wallpaper gallery](#technical-wallpaper-gallery)
 - [Repository structure](#repository-structure)
@@ -348,6 +349,37 @@ Single-sided board, hand-built with **toner transfer**, with the shape and holes
 - [`hardware/programmatore/bom.md`](hardware/programmatore/bom.md): bill of materials with prices.
 - [`hardware/programmatore/stampa/`](hardware/programmatore/stampa/): 1:1 print sheets.
 
+## Poolside display mockup and proposed architecture
+
+### Display mockup: `tools/display.html`
+
+[`tools/display.html`](tools/display.html) is a self-contained HTML mockup (English UI, no dependencies) of the poolside display. Open it in a browser. All data are invented.
+
+- **One row per swimmer:** colour code, name, state (Swimming / Rest / Waiting / Done).
+- **Running time** of the current segment with its distance.
+- **Last time** with distance, pace and per-lap splits.
+- **Effort 1-10**, computed on the last segment only. Provisional: based on CSS and pace; the reference test is still to be agreed.
+- **History of the last 10 segments:** the newest enters on the left and blinks for 5 s, the others slide right.
+- **Large clock** that restarts when the first swimmer begins a new segment, with the previous lap duration in grey beside it. It stops at the end of the workout.
+- **Generic segment model:** start to arrival, any distance. No workout is loaded, because the display will be offline. Pool length selectable: 25 or 50 m.
+- **Single entry point:** `ricevi({tag, tipo, t_ms})`. A real BLE source can be connected there later.
+- **Demo mode:** 7 swimmers staggered by 3-5 s run a workout (400 warm-up, 4x100 technique, 3x(300 + 4x100), 200 cool-down). Speed 1x / 5x / 10x / 30x; the simulated phase is shown under the date.
+
+### Proposed display architecture (not yet confirmed)
+
+| Item | Proposal |
+|---|---|
+| Computer | Raspberry Pi 4 |
+| Radio | USB nRF52840 dongle |
+| Screen | 15.6 inch portable monitor |
+| Power | USB-C PD power bank |
+| Software | Native program, Wi-Fi off |
+| Consumption and runtime | About 13 W, about 2 h on battery |
+| Connections | Up to 10 tags |
+| Data | Tags record events with their own clock and keep them until the display confirms. Only events are stored: about 60 KB for 10 tags in 2 h. |
+
+**Open problem:** BLE does not reach the opposite wall in a 50 m pool.
+
 ## Planned features and ideas
 
 Not implemented. They come from design discussions and are recorded in [`docs/DECISIONI.md`](docs/DECISIONI.md) and [`docs/DESIGN.md`](docs/DESIGN.md) (Italian).
@@ -379,7 +411,7 @@ SwimTimer/
 ├── firmware/
 │   ├── test-collegamenti/        ESP32-S3 tag: firmware 0.4.3
 │   └── display-prova/            T-RGB display
-├── tools/                        index.html (analysis page), assi.html (old)
+├── tools/                        index.html (analysis page), display.html (poolside display mockup), assi.html (old)
 ├── media/video/                  presentation video generator, thumbnail, music
 ├── hardware/
 │   ├── bom.md, schema.md         ESP32 prototype
@@ -445,6 +477,11 @@ The v0.5 board is verified (DRC/ERC, `verifica_v05.py`). **Do not order** before
 4. Build the programmer, write UICR, antenna range test before the resin (antenna 0.3 mm from the edge, 28 mm board).
 5. Firmware on Zephyr / nRF Connect SDK (SPI, flash, recording, MCUboot, sleep with IMU INT), then pool tests.
 6. Final version: motor, pressure sensor, multi-slot charging base with NFC association (see [Planned features and ideas](#planned-features-and-ideas)).
+
+**Poolside display**
+- Confirm the Raspberry Pi 4 + nRF52840 dongle architecture, then wire `ricevi()` to a real BLE source.
+- Solve BLE coverage of the far wall in a 50 m pool.
+- Agree the reference test for the Effort 1-10 indicator.
 
 **XIAO test tags**
 - Order 2 boards and the 100 mAh cells, dry-run the waterproofing, port the firmware to the XIAO.

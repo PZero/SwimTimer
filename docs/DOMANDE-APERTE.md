@@ -29,3 +29,6 @@ Risolte: modulo E73 (Raytac a stock 0), IMU LSM6DSV16X, flash 16 MB, interruttor
 30. Traslatore di livello sul programmatore (SWD 3,3 V del Pi contro 1,8 V del tag al primo avvio): lo aggiungiamo (1–2 €) o ti basta il metodo con le 1 kΩ e REGOUT0 scritto subito?
 31. Ordine NextPCB v0.6 (216,39 $ per 20 pz): aspetti Viviane (sponsorizzazione) fino a mercoledì 11 novembre o ordini subito?
 32. XIAO in arrivo: scriviamo subito lo sketch Arduino di streaming BLE per la tab XIAO? Ordini le celle LP-401230 da 100 mAh?
+33. Display a bordo vasca: confermi Raspberry Pi 4 + dongle nRF52840 + monitor portatile + power bank? Faccio fare a `elettronica` la distinta con modelli e prezzi (~180–220 €)?
+34. Quale test di riferimento (CSS 400+200 m o altro) per calcolare l'Effort di ogni nuotatore? Ora la scala 1–10 è provvisoria.
+35. Vasca da 50 m: il BLE non arriva al muro opposto al display. Secondo ricevitore a batteria sul muro lontano (~15–20 €) o consegna ritardata fino al ritorno?
