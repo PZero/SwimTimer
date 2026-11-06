@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="it">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SwimTimer - Display a bordo vasca (mockup)</title>
+<title>SwimTimer - Poolside display (mockup)</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600;700;800&display=swap" rel="stylesheet">
@@ -106,7 +106,7 @@
 
 <header>
   <div class="cron">
-    <small><span id="giroTesto">In attesa della partenza</span> &middot; sessione <span id="sessTesto" class="num">00:00</span></small>
+    <small><span id="giroTesto">Waiting for start</span> &middot; session <span id="sessTesto" class="num">00:00</span></small>
     <div id="cronometro" class="num">00:00<span class="dec">.0</span></div>
   </div>
   <div class="info">
@@ -114,26 +114,26 @@
     <div id="tagStato" class="tagstato"><i></i><span id="tagTesto">0/0 tag</span></div>
     <div class="demo">
       <span class="etichetta">Demo</span>
-      <button id="btnDemo" class="principale">Avvia demo</button>
+      <button id="btnDemo" class="principale">Start demo</button>
       <button data-vel="1" class="attivo">1&times;</button>
       <button data-vel="5">5&times;</button>
       <button data-vel="10">10&times;</button>
-      <button id="btnAzzera">Azzera</button>
+      <button id="btnAzzera">Reset</button>
     </div>
   </div>
 </header>
 
 <div class="griglia intest" aria-hidden="true">
-  <div>Nuotatore</div><div>Stato</div><div>Rip.</div><div>In corso</div>
-  <div>Ultimo tempo</div><div>Intertempo</div><div class="storia">Storico</div><div>Fatica</div>
+  <div>Swimmer</div><div>Status</div><div>Rep</div><div>Running</div>
+  <div>Last time</div><div>Split</div><div class="storia">History</div><div>Fatigue</div>
 </div>
 
 <main id="righe"></main>
 
 <footer>
-  <span><b>Provvisorio:</b> la fatica e' una stima di prova (carico cumulato tipo sTSS da velocita' critica CSS inventata); il test di riferimento va ancora concordato.</span>
-  <span>Barra: 0 = fresco, 100 = carico molto alto per questa sessione. Valore numerico = carico cumulato.</span>
-  <span style="margin-left:auto">Dati inventati - mockup</span>
+  <span><b>Provisional:</b> fatigue is a trial estimate (sTSS-like cumulative load from a made-up critical swim speed, CSS); the reference test is still to be agreed.</span>
+  <span>Bar: 0 = fresh, 100 = very high load for this session. Number = cumulative load.</span>
+  <span style="margin-left:auto">Made-up data - mockup</span>
 </footer>
 
 <script>
@@ -377,7 +377,7 @@ function impostaClasse(ref, chiave, el, classe) {
   if (ref.cache[chiave] !== classe) { ref.cache[chiave] = classe; el.className = classe; }
 }
 
-const ETICHETTA_STATO = { attesa: 'In attesa', vasca: 'Swimming', riposo: 'Rest', finito: 'Finito' };
+const ETICHETTA_STATO = { attesa: 'Waiting', vasca: 'Swimming', riposo: 'Rest', finito: 'Done' };
 const CLASSE_STATO = { attesa: 'st-attesa', vasca: 'st-vasca', riposo: 'st-riposo', finito: 'st-finito' };
 
 // Mini-storico: una barretta per ripetuta (10 posti). Piu' alta = piu' lenta; scala sul range del nuotatore.
@@ -386,14 +386,14 @@ function svgStoria(storia) {
   let min = Infinity, max = -Infinity;
   storia.forEach(t => { min = Math.min(min, t); max = Math.max(max, t); });
   const range = Math.max(6000, max - min);          // almeno 6 s di range, per non esagerare il rumore
-  let out = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Storico dei tempi">';
+  let out = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Time history">';
   for (let i = 0; i < n; i++) {
     const x = i * (bw + gap);
     if (i < storia.length) {
       const h = 14 + ((storia[i] - min) / range) * (H - 18);
       const ultima = i === storia.length - 1;
       out += '<rect x="' + x.toFixed(1) + '" y="' + (H - h).toFixed(1) + '" width="' + bw.toFixed(1) + '" height="' + h.toFixed(1) +
-             '" rx="2" fill="' + (ultima ? '#f2f7fb' : '#44a0ff') + '"><title>Rip. ' + (i + 1) + ': ' + fmtTempo(storia[i]) + '</title></rect>';
+             '" rx="2" fill="' + (ultima ? '#f2f7fb' : '#44a0ff') + '"><title>Rep ' + (i + 1) + ': ' + fmtTempo(storia[i]) + '</title></rect>';
     } else {
       out += '<rect x="' + x.toFixed(1) + '" y="' + (H - 3) + '" width="' + bw.toFixed(1) + '" height="3" rx="1.5" fill="#1b2a38"/>';
     }
@@ -413,7 +413,7 @@ function disegnaEventi(tag) {
   imposta(ref, 'ult', ref.ultimo, fmtTempo(s.ultimo));
   impostaClasse(ref, 'interACls', ref.interA, 'a num' + (s.inter == null ? ' vuoto' : ''));
   imposta(ref, 'interA', ref.interA, s.inter == null ? '-:--.-' : fmtTempo(s.inter));
-  imposta(ref, 'interB', ref.interB, s.secondo50 == null ? VASCA_M + ' m' : VASCA_M + ' m  |  2°: ' + fmtTempo(s.secondo50));
+  imposta(ref, 'interB', ref.interB, s.secondo50 == null ? VASCA_M + ' m' : VASCA_M + ' m  |  2nd: ' + fmtTempo(s.secondo50));
   const sv = svgStoria(s.storia);
   if (ref.cache.storia !== sv) { ref.cache.storia = sv; ref.storia.innerHTML = sv; }
   // Flash all'arrivo: riavvia l'animazione CSS
@@ -437,7 +437,7 @@ function disegna(tSess) {
   if (cron.cache !== mmss + dec) { cron.cache = mmss + dec; cron.el.innerHTML = mmss + '<span class="dec">' + dec + '</span>'; }
   const sess = fmtSessione(tSess)[0];
   if (cron.sess.textContent !== sess) cron.sess.textContent = sess;
-  const gt = giro.n > 0 ? 'Partenza ripetuta ' + giro.n + '/' + RIPETUTE_TOT : 'In attesa della partenza';
+  const gt = giro.n > 0 ? 'Start rep ' + giro.n + '/' + RIPETUTE_TOT : 'Waiting for start';
   if (cron.giro.textContent !== gt) cron.giro.textContent = gt;
   modello.forEach((s, tag) => {
     const ref = refs.get(tag);
@@ -476,7 +476,7 @@ function frame(ts) {
 }
 
 function aggiornaBottoneDemo() {
-  btnDemo.textContent = demo.attiva ? 'Ferma demo' : 'Avvia demo';
+  btnDemo.textContent = demo.attiva ? 'Stop demo' : 'Start demo';
   btnDemo.classList.toggle('in-corso', demo.attiva);
 }
 btnDemo.addEventListener('click', () => { demo.attiva ? demo.ferma() : demo.avvia(); aggiornaBottoneDemo(); });
@@ -491,8 +491,8 @@ setInterval(aggiornaBottoneDemo, 500);
 function aggiornaOra() {
   const d = new Date();
   document.getElementById('oraData').innerHTML =
-    '<b class="num">' + d.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' }) + '</b>' +
-    d.toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' });
+    '<b class="num">' + d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) + '</b>' +
+    d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
 }
 setInterval(aggiornaOra, 1000); aggiornaOra();
 
