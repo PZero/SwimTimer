@@ -2120,7 +2120,7 @@ const XIAO_TESTA = { rx: 0.75, ry: 0.95, rz: 1.1 };  // semiassi della testa in 
 // Scansione: altezza della testa+collo del modello scalata a 'altezza' dm; dy sposta il centro (frazione dell'altezza del modello: il centro della
 // testa sta sopra il centro del busto); occhi: x (dm) e z (dm) per il raggio che cerca le orbite
 // Misure sul modello (unità sue): altezza 7,94, testa da y = −0,6 (mento) a 3,97 (sommità), centro testa y ≈ 1,7; collo più stretto a y ≈ −0,4…0
-const XIAO_MODELLO = { altezza: 7.94 * 0.42, dy: -1.7, dz: 0.1, taglio: -1.0, occhioX: 0.33, occhioZ: 0.08 };
+const XIAO_MODELLO = { altezza: 7.94 * 0.42, dy: -1.7, dz: 0.1, taglio: -1.0, occhioX: 0.24, occhioCx: 0.04, occhioZ: 0.05 }; // occhi misurati sulla mappa di profondità del volto: centro del naso a X = 0,04
 const XIAO_DUR_CAL = 3, XIAO_DUR_NOD = 3;
 // Montaggio fisso: tag sempre a destra, lato componenti sempre verso l'esterno. La rotazione della scheda nel suo piano
 // si ricava dalla gravità (e dai cenni); la direzione dell'USB-C serve solo da ripiego se la normale fosse quasi verticale.
@@ -2587,8 +2587,8 @@ function xiao3d() {
         // Occhi nelle orbite: raggio verso l'avanti all'altezza degli occhi, appena dietro la superficie
         testa.updateWorldMatrix(true, true);
         occhi.forEach((o, i) => { // raggio dal davanti (+Y) verso dietro: il primo colpo è la faccia
-          const ris = colpisci([XIAO_MODELLO.occhioX * (i ? 1 : -1), 2, XIAO_MODELLO.occhioZ], [0, -1, 0]);
-          if (ris) o.position.set(ris.p[0], ris.p[1] - 0.04, ris.p[2]);
+          const ris = colpisci([XIAO_MODELLO.occhioCx + XIAO_MODELLO.occhioX * (i ? 1 : -1), 2, XIAO_MODELLO.occhioZ], [0, -1, 0]);
+          if (ris) o.position.set(ris.p[0], ris.p[1] - 0.05, ris.p[2]);
         });
         costruisciCuffia();
         modelloPronto = true; cacheChiave = '';
