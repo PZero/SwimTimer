@@ -507,6 +507,7 @@
         <button class="piccolo" id="xiaoAnnuisci" title="Facoltativo: 3 s di cenni «sì» per fissare l'asse sinistra-destra della testa">Annuisci</button>
         <button class="piccolo" id="xiaoRicentra" title="Guardando avanti: azzera l'imbardata">Ricentra</button>
         <button class="piccolo" id="xiaoDemo" title="Dati sintetici di una testa con il tag montato a destra, leggermente inclinato">Demo testa</button>
+        <label class="xiao-imp" style="display:inline-flex;align-items:center;gap:6px;cursor:pointer"><input type="checkbox" id="xiaoCuffia"> Cuffia</label>
       </div>
       <div class="xiao-mnt mono" id="xiaoMnt"></div>
       <div class="xiao-assi">
@@ -2124,6 +2125,8 @@ const XIAO_DUR_CAL = 3, XIAO_DUR_NOD = 3;
 // Montaggio fisso: tag sempre a destra, lato componenti sempre verso l'esterno. La rotazione della scheda nel suo piano
 // si ricava dalla gravità (e dai cenni); la direzione dell'USB-C serve solo da ripiego se la normale fosse quasi verticale.
 const xiaoLato = 'esterno', xiaoUsb = 'nuca';
+const XIAO_COL_CUFFIA = '#ff7a1a';
+let xiaoCuffiaOn = pref.get('xiaoCuffia', '1') === '1';
 const xiaoNormale = () => [0, 0, XIAO_SEGNO_LATO[xiaoLato]];
 const prodScal = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
 const combina = (a, k, b) => [a[0] + k * b[0], a[1] + k * b[1], a[2] + k * b[2]];
@@ -2344,6 +2347,8 @@ function xiaoFermaDemo() {
   if (xiaoDemoId) { clearInterval(xiaoDemoId); xiaoDemoId = null; }
   $('xiaoDemo').textContent = 'Demo testa';
 }
+$('xiaoCuffia').checked = xiaoCuffiaOn;
+$('xiaoCuffia').addEventListener('change', e => { xiaoCuffiaOn = e.target.checked; pref.set('xiaoCuffia', xiaoCuffiaOn ? '1' : '0'); });
 $('xiaoDemo').addEventListener('click', () => {
   if (xiaoDemoId) return xiaoFermaDemo();
   if (sorgente) { XI.msg = 'Scollega prima la sorgente attiva'; return; }
@@ -2431,7 +2436,7 @@ function xiao3d() {
     return filo(pts, mat);
   }
   const matFilo = new THREE.LineBasicMaterial({ transparent: true, opacity: 0.6 });
-  const matCuffia = new THREE.LineBasicMaterial({ transparent: true, opacity: 0.35 });
+  const matCuffia = new THREE.LineBasicMaterial({ color: XIAO_COL_CUFFIA, transparent: true, opacity: 0.9 }); // cuffia da nuoto arancione
   const { rx, ry, rz } = XIAO_TESTA;
 
   // Mezzo busto: spalle, torace, collo (con perno alla base) e testa (con perno alla sommità del collo)
@@ -2476,7 +2481,8 @@ function xiao3d() {
   const testa = new THREE.Group(); testa.position.z = 0.85; perno.add(testa); // origine = centro della testa
   const procedurale = new THREE.Group(); testa.add(procedurale); // testa di ripiego, se la scansione non si carica
   procedurale.add(superficie((u, v) => puntoTesta(dirTesta(u, v)), 60, 80, matTesta));
-  procedurale.add(ellissoide(rx * 1.06, ry * 1.06, rz * 1.06, 20, 8, 1.95, matCuffia)); // cuffia
+  const cuffiaProc = ellissoide(rx * 1.06, ry * 1.06, rz * 1.06, 20, 8, 1.95, matCuffia); procedurale.add(cuffiaProc); // cuffia
+  const cuffia = new THREE.Group(); testa.add(cuffia); // cuffia sulla scansione, costruita dopo il caricamento
   const matOcchi = new THREE.MeshBasicMaterial({ wireframe: true, transparent: true, opacity: 0.7 }); // a griglia come la testa; pieni e rossi nel lampo
   const occhi = [];
   [-1, 1].forEach(s => {
@@ -2506,6 +2512,37 @@ function xiao3d() {
     const nl = testa.worldToLocal(h.point.clone().add(nw)).sub(pl).normalize();
     if (nl.x * dL[0] + nl.y * dL[1] + nl.z * dL[2] < 0) nl.negate();
     return { p: [pl.x, pl.y, pl.z], n: [nl.x, nl.y, nl.z] };
+  }
+  // Cuffia da nuoto sulla scansione: raggi dal centro della testa, punto della superficie spostato in fuori di 0,08 dm.
+  // Bordo: z = 0,3·y − 0,02 nelle direzioni (sopra la fronte davanti, sulla nuca dietro, copre la parte alta delle orecchie).
+  function costruisciCuffia() {
+    const N = 30, M = 96, bordo = ph => { // theta del bordo per l'azimut ph (bisezione: f decrescente in theta)
+      let a = 0, b = Math.PI;
+      for (let k = 0; k < 30; k++) { const t = (a + b) / 2; if (Math.cos(t) - 0.3 * Math.sin(t) * Math.sin(ph) + 0.02 > 0) a = t; else b = t; }
+      return a;
+    };
+    const P = [];
+    for (let i = 0; i <= N; i++) {
+      P.push([]);
+      for (let j = 0; j < M; j++) {
+        const ph = 2 * Math.PI * j / M, th = bordo(ph) * Math.max(i, 0.02) / N;
+        const d = [Math.sin(th) * Math.cos(ph), Math.sin(th) * Math.sin(ph), Math.cos(th)], h = colpisci([0, 0, 0], d);
+        P[i].push(h ? [h.p[0] + d[0] * 0.08, h.p[1] + d[1] * 0.08, h.p[2] + d[2] * 0.08] : null);
+      }
+    }
+    const pts = [], seg = (a, b) => { if (a && b) pts.push(...a, ...b); };
+    for (let i = 1; i <= N; i++) for (let j = 0; j < M; j++) seg(P[i][j], P[i][(j + 1) % M]);   // anelli
+    for (let i = 0; i < N; i++) for (let j = 0; j < M; j++) seg(P[i][j], P[i + 1][j]);        // meridiani
+    cuffia.add(filo(pts, matCuffia));
+    // Guscio pieno semitrasparente, così la cuffia si distingue dalla griglia della testa
+    const tri = [];
+    for (let i = 0; i < N; i++) for (let j = 0; j < M; j++) {
+      const a = P[i][j], b = P[i][(j + 1) % M], c = P[i + 1][j], d = P[i + 1][(j + 1) % M];
+      if (a && c && d) tri.push(...a, ...c, ...d);
+      if (a && d && b) tri.push(...a, ...d, ...b);
+    }
+    const gg = new THREE.BufferGeometry(); gg.setAttribute('position', new THREE.Float32BufferAttribute(tri, 3));
+    cuffia.add(new THREE.Mesh(gg, new THREE.MeshBasicMaterial({ color: XIAO_COL_CUFFIA, transparent: true, opacity: 0.28, side: THREE.DoubleSide, depthWrite: false })));
   }
   const nota = t => { const e = $('xiaoModelloStato'); if (e) e.textContent = t; };
   if (THREE.GLTFLoader) {
@@ -2553,6 +2590,7 @@ function xiao3d() {
           const ris = colpisci([XIAO_MODELLO.occhioX * (i ? 1 : -1), 2, XIAO_MODELLO.occhioZ], [0, -1, 0]);
           if (ris) o.position.set(ris.p[0], ris.p[1] - 0.04, ris.p[2]);
         });
+        costruisciCuffia();
         modelloPronto = true; cacheChiave = '';
         nota('Scansione caricata.');
       } catch (e) { console.warn('Scansione non utilizzabile, uso la testa procedurale', e); nota('Scansione non utilizzabile: testa procedurale.'); }
@@ -2606,7 +2644,7 @@ function xiao3d() {
   const etichette = [...assi.map(a => a.s), etUsb, etImu];
 
   function colori() {
-    matFilo.color.set(C.tenue); matCuffia.color.set(C.accento);
+    matFilo.color.set(C.tenue); matCuffia.color.set(XIAO_COL_CUFFIA);
     matTesta.color.set(C['accento-2']); matModello.color.set(C['accento-2']); matPalpebre.color.set(C.testo);
     const col = [C.x, C.y, C.z];
     assi.forEach(({ f, s }, i) => { f.setColor(new THREE.Color(col[i])); scrivi(s, col[i]); });
@@ -2638,6 +2676,7 @@ function xiao3d() {
       const qw = qv[0] < 0 ? qv.map(v => -v) : qv, ang = 2 * Math.acos(limita(qw[0], -1, 1)), sn = Math.sin(ang / 2);
       const qn = ang < 1e-4 || sn < 1e-6 ? Q.id() : Q.asse([qw[1] / sn, qw[2] / sn, qw[3] / sn], Math.min(0.3 * ang * R2D, 30));
       imposta(collo, qn); imposta(perno, Q.mul(Q.conj(qn), qv));
+      cuffia.visible = cuffiaProc.visible = xiaoCuffiaOn;
       occhiRossi = flash && (fl < 200 || (fl >= 300 && fl < 500));
       matOcchi.color.set(occhiRossi ? '#ff2a2a' : C['accento-2']);
       matOcchi.wireframe = !occhiRossi; matOcchi.opacity = occhiRossi ? 1 : 0.7;
