@@ -230,6 +230,8 @@
   .xiao-mnt b { color: var(--testo); font-weight: 500; }
   .xiao-assi { border-top: 1px solid var(--bordo); padding-top: 10px; }
   .xiao-assi .valori3 { margin-top: 6px; }
+  .xiao-leg { margin-top: 8px; gap: 12px; flex-wrap: wrap; }
+  .xiao-graf { height: 130px !important; width: 100%; display: block; }
 
   /* Schermo ampio: tutto in una schermata, nessuno scorrimento della pagina */
   @media (min-width: 1000px) and (min-height: 600px) {
@@ -515,16 +517,10 @@
       <div class="xiao-mnt mono" id="xiaoMnt"></div>
       <div class="xiao-assi">
         <div class="etichetta">Verifica assi <span class="mono" id="xiaoModulo" style="text-transform:none;letter-spacing:0;font-weight:500"></span></div>
-        <div class="valori3 mono">
-          <div><div class="etichetta">Acc X · g</div><div class="n x" id="xiaoAx">–</div></div>
-          <div><div class="etichetta">Acc Y · g</div><div class="n y" id="xiaoAy">–</div></div>
-          <div><div class="etichetta">Acc Z · g</div><div class="n z" id="xiaoAz">–</div></div>
-        </div>
-        <div class="valori3 mono">
-          <div><div class="etichetta">Gyro X · dps</div><div class="n x" id="xiaoGx">–</div></div>
-          <div><div class="etichetta">Gyro Y · dps</div><div class="n y" id="xiaoGy">–</div></div>
-          <div><div class="etichetta">Gyro Z · dps</div><div class="n z" id="xiaoGz">–</div></div>
-        </div>
+        <div class="legenda mono xiao-leg"><span>Accelerazione · g</span><span><i style="background:var(--x)"></i>X <b id="xiaoAx">–</b></span><span><i style="background:var(--y)"></i>Y <b id="xiaoAy">–</b></span><span><i style="background:var(--z)"></i>Z <b id="xiaoAz">–</b></span></div>
+        <canvas class="grafico xiao-graf" id="xiaoGrafAcc"></canvas>
+        <div class="legenda mono xiao-leg"><span>Giroscopio · dps</span><span><i style="background:var(--x)"></i>X <b id="xiaoGx">–</b></span><span><i style="background:var(--y)"></i>Y <b id="xiaoGy">–</b></span><span><i style="background:var(--z)"></i>Z <b id="xiaoGz">–</b></span></div>
+        <canvas class="grafico xiao-graf" id="xiaoGrafGyro"></canvas>
         <div class="nota-reg" style="margin-top:6px">Tag fermo a faccia in su (lato componenti in alto): +1 g sull'asse atteso, cioè Z. Appoggiato sul lato corto con l'USB-C in alto: +1 g su Y. Se non corrisponde, correggi XIAO_ASSE_USB e il segno di Z nel codice.</div>
       </div>
     </section>
@@ -1984,14 +1980,14 @@ function disegnaRadar(ora) {
 }
 
 // ---------- Grafici ----------
-function disegnaGrafico(canvas, colonne, minimo, decimali) {
+function disegnaGrafico(canvas, colonne, minimo, decimali, dati = serie) {
   const { ctx, w, h } = preparaCanvas(canvas);
   const sx = 44, dx = w - 6, alto = 8, basso = h - 20;
   let lo = -minimo, hi = minimo;
-  for (const r of serie) for (const c of colonne) { if (r[c] < lo) lo = r[c]; if (r[c] > hi) hi = r[c]; }
+  for (const r of dati) for (const c of colonne) { if (r[c] < lo) lo = r[c]; if (r[c] > hi) hi = r[c]; }
   const m = Math.max(-lo, hi); lo = -m; hi = m;
   const y = v => basso - (v - lo) / (hi - lo) * (basso - alto);
-  const tFine = serie.length ? serie[serie.length - 1][0] : FINESTRA_GRAFICI, tIni = tFine - FINESTRA_GRAFICI;
+  const tFine = dati.length ? dati[dati.length - 1][0] : FINESTRA_GRAFICI, tIni = tFine - FINESTRA_GRAFICI;
   const x = t => sx + (t - tIni) / FINESTRA_GRAFICI * (dx - sx);
   ctx.font = '10px "JetBrains Mono", monospace'; ctx.textAlign = 'right';
   for (let i = 0; i <= 4; i++) {
@@ -2009,7 +2005,7 @@ function disegnaGrafico(canvas, colonne, minimo, decimali) {
   }
   ['x', 'y', 'z'].forEach((k, i) => {
     ctx.strokeStyle = C[k]; ctx.lineWidth = 1.6; ctx.lineJoin = 'round'; ctx.beginPath();
-    serie.forEach((r, j) => j ? ctx.lineTo(x(r[0]), y(r[colonne[i]])) : ctx.moveTo(x(r[0]), y(r[colonne[i]])));
+    dati.forEach((r, j) => j ? ctx.lineTo(x(r[0]), y(r[colonne[i]])) : ctx.moveTo(x(r[0]), y(r[colonne[i]])));
     ctx.stroke();
   });
 }
@@ -2191,8 +2187,12 @@ function puntoTangenza(n) {
   return [rx * rx * n[0] / s, ry * ry * n[1] / s, rz * rz * n[2] / s];
 }
 
+const xiaoSerie = [];
 function xiaoCampione(tms, a, gd) {
   const x = XI, t = tms / 1000;
+  // Serie degli ultimi secondi per i grafici di «Verifica assi»
+  xiaoSerie.push([t, a[0], a[1], a[2], gd[0], gd[1], gd[2]]);
+  while (xiaoSerie.length && (xiaoSerie[0][0] < t - FINESTRA_GRAFICI || xiaoSerie[0][0] > t)) xiaoSerie.shift();
   let dt = x.tPrec === null ? 0.04 : t - x.tPrec;
   if (!(dt > 0 && dt < 0.5)) dt = 0.04;
   x.tPrec = t;
@@ -2720,6 +2720,10 @@ function ciclo(ora) {
   $('veloCorretta').hidden = !!(u && u.qTesta);
   xiaoAggiorna(ora);
   if (xiaoVista && !$('vistaXiao').hidden) xiaoVista.disegna(ora);
+  if (!$('vistaXiao').hidden) {
+    disegnaGrafico($('xiaoGrafAcc'), [1, 2, 3], 1.2, 1, xiaoSerie);
+    disegnaGrafico($('xiaoGrafGyro'), [4, 5, 6], 100, 0, xiaoSerie);
+  }
   if (ora - ultimoTesto > 100) { ultimoTesto = ora; aggiornaTesti(); if (!$('vistaXiao').hidden) aggiornaXiaoTesti(); }
 }
 
