@@ -30,6 +30,10 @@
   .cron small { font-size: 1.8rem; color: var(--tenue); text-transform: uppercase; letter-spacing: .14em; font-weight: 600; }
   #cronometro { font-size: 11.5rem; line-height: 1; font-weight: 800; color: var(--testo); }
   #cronometro .dec { color: var(--azzurro); }
+  #cronometro.fermo { color: var(--debole); }
+  /* durata del giro precedente: a destra del cronometro, ~58% delle cifre, sulla stessa linea di base */
+  .cronriga { display: flex; align-items: baseline; gap: 2.4rem; }
+  #giroPrec { font-size: 6.7rem; font-weight: 700; color: var(--debole); line-height: 1; }
   .info { margin-left: auto; text-align: right; display: flex; flex-direction: column; gap: .8rem; align-items: flex-end; }
   #oraData { font-size: 2.6rem; color: var(--tenue); font-weight: 500; }
   #oraData b { color: var(--testo); font-family: var(--mono); font-weight: 600; font-size: 3.6rem; margin-right: 1.2rem; }
@@ -38,7 +42,8 @@
   .tagstato.parziale i { background: var(--giallo); box-shadow: 0 0 1.2rem var(--giallo); }
   .tagstato.assente i { background: var(--rosso); box-shadow: 0 0 1.2rem var(--rosso); }
   .demo { display: flex; gap: .8rem; align-items: center; font-size: 1.7rem; }
-  .demo .etichetta { color: var(--debole); text-transform: uppercase; letter-spacing: .12em; font-weight: 600; margin-right: .4rem; }
+  .demo .etichetta { color: var(--debole); text-transform: uppercase; letter-spacing: .12em; font-weight: 600; margin: 0 .4rem 0 1.2rem; }
+  .demo .etichetta:first-child { margin-left: 0; }
   button { font: inherit; font-weight: 600; color: var(--testo); background: #14212d; border: .2rem solid var(--bordo);
            padding: .7rem 1.5rem; border-radius: .8rem; cursor: pointer; }
   button:hover { border-color: var(--azzurro); }
@@ -48,15 +53,14 @@
 
   /* ---- Tabella nuotatori ---- */
   .griglia { display: grid; align-items: center; column-gap: 1.6rem;
-             grid-template-columns: 23rem 15rem 8rem 13rem 24rem 15rem 17rem minmax(18rem, 1fr); }
+             grid-template-columns: 23rem 15rem 19rem 35rem minmax(0, 1fr); }
   .intest { font-size: 1.5rem; color: var(--debole); text-transform: uppercase; letter-spacing: .12em; font-weight: 600; padding: 0 2rem; }
   #righe { flex: 1; min-height: 0; display: grid; grid-auto-rows: minmax(0, 1fr); gap: .6rem; }
   .riga { background: var(--riga); border-radius: 1rem; padding: 0 2rem; max-height: 9.6rem; border: .2rem solid transparent; position: relative; overflow: hidden; }
   .riga:nth-child(even) { background: var(--riga-2); }
-  .nome { font-size: 3.4rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   /* Codice colore del nuotatore: banda a sinistra della riga + quadrato accanto al nome */
   .riga::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 1.1rem; background: var(--col, transparent); }
-  .nome { display: flex; align-items: center; gap: 1.2rem; }
+  .nome { font-size: 3.4rem; font-weight: 700; white-space: nowrap; display: flex; align-items: center; gap: 1.2rem; }
   .nome i { flex: none; width: 2.8rem; height: 2.8rem; border-radius: .6rem; background: var(--col, transparent); }
   .nome span { overflow: hidden; text-overflow: ellipsis; }
   .stato { font-size: 2rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; display: inline-flex; align-items: center; gap: .8rem; }
@@ -65,23 +69,36 @@
   .st-vasca { color: var(--azzurro); }
   .st-riposo { color: var(--giallo); }
   .st-finito { color: var(--verde); }
-  .rip { font-size: 3rem; font-weight: 700; color: var(--tenue); }
-  .rip b { color: var(--testo); font-weight: 800; }
+
+  /* Running: tempo del segmento in corso + distanza */
+  .run { display: flex; flex-direction: column; line-height: 1.15; }
   .incorso { font-size: 3.4rem; font-weight: 600; color: var(--azzurro); }
   .incorso.fermo { color: var(--debole); }
-  .ultimo { font-size: 6.6rem; font-weight: 800; line-height: 1; color: var(--testo); white-space: nowrap; }
+  .rd { font-size: 1.9rem; color: var(--tenue); font-weight: 500; min-height: 2.2rem; }
+
+  /* Last: ultimo tempo grande, distanza e passo a lato, parziali sotto */
+  .last { display: grid; grid-template-columns: auto 1fr; column-gap: 1.4rem; align-items: center; row-gap: .2rem; }
+  .ultimo { font-size: 5.6rem; font-weight: 800; line-height: 1; color: var(--testo); white-space: nowrap; }
   .ultimo.vuoto { color: var(--debole); }
-  .inter { display: flex; flex-direction: column; line-height: 1.15; }
-  .inter .a { font-size: 3rem; font-weight: 700; color: var(--arancio); }
-  .inter .b { font-size: 1.7rem; color: var(--tenue); font-weight: 500; }
-  .inter .a.vuoto { color: var(--debole); }
-  .storia svg { width: 100%; height: 5.6rem; display: block; }
-  .fatica { display: flex; align-items: center; gap: 1.4rem; }
-  .fatica .val { font-size: 3rem; font-weight: 800; min-width: 7.5rem; text-align: right; }
-  .barra { flex: 1; height: 2.4rem; border-radius: 1.2rem; position: relative; overflow: hidden;
-           background: linear-gradient(90deg, var(--verde) 0%, var(--giallo) 55%, var(--rosso) 100%); }
-  /* il "coperchio" scuro a destra nasconde la parte non raggiunta: il gradiente resta fisso sulla scala 0-100 */
-  .barra .coperchio { position: absolute; top: 0; right: 0; bottom: 0; background: #1a2733; transition: width .5s linear; }
+  .lside { display: flex; flex-direction: column; line-height: 1.2; }
+  .ld { font-size: 2.6rem; font-weight: 700; color: var(--arancio); }
+  .lp { font-size: 1.7rem; color: var(--tenue); font-weight: 500; white-space: nowrap; }
+  .parz { grid-column: 1 / -1; font-size: 1.7rem; color: var(--tenue); white-space: nowrap; overflow: hidden; min-height: 2rem; }
+
+  /* Fatigue: storico dei livelli degli ultimi 10 segmenti, il piu' recente a sinistra */
+  .storia { align-self: stretch; margin: .9rem 0; position: relative; overflow: hidden; }
+  .vuoti, .celle { position: absolute; inset: 0; display: flex; align-items: flex-end; }
+  .vuoti i { flex: 0 0 10%; height: 100%; padding: 0 .4rem; display: flex; align-items: flex-end; }
+  .vuoti i::after { content: ''; display: block; width: 100%; height: .4rem; border-radius: .2rem; background: #1b2a38; }
+  .cella { flex: 0 0 10%; height: 100%; padding: 0 .4rem; display: flex; align-items: flex-end; }
+  .liv { width: 100%; height: calc(3.2rem + (100% - 3.2rem) * var(--f)); border-radius: .7rem; display: flex; justify-content: center; align-items: flex-start; padding-top: .3rem; }
+  .liv b { font-family: var(--mono); font-size: 2.6rem; font-weight: 800; color: #04080c; line-height: 1.2; }
+  /* il segmento piu' recente lampeggia per 5 s (10 cicli da .5 s) */
+  .cella.nuovo .liv { animation: lampeggio .5s ease-in-out 10; }
+  @keyframes lampeggio {
+    0%, 100% { filter: brightness(1); box-shadow: 0 0 0 0 rgba(255,255,255,0); }
+    50% { filter: brightness(1.8); box-shadow: 0 0 0 .4rem rgba(255,255,255,.95); }
+  }
 
   /* Flash all'arrivo: la riga si illumina e poi torna normale */
   .riga.flash { animation: lampo 2.8s ease-out; }
@@ -93,12 +110,6 @@
 
   footer { font-size: 1.5rem; color: var(--debole); display: flex; gap: 2.4rem; align-items: center; padding: 0 .4rem; }
   footer b { color: var(--giallo); font-weight: 600; }
-
-  /* Finestre piu' strette o piu' alte che larghe: nascondi lo storico per far stare il resto */
-  @media (max-aspect-ratio: 13/9) {
-    .griglia { grid-template-columns: 23rem 15rem 8rem 13rem 24rem 15rem minmax(18rem, 1fr); }
-    .storia, .intest.storia { display: none; }
-  }
   @media (prefers-reduced-motion: reduce) { .riga.flash { animation-duration: 1ms; } }
 </style>
 </head>
@@ -107,32 +118,37 @@
 <header>
   <div class="cron">
     <small><span id="giroTesto">Waiting for start</span> &middot; session <span id="sessTesto" class="num">00:00</span></small>
-    <div id="cronometro" class="num">00:00<span class="dec">.0</span></div>
+    <div class="cronriga">
+      <div id="cronometro" class="num">00:00<span class="dec">.0</span></div>
+      <div id="giroPrec" class="num" title="Previous set duration (first swimmer, start to start)"></div>
+    </div>
   </div>
   <div class="info">
     <div id="oraData"></div>
     <div id="tagStato" class="tagstato"><i></i><span id="tagTesto">0/0 tag</span></div>
     <div class="demo">
+      <span class="etichetta">Pool</span>
+      <button data-vasca="25">25 m</button>
+      <button data-vasca="50" class="attivo">50 m</button>
       <span class="etichetta">Demo</span>
       <button id="btnDemo" class="principale">Start demo</button>
       <button data-vel="1" class="attivo">1&times;</button>
       <button data-vel="5">5&times;</button>
       <button data-vel="10">10&times;</button>
+      <button data-vel="30">30&times;</button>
       <button id="btnAzzera">Reset</button>
     </div>
   </div>
 </header>
 
 <div class="griglia intest" aria-hidden="true">
-  <div>Swimmer</div><div>Status</div><div>Rep</div><div>Running</div>
-  <div>Last time</div><div>Split</div><div class="storia">History</div><div>Fatigue</div>
+  <div>Swimmer</div><div>Status</div><div>Running</div><div>Last</div><div>Effort 1&ndash;10 &middot; last 10 segments, newest left</div>
 </div>
 
 <main id="righe"></main>
 
 <footer>
-  <span><b>Provisional:</b> fatigue is a trial estimate (sTSS-like cumulative load from a made-up critical swim speed, CSS); the reference test is still to be agreed.</span>
-  <span>Bar: 0 = fresh, 100 = very high load for this session. Number = cumulative load.</span>
+  <span><b>Provisional:</b> Effort level = last segment only. IF = CSS pace &divide; segment pace (both s/100 m), mapped linearly from level 1 (IF &le; 0.70) to 10 (IF &ge; 1.05). CSS values are made up; the reference test is still to be agreed.</span>
   <span style="margin-left:auto">Made-up data - mockup</span>
 </footer>
 
@@ -141,10 +157,13 @@
 
 /* =====================================================================
    CONFIGURAZIONE
+   Il display NON conosce il piano di allenamento (il Pi e' offline): vede solo segmenti generici.
+   Un SEGMENTO va da una partenza all'arrivo successivo (fermata al muro) e puo' durare quanto si vuole.
+   Distanza del segmento = vasche contate dalle virate x lunghezza vasca.
    ===================================================================== */
-const VASCA_M = 50;            // vasca da 50 m: la virata e' al lato opposto, quindi intertempo ai 50 m
-const RIPETUTE_TOT = 10;       // 10 x 100
-const PARTENZA_OGNI_MS = 90000;// partenza ogni 1:30
+let VASCA_M = 25 * 2;          // lunghezza vasca (m): impostazione unica della pagina, 25 o 50 (selettore in testata)
+const STORIA_MAX = 10;         // segmenti nello storico di fatica
+const RIPOSO_STOP_MS = 120000; // cronometro grande: si ferma se tutti sono Done o a riposo da piu' di 2 min
 /* Codici colore dei nuotatori (max 10): vivaci, ben distinti sul fondo scuro e facili da nominare.
    I primi 7 sono i piu' diversi tra loro; potranno coincidere col colore del tag o della cuffia. */
 const COLORI = [
@@ -179,136 +198,201 @@ function fmtTempo(ms) {
   const s = Math.floor(ms / 1000);
   return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0') + '.' + dec;
 }
-// ms -> "mm:ss" e decimo separato (cronometro di sessione)
+// ms -> ["mm:ss", ".d"] (cronometro grande, decimo separato)
 function fmtSessione(ms) {
   const dec = Math.floor(ms / 100) % 10;
   const s = Math.floor(ms / 1000);
   return [String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0'), '.' + dec];
 }
+// parziale per vasca: "44.8" sotto il minuto, altrimenti "1:02.3"
+function fmtParz(ms) { return ms < 60000 ? (Math.floor(ms / 100) / 10).toFixed(1) : fmtTempo(ms); }
 
 /* =====================================================================
    (2) MODELLO: stato per nuotatore, aggiornato SOLO da ricevi(evento)
    ===================================================================== */
 const modello = new Map();   // tag -> stato nuotatore
 const tagConnessi = new Set();
+let idStoria = 0;            // identificatore univoco delle voci di storico (serve all'animazione)
 
 function nuovoStato(n) {
   return {
     tag: n.tag, nome: n.nome, css: n.css,
     stato: 'attesa',          // attesa | vasca | riposo | finito
-    rip: 0,                   // numero della ripetuta in corso (o dell'ultima, se a riposo)
-    tStart: null,             // t_ms della partenza della ripetuta in corso
-    tVirata: null,            // t_ms della virata (arriva insieme all'arrivo)
-    ultimo: null,             // ultimo tempo 100 m (ms)
-    inter: null,              // intertempo ai 50 m dell'ultima ripetuta (ms)
-    secondo50: null,          // secondo 50 m dell'ultima ripetuta (ms)
-    storia: [],               // tempi delle ripetute completate (ms)
+    seg: 0,                   // indice del segmento in corso (o dell'ultimo, a riposo)
+    tStart: null,             // t_ms della partenza del segmento in corso
+    turns: [],                // t_ms delle virate ricevute nel segmento in corso
+    tArrivo: null,            // t_ms dell'ultimo arrivo (inizio del riposo)
+    ultimo: null,             // ultimo segmento: {tempo, dist, passo, parz[], liv, IF}
+    storia: [],               // livelli di fatica, il piu' recente per primo: {id, liv, IF}
     flashId: 0,               // incrementato a ogni arrivo, per riavviare l'animazione
   };
 }
-/* Giro di partenze: il cronometro grande riparte quando il PRIMO nuotatore inizia una nuova ripetuta.
-   E' solo un riferimento visivo (come l'orologio a parete): i tempi di ogni nuotatore si calcolano
-   sempre dalla SUA partenza (s.tStart), quindi chi sta ancora arrivando non ne e' influenzato. */
-const giro = { n: 0, tStart: null };
+/* Giro di partenze: il cronometro grande riparte quando il PRIMO nuotatore inizia un segmento con indice
+   maggiore del giro corrente. E' solo un riferimento visivo (come l'orologio a parete): i tempi di ogni
+   nuotatore si calcolano sempre dalla SUA partenza (s.tStart). Si ferma quando tutti sono Done o a riposo
+   da piu' di 2 minuti (tFermo = istante di arresto). */
+const giro = { n: 0, tStart: null, tFermo: null, prec: null };   // prec = durata del giro precedente (ms), solo dal primo nuotatore
 
 function azzeraModello() {
   modello.clear(); tagConnessi.clear();
-  giro.n = 0; giro.tStart = null;
+  giro.n = 0; giro.tStart = null; giro.tFermo = null; giro.prec = null;
   NUOTATORI.forEach(n => { modello.set(n.tag, nuovoStato(n)); });
+}
+
+/* ---------------------------------------------------------------------
+   FATICA - CALCOLO PROVVISORIO (da concordare con l'utente)
+   Il test di riferimento NON e' ancora deciso. Stima di prova, isolata qui cosi' da poterla sostituire:
+     - solo l'ULTIMO segmento (nessun carico cumulato);
+     - IF = passo CSS / passo del segmento, entrambi in s/100 m (>1 = piu' veloce della CSS);
+     - livello 1-10 lineare: IF <= 0.70 -> 1, IF >= 1.05 -> 10, arrotondato all'intero.
+   Ritorna { IF, livello }. Il colore (verde -> giallo -> rosso) lo decide coloreLivello().
+   --------------------------------------------------------------------- */
+function calcolaFatica(passoSec100, cssSec100) {
+  const IF = cssSec100 / passoSec100;
+  const liv = Math.round(1 + 9 * (IF - 0.70) / (1.05 - 0.70));
+  return { IF, livello: Math.max(1, Math.min(10, liv)) };
+}
+// Verde (livello 1) -> giallo (meta') -> rosso (livello 10)
+function coloreLivello(liv) {
+  const t = (liv - 1) / 9;
+  const hue = t < 0.5 ? 135 - (t / 0.5) * 85 : 50 - ((t - 0.5) / 0.5) * 50;
+  return 'hsl(' + hue.toFixed(0) + ' 90% 52%)';
 }
 
 /* PUNTO DI INGRESSO DEGLI EVENTI.
    Qualsiasi sorgente (demo ora; BLE/seriale in futuro) chiama ricevi({tag, tipo, t_ms}).
-   t_ms e' nel tempo di sessione: il tag registra gli eventi col proprio clock e li trasmette quando
-   e' vicino al display, quindi la virata ai 50 m arriva INSIEME all'arrivo (con t_ms precedente). */
+   t_ms e' nel tempo di sessione: il tag registra gli eventi col proprio clock e li trasmette solo quando
+   e' nel raggio del display, quindi possono arrivare in gruppo e in ritardo (sempre in ordine di t_ms). */
 function ricevi(ev) {
   const s = modello.get(ev.tag);
   if (!s) return;                       // tag sconosciuto: ignorato
   tagConnessi.add(ev.tag);
   switch (ev.tipo) {
     case 'partenza':
-      s.stato = 'vasca'; s.rip += 1; s.tStart = ev.t_ms; s.tVirata = null;
-      if (s.rip > giro.n) { giro.n = s.rip; giro.tStart = ev.t_ms; }   // primo a ripartire: nuovo giro
+      s.stato = 'vasca'; s.seg += 1; s.tStart = ev.t_ms; s.turns = []; s.tArrivo = null;
+      giro.tFermo = null;
+      if (s.seg > giro.n) {                                             // primo a ripartire: nuovo giro
+        if (giro.tStart != null) giro.prec = ev.t_ms - giro.tStart;     // durata del giro precedente (partenza-partenza del primo)
+        giro.n = s.seg; giro.tStart = ev.t_ms;
+      }
       break;
     case 'virata':
-      if (s.tStart != null) s.tVirata = ev.t_ms;   // solo memorizzata: si mostra all'arrivo
+      if (s.tStart != null) s.turns.push(ev.t_ms);
       break;
     case 'arrivo': {
       if (s.tStart == null) break;
-      const tot = ev.t_ms - s.tStart;
-      s.ultimo = tot;
-      s.inter = s.tVirata != null ? s.tVirata - s.tStart : null;
-      s.secondo50 = s.inter != null ? tot - s.inter : null;
-      s.storia.push(tot);
-      s.tStart = null; s.tVirata = null;
-      s.stato = s.rip >= RIPETUTE_TOT ? 'finito' : 'riposo';
+      const tempo = ev.t_ms - s.tStart;
+      const vasche = s.turns.length + 1;
+      const dist = vasche * VASCA_M;
+      const passo = (tempo / 1000) / (dist / 100);              // s/100 m
+      const punti = [s.tStart, ...s.turns, ev.t_ms];
+      const parz = punti.slice(1).map((t, i) => t - punti[i]);  // tempo di ogni vasca
+      const f = calcolaFatica(passo, s.css);
+      s.ultimo = { tempo, dist, passo, parz, liv: f.livello, IF: f.IF };
+      s.storia.unshift({ id: ++idStoria, liv: f.livello, IF: f.IF });
+      if (s.storia.length > STORIA_MAX) s.storia.length = STORIA_MAX;
+      s.tStart = null; s.turns = [];
+      s.stato = 'riposo'; s.tArrivo = ev.t_ms;
       s.flashId++;
       break;
     }
   }
   segnaDaAggiornare(s.tag);
 }
-
-/* ---------------------------------------------------------------------
-   FATICA - CALCOLO PROVVISORIO (da concordare con l'utente)
-   Il test di riferimento NON e' ancora deciso. Qui una stima di prova, isolata in questa funzione
-   cosi' da poterla sostituire senza toccare il resto:
-     - ogni nuotatore ha una CSS (Critical Swim Speed) inventata, in s/100 m;
-     - per ogni ripetuta: IF = CSS / tempo_100 (intensity factor, >1 = piu' veloce della CSS);
-     - carico cumulato stile sTSS = somma( IF^3 * durata_ore * 100 ), includendo la ripetuta in corso;
-     - la ripetuta in corso usa il ritmo dell'ultima ripetuta completata (o IF=0.95 se e' la prima)
-       e la durata gia' trascorsa, quindi il valore cresce mentre si nuota;
-     - scala barra 0-100: lineare fino a SSTSS_FONDO_SCALA (valore di prova), poi saturata.
-   Ritorna { valore: sTSS cumulato, scala: 0..100 }.
-   --------------------------------------------------------------------- */
-const SSTSS_FONDO_SCALA = 25;   // PROVVISORIO: sTSS che porta la barra al 100% (10x100 a ritmo CSS ~ 20)
-function calcolaFatica(s, tSessioneMs) {
-  let sstss = 0;
-  for (const t of s.storia) {
-    const sec = t / 1000;
-    const IF = s.css / sec;
-    sstss += Math.pow(IF, 3) * (sec / 3600) * 100;
-  }
-  if (s.stato === 'vasca' && s.tStart != null) {
-    const trascorsi = Math.max(0, tSessioneMs - s.tStart) / 1000;
-    const ultimoSec = s.ultimo != null ? s.ultimo / 1000 : null;
-    const IF = ultimoSec ? s.css / ultimoSec : 0.95;
-    sstss += Math.pow(IF, 3) * (trascorsi / 3600) * 100;
-  }
-  return { valore: sstss, scala: Math.min(100, (sstss / SSTSS_FONDO_SCALA) * 100) };
+// Solo demo: fine allenamento (la vita reale non sa quando l'allenamento e' finito)
+function segnaFinito(tag) {
+  const s = modello.get(tag);
+  if (s) { s.stato = 'finito'; segnaDaAggiornare(tag); }
+}
+// Ferma il cronometro grande quando tutti sono Done o a riposo da piu' di 2 minuti
+function controllaFermo(tSess) {
+  if (giro.n === 0 || giro.tFermo != null) return;
+  let tutti = true;
+  modello.forEach(s => {
+    const ok = s.stato === 'finito' || (s.stato === 'riposo' && s.tArrivo != null && tSess - s.tArrivo > RIPOSO_STOP_MS);
+    if (!ok) tutti = false;
+  });
+  if (tutti) giro.tFermo = tSess;
 }
 
 /* =====================================================================
    (1) SORGENTE EVENTI: DEMO
-   Pianifica tutti gli eventi di 7 nuotatori che fanno 10x100 con partenza ogni 1:30 e li emette
-   a tempo di sessione. Una sorgente reale (BLE/seriale) avra' lo stesso effetto: chiamare ricevi().
+   Allenamento realistico in vasca da 50 m (o 25) per 7 nuotatori, sfalsati di 3-5 s:
+     riscaldamento 400 m facile + 30 s | tecnica 4x50 lenti ogni 1:15 | 3 x (300 m ~1:27/100 ogni 5:00
+     + 8x50 veloci ogni 1:00) con 1 min di pausa tra le serie | defaticamento 200 m, poi Done.
+   RICEZIONE REALISTICA: il display e' a un lato della vasca; il BLE del tag arriva solo quando il
+   nuotatore e' a quel muro. Gli eventi si consegnano a ricevi() al primo tocco del muro del display
+   successivo (subito se l'arrivo e' li'). Un segmento con numero dispari di vasche finisce al muro
+   opposto: i suoi eventi arrivano insieme a quelli del segmento successivo, in ordine di t_ms.
+   Una sorgente reale (BLE/seriale) avra' lo stesso effetto: chiamare ricevi().
    ===================================================================== */
 const rnd = (a, b) => a + Math.random() * (b - a);
+const clamp = (x, a, b) => Math.min(b, Math.max(a, x));
+
+// Sequenza di segmenti {t0, dur, dist} (ms, m) di un nuotatore; t0 = sua partenza iniziale
+function sequenzaAllenamento(n, t0) {
+  const segs = [], d = n.css - 80;              // d: scostamento del nuotatore dalla media
+  const per100 = (dist, passo) => dist / 100 * passo * 1000;
+  let t = t0;
+  // riscaldamento 400 m facile (~1:40-1:50/100) + 30 s di pausa
+  const dw = per100(400, clamp(105 + d * 0.5 + rnd(-4, 4), 100, 110));
+  segs.push({ t0: t, dur: dw, dist: 400 }); t += dw + 30000;
+  // tecnica 4x50 lenti (55-65 s), partenza ogni 1:15
+  let fine = t;
+  for (let k = 0; k < 4; k++) {
+    const dur = clamp(60 + d * 0.5 + rnd(-3, 3), 55, 65) * 1000;
+    segs.push({ t0: t + k * 75000, dur, dist: 50 }); fine = t + k * 75000 + dur;
+  }
+  t = fine + 45000;
+  // core: 3 x (300 m ogni 5:00 + 8x50 veloci ogni 1:00), 1 min di pausa tra le serie
+  for (let set = 0; set < 3; set++) {
+    const d300 = per100(300, clamp(87 + d * 0.3 + set * 0.9 + rnd(-1, 1), 85, 92));
+    segs.push({ t0: t, dur: d300, dist: 300 });
+    const t50 = t + 300000;
+    for (let j = 0; j < 8; j++) {
+      const dur = clamp(41 + d * 0.3 + set * 0.6 + j * 0.12 + rnd(-1, 1), 38, 44.5) * 1000;
+      segs.push({ t0: t50 + j * 60000, dur, dist: 50 }); fine = t50 + j * 60000 + dur;
+    }
+    t = fine + 60000;
+  }
+  // defaticamento 200 m facile
+  segs.push({ t0: t, dur: per100(200, clamp(110 + rnd(-5, 5), 100, 118)), dist: 200 });
+  return segs;
+}
+
+// Converte i segmenti in eventi con orario di CONSEGNA realistico (vedi sopra)
+function eventiConsegnati(tag, segs, piano) {
+  const LATENZA_BLE = 300;
+  let lato = 0;                 // 0 = il nuotatore parte dal muro del display, 1 = da quello opposto
+  const pend = [];
+  let ultimoEmit = 0;
+  const consegna = t => { pend.forEach(ev => piano.push({ emettiA: t + LATENZA_BLE, ev })); if (pend.length) ultimoEmit = t + LATENZA_BLE; pend.length = 0; };
+  segs.forEach(seg => {
+    const nv = Math.round(seg.dist / VASCA_M);                       // numero di vasche
+    const w = Array.from({ length: nv }, () => 1 + rnd(-0.03, 0.03));
+    const somma = w.reduce((a, b) => a + b, 0);
+    let cum = 0;
+    for (let j = 0; j <= nv; j++) {                                  // j = muro toccato (0 = partenza)
+      if (j > 0) cum += seg.dur * w[j - 1] / somma;
+      const t = seg.t0 + cum;
+      pend.push({ tag, tipo: j === 0 ? 'partenza' : j === nv ? 'arrivo' : 'virata', t_ms: t });
+      if ((lato + j) % 2 === 0) consegna(t);                         // muro del display: il tag e' in portata
+    }
+    lato = (lato + nv) % 2;
+  });
+  const ultimo = segs[segs.length - 1];
+  consegna(ultimo.t0 + ultimo.dur);                                  // eventuali rimasti (vasca finita al lato opposto)
+  piano.push({ emettiA: ultimoEmit + 2000, fine: tag });
+}
 
 function pianificaDemo() {
   const piano = [];
   let offset = 2000;                                   // il primo parte a 0:02
   NUOTATORI.forEach((n, i) => {
     if (i > 0) offset += rnd(3000, 5000);              // sfalsati di 3-5 s l'uno dall'altro
-    // totale 100 m "base" del nuotatore, 77-84 s: intorno alla sua CSS
-    const base = Math.min(82, Math.max(77.5, n.css + rnd(-1.5, 1.5)));
-    for (let k = 0; k < RIPETUTE_TOT; k++) {
-      const start = offset + k * PARTENZA_OGNI_MS;
-      // affaticamento progressivo + rumore, limitato a 77-86 s (recupero 4-13 s)
-      let tot = base + k * 0.4 + rnd(-1.0, 1.0);
-      tot = Math.min(86, Math.max(77, tot));
-      // primo 50 in 40-50 s; il secondo e' il resto e un po' piu' lento (coerente col totale)
-      let p1 = tot / 2 + rnd(-1.0, 1.5);
-      p1 = Math.min(50, Math.max(40, p1));
-      const virata = start + p1 * 1000;
-      const arrivo = start + tot * 1000;
-      const latenzaBle = 400;                          // il tag trasmette poco dopo l'arrivo
-      piano.push({ emettiA: start,                 ev: { tag: n.tag, tipo: 'partenza', t_ms: start } });
-      piano.push({ emettiA: arrivo + latenzaBle,   ev: { tag: n.tag, tipo: 'virata',   t_ms: virata } });
-      piano.push({ emettiA: arrivo + latenzaBle,   ev: { tag: n.tag, tipo: 'arrivo',   t_ms: arrivo } });
-    }
+    eventiConsegnati(n.tag, sequenzaAllenamento(n, offset), piano);
   });
-  piano.sort((a, b) => a.emettiA - b.emettiA);
+  piano.sort((a, b) => a.emettiA - b.emettiA || (a.ev ? a.ev.t_ms : Infinity) - (b.ev ? b.ev.t_ms : Infinity));
   return piano;
 }
 
@@ -316,8 +400,7 @@ const demo = {
   attiva: false, vel: 1, t: 0, piano: [], idx: 0,
   avvia() {
     if (this.piano.length === 0 || this.idx >= this.piano.length) { this.azzera(); this.piano = pianificaDemo(); }
-    // un solo tag "annunciato" subito: i tag si collegano in vasca (qui tutti all'avvio)
-    NUOTATORI.forEach(n => tagConnessi.add(n.tag));
+    NUOTATORI.forEach(n => tagConnessi.add(n.tag));    // i tag si collegano all'avvio
     this.attiva = true;
   },
   ferma() { this.attiva = false; },
@@ -327,7 +410,8 @@ const demo = {
     if (!this.attiva) return;
     this.t += dtMs * this.vel;
     while (this.idx < this.piano.length && this.piano[this.idx].emettiA <= this.t) {
-      ricevi(this.piano[this.idx].ev); this.idx++;
+      const p = this.piano[this.idx++];
+      if (p.fine) segnaFinito(p.fine); else ricevi(p.ev);
     }
     if (this.idx >= this.piano.length) this.attiva = false;   // demo conclusa
   },
@@ -353,18 +437,17 @@ function costruisciRighe() {
     r.innerHTML =
       '<div class="nome"><i></i><span></span></div>' +
       '<div><span class="stato"></span></div>' +
-      '<div class="rip num"></div>' +
-      '<div class="incorso num"></div>' +
-      '<div class="ultimo num"></div>' +
-      '<div class="inter"><span class="a num"></span><span class="b num"></span></div>' +
-      '<div class="storia"></div>' +
-      '<div class="fatica"><div class="barra"><div class="coperchio"></div></div><div class="val num"></div></div>';
+      '<div class="run"><span class="incorso num"></span><span class="rd num"></span></div>' +
+      '<div class="last"><span class="ultimo num"></span>' +
+        '<span class="lside"><b class="ld num"></b><span class="lp num"></span></span>' +
+        '<span class="parz num"></span></div>' +
+      '<div class="storia"><div class="vuoti">' + '<i></i>'.repeat(STORIA_MAX) + '</div><div class="celle"></div></div>';
     elRighe.appendChild(r);
     const q = s => r.querySelector(s);
     refs.set(n.tag, {
-      riga: r, nome: q('.nome span'), stato: q('.stato'), rip: q('.rip'), incorso: q('.incorso'),
-      ultimo: q('.ultimo'), interA: q('.inter .a'), interB: q('.inter .b'), storia: q('.storia'),
-      coperchio: q('.coperchio'), val: q('.fatica .val'), cache: {}, flashId: 0,
+      riga: r, nome: q('.nome span'), stato: q('.stato'), incorso: q('.incorso'), rd: q('.rd'),
+      ultimo: q('.ultimo'), ld: q('.ld'), lp: q('.lp'), parz: q('.parz'), celle: q('.celle'),
+      cache: {}, flashId: 0,
     });
   });
 }
@@ -380,25 +463,48 @@ function impostaClasse(ref, chiave, el, classe) {
 const ETICHETTA_STATO = { attesa: 'Waiting', vasca: 'Swimming', riposo: 'Rest', finito: 'Done' };
 const CLASSE_STATO = { attesa: 'st-attesa', vasca: 'st-vasca', riposo: 'st-riposo', finito: 'st-finito' };
 
-// Mini-storico: una barretta per ripetuta (10 posti). Piu' alta = piu' lenta; scala sul range del nuotatore.
-function svgStoria(storia) {
-  const W = 170, H = 56, n = RIPETUTE_TOT, gap = 4, bw = (W - gap * (n - 1)) / n;
-  let min = Infinity, max = -Infinity;
-  storia.forEach(t => { min = Math.min(min, t); max = Math.max(max, t); });
-  const range = Math.max(6000, max - min);          // almeno 6 s di range, per non esagerare il rumore
-  let out = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Time history">';
-  for (let i = 0; i < n; i++) {
-    const x = i * (bw + gap);
-    if (i < storia.length) {
-      const h = 14 + ((storia[i] - min) / range) * (H - 18);
-      const ultima = i === storia.length - 1;
-      out += '<rect x="' + x.toFixed(1) + '" y="' + (H - h).toFixed(1) + '" width="' + bw.toFixed(1) + '" height="' + h.toFixed(1) +
-             '" rx="2" fill="' + (ultima ? '#f2f7fb' : '#44a0ff') + '"><title>Rep ' + (i + 1) + ': ' + fmtTempo(storia[i]) + '</title></rect>';
-    } else {
-      out += '<rect x="' + x.toFixed(1) + '" y="' + (H - 3) + '" width="' + bw.toFixed(1) + '" height="3" rx="1.5" fill="#1b2a38"/>';
-    }
+// Cella dello storico: barretta colorata, alta in proporzione al livello, con il numero
+function creaCella(e) {
+  const c = document.createElement('div');
+  c.className = 'cella nuovo';
+  c.dataset.id = e.id;
+  c.title = 'Level ' + e.liv + ' (IF ' + e.IF.toFixed(2) + ')';
+  c.innerHTML = '<div class="liv" style="--f:' + ((e.liv - 1) / 9).toFixed(3) + ';background:' + coloreLivello(e.liv) + '"><b>' + e.liv + '</b></div>';
+  setTimeout(() => c.classList.remove('nuovo'), 5000);   // lampeggia per 5 s (animazione CSS di 10 cicli)
+  return c;
+}
+
+/* Storico: il nuovo segmento entra a SINISTRA, gli altri slittano a destra con una breve animazione (FLIP),
+   il piu' vecchio scivola fuori dal bordo destro (il contenitore ritaglia) e poi viene rimosso. */
+function disegnaStoria(ref, s) {
+  const ids = s.storia.map(e => e.id).join(',');
+  if (ref.cache.sid === ids) return;
+  ref.cache.sid = ids;
+  const cont = ref.celle;
+  const attuali = new Map();
+  cont.querySelectorAll('.cella:not(.esce)').forEach(el => attuali.set(+el.dataset.id, el));
+  const nuoviIds = new Set(s.storia.map(e => e.id));
+  // azzeramento (o niente in comune col disegno precedente): ricostruisci senza animare
+  if (s.storia.length === 0 || (attuali.size > 0 && ![...attuali.keys()].some(id => nuoviIds.has(id)))) {
+    cont.innerHTML = ''; attuali.clear();
   }
-  return out + '</svg>';
+  const prima = new Map();                                    // posizioni prima del cambio
+  attuali.forEach((el, id) => prima.set(id, el.getBoundingClientRect().left));
+  attuali.forEach((el, id) => { if (!nuoviIds.has(id)) el.classList.add('esce'); });
+  const celleNuove = s.storia.map(e => attuali.get(e.id) || creaCella(e));
+  const escono = [...cont.querySelectorAll('.cella.esce')];
+  cont.replaceChildren(...celleNuove, ...escono);
+  const larg = cont.clientWidth / STORIA_MAX;
+  [...celleNuove, ...escono].forEach(el => {
+    const id = +el.dataset.id;
+    const era = prima.has(id);
+    const dx = era ? prima.get(id) - el.getBoundingClientRect().left : -larg;
+    if (!era && el.classList.contains('esce')) return;
+    if (Math.abs(dx) > 0.5) el.animate(
+      [{ transform: 'translateX(' + dx + 'px)', opacity: era ? 1 : 0 }, { transform: 'none', opacity: 1 }],
+      { duration: 450, easing: 'ease-out' });
+  });
+  if (escono.length) setTimeout(() => escono.forEach(el => el.remove()), 500);
 }
 
 // Aggiorna i campi che cambiano solo per eventi (non a ogni frame)
@@ -407,15 +513,21 @@ function disegnaEventi(tag) {
   imposta(ref, 'nome', ref.nome, s.nome);
   impostaClasse(ref, 'stCls', ref.stato, 'stato ' + CLASSE_STATO[s.stato]);
   imposta(ref, 'stTxt', ref.stato, ETICHETTA_STATO[s.stato]);
-  const ripTxt = s.rip + '/' + RIPETUTE_TOT;
-  if (ref.cache.ripTxt !== ripTxt) { ref.cache.ripTxt = ripTxt; ref.rip.innerHTML = '<b>' + s.rip + '</b>/' + RIPETUTE_TOT; }
-  impostaClasse(ref, 'ultCls', ref.ultimo, 'ultimo num' + (s.ultimo == null ? ' vuoto' : ''));
-  imposta(ref, 'ult', ref.ultimo, fmtTempo(s.ultimo));
-  impostaClasse(ref, 'interACls', ref.interA, 'a num' + (s.inter == null ? ' vuoto' : ''));
-  imposta(ref, 'interA', ref.interA, s.inter == null ? '-:--.-' : fmtTempo(s.inter));
-  imposta(ref, 'interB', ref.interB, s.secondo50 == null ? VASCA_M + ' m' : VASCA_M + ' m  |  2nd: ' + fmtTempo(s.secondo50));
-  const sv = svgStoria(s.storia);
-  if (ref.cache.storia !== sv) { ref.cache.storia = sv; ref.storia.innerHTML = sv; }
+  // distanza percorsa nel segmento in corso (vasche completate, da virate ricevute)
+  imposta(ref, 'rd', ref.rd, s.stato === 'vasca' ? s.turns.length * VASCA_M + ' m' : '');
+  const u = s.ultimo;
+  impostaClasse(ref, 'ultCls', ref.ultimo, 'ultimo num' + (u ? '' : ' vuoto'));
+  imposta(ref, 'ult', ref.ultimo, u ? fmtTempo(u.tempo) : '-:--.-');
+  imposta(ref, 'ld', ref.ld, u ? u.dist + ' m' : '');
+  imposta(ref, 'lp', ref.lp, u ? fmtTempo(u.passo * 1000) + ' /100 m' : '');
+  // parziali per vasca (abbreviati: le ultime 4 se ce ne sono di piu'); nulla per segmenti di una sola vasca
+  let pz = '';
+  if (u && u.parz.length > 1) {
+    const ultime = u.parz.slice(-4).map(fmtParz).join(' · ');
+    pz = 'Split ' + (u.parz.length > 4 ? '… ' : '') + ultime;
+  }
+  imposta(ref, 'parz', ref.parz, pz);
+  disegnaStoria(ref, s);
   // Flash all'arrivo: riavvia l'animazione CSS
   if (s.flashId < ref.flashId) ref.flashId = s.flashId;   // dopo un azzeramento: nessun flash
   if (s.flashId !== ref.flashId) {
@@ -426,29 +538,25 @@ function disegnaEventi(tag) {
 function segnaDaAggiornare(tag) { sporchi.add(tag); }
 function aggiornaTutto() { modello.forEach((_, tag) => sporchi.add(tag)); }
 
-// Colore del valore di fatica in base alla scala 0-100
-function coloreFatica(scala) { return scala < 40 ? 'var(--verde)' : scala < 75 ? 'var(--giallo)' : 'var(--rosso)'; }
-
-// Disegno a ogni frame: cronometro di sessione, tempi che girano, fatica
+// Disegno a ogni frame: cronometro grande (giro), tempi in corso
 function disegna(tSess) {
   sporchi.forEach(disegnaEventi); sporchi.clear();
-  // cronometro grande: tempo dall'ultima partenza del giro; tempo di sessione in piccolo
-  const [mmss, dec] = fmtSessione(giro.tStart != null ? Math.max(0, tSess - giro.tStart) : 0);
+  const fermo = giro.tFermo != null;
+  const rif = fermo ? giro.tFermo : tSess;
+  const [mmss, dec] = fmtSessione(giro.tStart != null ? Math.max(0, rif - giro.tStart) : 0);
   if (cron.cache !== mmss + dec) { cron.cache = mmss + dec; cron.el.innerHTML = mmss + '<span class="dec">' + dec + '</span>'; }
+  cron.el.classList.toggle('fermo', fermo);
+  const gp = giro.prec != null ? fmtTempo(giro.prec) : '';
+  if (cron.prec.textContent !== gp) cron.prec.textContent = gp;
   const sess = fmtSessione(tSess)[0];
   if (cron.sess.textContent !== sess) cron.sess.textContent = sess;
-  const gt = giro.n > 0 ? 'Start rep ' + giro.n + '/' + RIPETUTE_TOT : 'Waiting for start';
+  const gt = giro.n > 0 ? 'Start set ' + giro.n + (fermo ? ' · stopped' : '') : 'Waiting for start';
   if (cron.giro.textContent !== gt) cron.giro.textContent = gt;
   modello.forEach((s, tag) => {
     const ref = refs.get(tag);
     const inVasca = s.stato === 'vasca' && s.tStart != null;
     impostaClasse(ref, 'incCls', ref.incorso, 'incorso num' + (inVasca ? '' : ' fermo'));
     imposta(ref, 'inc', ref.incorso, inVasca ? fmtTempo(Math.max(0, tSess - s.tStart)) : '-:--.-');
-    const f = calcolaFatica(s, tSess);
-    imposta(ref, 'fv', ref.val, f.valore.toFixed(1));
-    ref.val.style.color = coloreFatica(f.scala);
-    const w = (100 - f.scala).toFixed(1) + '%';
-    if (ref.cache.cop !== w) { ref.cache.cop = w; ref.coperchio.style.width = w; }
   });
   // stato connessione tag
   const tot = NUOTATORI.length, conn = tagConnessi.size;
@@ -463,7 +571,7 @@ function disegna(tSess) {
    CABLAGGIO: cronometro con requestAnimationFrame, controlli demo, ora/data
    ===================================================================== */
 const cron = { el: document.getElementById('cronometro'), cache: '',
-  sess: document.getElementById('sessTesto'), giro: document.getElementById('giroTesto') };
+  sess: document.getElementById('sessTesto'), giro: document.getElementById('giroTesto'), prec: document.getElementById('giroPrec') };
 const tagUi = { box: document.getElementById('tagStato'), testo: document.getElementById('tagTesto'), cache: '' };
 const btnDemo = document.getElementById('btnDemo');
 
@@ -471,6 +579,7 @@ let ultimoFrame = null;
 function frame(ts) {
   if (ultimoFrame != null) demo.avanza(Math.min(100, ts - ultimoFrame));  // limita i salti quando la scheda e' in background
   ultimoFrame = ts;
+  controllaFermo(tempoSessione());
   disegna(tempoSessione());
   requestAnimationFrame(frame);
 }
@@ -484,6 +593,12 @@ document.getElementById('btnAzzera').addEventListener('click', () => { demo.azze
 document.querySelectorAll('button[data-vel]').forEach(b => b.addEventListener('click', () => {
   demo.vel = Number(b.dataset.vel);
   document.querySelectorAll('button[data-vel]').forEach(x => x.classList.toggle('attivo', x === b));
+}));
+// selettore lunghezza vasca: cambia l'impostazione unica e riparte da zero
+document.querySelectorAll('button[data-vasca]').forEach(b => b.addEventListener('click', () => {
+  VASCA_M = Number(b.dataset.vasca);
+  document.querySelectorAll('button[data-vasca]').forEach(x => x.classList.toggle('attivo', x === b));
+  demo.azzera(); aggiornaBottoneDemo();
 }));
 // se la demo si conclude da sola, aggiorna il bottone
 setInterval(aggiornaBottoneDemo, 500);
