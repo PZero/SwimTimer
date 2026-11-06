@@ -2399,7 +2399,7 @@ $('xiaoDemo').addEventListener('click', () => {
 
 // Vista 3D: modellino della scheda (fase 1), mezzo busto in wireframe con la scheda sulla testa (fasi 2 e 3)
 const cam3x = { az: 35, el: 25, dist: 0.75 };
-const camDef = g => g === 1 ? { az: 35, el: 25, dist: 0.75 } : { az: 135, el: 8, dist: 8.5 }; // 3/4 frontale dal lato destro
+const camDef = g => g === 1 ? { az: 35, el: 25, dist: 0.75 } : { az: 180, el: 0, dist: 8.5 }; // frontale, perpendicolare allo schermo
 function xiao3d() {
   const el = $('vistaXiao3d');
   if (!window.THREE) { $('veloXiao').textContent = 'Libreria 3D non caricata: serve la connessione a internet'; return null; }
