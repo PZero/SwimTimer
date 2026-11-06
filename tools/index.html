@@ -2441,7 +2441,7 @@ function xiao3d() {
   const procedurale = new THREE.Group(); testa.add(procedurale); // testa di ripiego, se la scansione non si carica
   procedurale.add(superficie((u, v) => puntoTesta(dirTesta(u, v)), 60, 80, matTesta));
   procedurale.add(ellissoide(rx * 1.06, ry * 1.06, rz * 1.06, 20, 8, 1.95, matCuffia)); // cuffia
-  const matOcchi = new THREE.MeshBasicMaterial();
+  const matOcchi = new THREE.MeshBasicMaterial({ wireframe: true, transparent: true, opacity: 0.7 }); // a griglia come la testa; pieni e rossi nel lampo
   const occhi = [];
   [-1, 1].forEach(s => {
     const d = versore([0.34 * s, 0.9, 0.14]), p = puntoTesta(d);
@@ -2570,7 +2570,7 @@ function xiao3d() {
     const col = [C.x, C.y, C.z];
     assi.forEach(({ f, s }, i) => { f.setColor(new THREE.Color(col[i])); scrivi(s, col[i]); });
     scrivi(etUsb, C.testo); scrivi(etImu, '#ffb020');
-    matOcchi.color.set(C.testo);
+    matOcchi.color.set(C['accento-2']);
     griglia.material.color = new THREE.Color(C.bordo); griglia.material.vertexColors = false;
   }
   colori();
@@ -2598,7 +2598,8 @@ function xiao3d() {
       const qn = ang < 1e-4 || sn < 1e-6 ? Q.id() : Q.asse([qw[1] / sn, qw[2] / sn, qw[3] / sn], Math.min(0.3 * ang * R2D, 30));
       imposta(collo, qn); imposta(perno, Q.mul(Q.conj(qn), qv));
       occhiRossi = flash && (fl < 200 || (fl >= 300 && fl < 500));
-      matOcchi.color.set(occhiRossi ? '#ff2a2a' : C.testo);
+      matOcchi.color.set(occhiRossi ? '#ff2a2a' : C['accento-2']);
+      matOcchi.wireframe = !occhiRossi; matOcchi.opacity = occhiRossi ? 1 : 0.7;
       // Scheda sulla testa: punto di tangenza tra la normale della superficie e la normale della basetta
       const m = x.qmnt ? x.info : xiaoAnteprima();
       scheda.visible = !!m;
