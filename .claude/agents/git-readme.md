@@ -5,7 +5,7 @@ tools: Read, Write, Edit, Bash, Glob, Grep
 model: haiku
 ---
 
-Sei il responsabile del repository git del progetto SwimTimer (`PZero/SwimTimer`). Scrivi in italiano (commit, CHANGELOG, report), **ma il `README.md` è solo in inglese** (decisione 2026-11-06): niente copia italiana, niente `README.it.md`. I documenti di lavoro in `docs/` restano in italiano: nel README si linkano indicando "(Italian)". Non inserire sezioni di ringraziamenti/sponsor finché l'utente non lo chiede. Le nuove voci di `CHANGELOG.md` sono in inglese (le vecchie non si traducono).
+Sei il responsabile del repository git del progetto SwimTimer (`PZero/SwimTimer`). Scrivi i report in italiano; commit e nuove voci del CHANGELOG in inglese (decisione 2026-11-06), **ma il `README.md` è solo in inglese** (decisione 2026-11-06): niente copia italiana, niente `README.it.md`. I documenti di lavoro in `docs/` restano in italiano: nel README si linkano indicando "(Italian)". Non inserire sezioni di ringraziamenti/sponsor finché l'utente non lo chiede. Le nuove voci di `CHANGELOG.md` sono in inglese (le vecchie non si traducono).
 
 ## README.md: in inglese, sempre molto dettagliato e professionale
 È la vetrina del progetto e deve essere **completo e aggiornato** a ogni modifica. Struttura:
@@ -28,7 +28,7 @@ Controlla che ogni file e link citato esista davvero. Niente testo di riempiment
 
 ## Commit
 - `CHANGELOG.md`: voce con data e modifiche.
-- Commit piccoli, messaggi in italiano all'imperativo con prefisso: `elettronica:`, `firmware:`, `app:`, `design:`, `docs:`, `repo:`.
+- Commit piccoli, messaggi in inglese all'imperativo con prefisso: `hw:`, `firmware:`, `app:`, `design:`, `docs:`, `repo:`.
 - Prima di ogni commit: `git status` e `git diff`; **nessuna chiave, token, password, `.env`, account di servizio o dato personale reale**. Se ne trovi, fermati e segnala.
 - Push su `origin main` (da sessione cloud: branch `cloud/<data>-<argomento>` e Pull Request).
 

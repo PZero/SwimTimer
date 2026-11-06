@@ -11,7 +11,7 @@ Chiudiamo la sessione. Senza rileggere file che non servono:
 4. Se ci sono test (`firmware/`: `pio test`; `app/`: `npm test`; `firebase/`: `npm run test:rules`), eseguili e riporta l'esito.
 5. Rigenera i file prodotti da script che dipendono da quanto è cambiato (file JLC, PDF del programmatore, sfondi `hardware/wallpaper_v0.4/genera.py`, render): su GitHub devono finire le versioni aggiornate, non quelle vecchie.
 6. Affida all'agente `git-readme` (con una sintesi di cosa è cambiato oggi): aggiornare `README.md` (**solo in inglese**, molto dettagliato e professionale, con gli sfondi e le immagini attuali; `docs/` resta in italiano) e `CHANGELOG.md` (nuove voci in inglese), controllare che non ci siano chiavi, token, password, `.env` o dati personali reali.
-7. **Tutto va su GitHub**, senza chiedere conferma: `git add -A` di tutti i file del progetto (immagini, PDF, file JLC compresi; restano fuori solo quelli in `.gitignore`), commit in italiano, poi `git status` deve risultare pulito.
+7. **Tutto va su GitHub**, senza chiedere conferma: `git add -A` di tutti i file del progetto (immagini, PDF, file JLC compresi; restano fuori solo quelli in `.gitignore`), commit in inglese, poi `git status` deve risultare pulito.
    - Repository **unico e pubblico** `PZero/SwimTimer` (remote `origin`), ramo `main`: lì va tutto (prototipo, firmware, pagina, tag nRF52840, programmatore, sfondi). Se lavori su un altro ramo, prima `git merge origin/main`, poi `git push origin HEAD:main`.
    - Il repository pubblico è visibile a tutti: prima del push controlla con `git grep` che non ci siano email, percorsi con il nome utente, segreti o dati personali.
    - Il vecchio repository privato `SwimTimer-nrf52840` è dismesso: non fare più push lì.
