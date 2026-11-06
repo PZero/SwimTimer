@@ -318,8 +318,9 @@ function controllaFermo(tSess) {
 /* =====================================================================
    (1) SORGENTE EVENTI: DEMO
    Allenamento realistico in vasca da 50 m (o 25) per 7 nuotatori, sfalsati di 3-5 s:
-     riscaldamento 400 m facile + 30 s | tecnica 4x50 lenti ogni 1:15 | 3 x (300 m ~1:27/100 ogni 5:00
-     + 8x50 veloci ogni 1:00) con 1 min di pausa tra le serie | defaticamento 200 m, poi Done.
+     riscaldamento 400 m facile + 30 s | tecnica 4x100 lenti ogni 2:30 | 3 x (300 m ~1:27/100 ogni 5:00
+     + 4x100 veloci ogni 1:45) con 1 min di pausa tra le serie | defaticamento 200 m, poi Done.
+     Tutti i segmenti finiscono al muro del display (semplificazione voluta per la demo).
    RICEZIONE REALISTICA: il display e' a un lato della vasca; il BLE del tag arriva solo quando il
    nuotatore e' a quel muro. Gli eventi si consegnano a ricevi() al primo tocco del muro del display
    successivo (subito se l'arrivo e' li'). Un segmento con numero dispari di vasche finisce al muro
@@ -337,21 +338,24 @@ function sequenzaAllenamento(n, t0) {
   // riscaldamento 400 m facile (~1:40-1:50/100) + 30 s di pausa
   const dw = per100(400, clamp(105 + d * 0.5 + rnd(-4, 4), 100, 110));
   segs.push({ t0: t, dur: dw, dist: 400 }); t += dw + 30000;
-  // tecnica 4x50 lenti (55-65 s), partenza ogni 1:15
+  // NB demo: tutti i segmenti sono multipli di 100 m, cosi' con vasca da 50 (o 25) finiscono
+  // sempre al muro del display (un mattoncino per arrivo). Il caso del muro opposto resta gestito
+  // da eventiConsegnati() ma qui non si presenta.
+  // tecnica 4x100 lenti (1:58-2:10), partenza ogni 2:30
   let fine = t;
   for (let k = 0; k < 4; k++) {
-    const dur = clamp(60 + d * 0.5 + rnd(-3, 3), 55, 65) * 1000;
-    segs.push({ t0: t + k * 75000, dur, dist: 50 }); fine = t + k * 75000 + dur;
+    const dur = clamp(124 + d * 0.6 + rnd(-5, 5), 118, 130) * 1000;
+    segs.push({ t0: t + k * 150000, dur, dist: 100 }); fine = t + k * 150000 + dur;
   }
   t = fine + 45000;
-  // core: 3 x (300 m ogni 5:00 + 8x50 veloci ogni 1:00), 1 min di pausa tra le serie
+  // core: 3 x (300 m ogni 5:00 + 4x100 veloci ogni 1:45), 1 min di pausa tra le serie
   for (let set = 0; set < 3; set++) {
     const d300 = per100(300, clamp(87 + d * 0.3 + set * 0.9 + rnd(-1, 1), 85, 92));
     segs.push({ t0: t, dur: d300, dist: 300 });
-    const t50 = t + 300000;
-    for (let j = 0; j < 8; j++) {
-      const dur = clamp(41 + d * 0.3 + set * 0.6 + j * 0.12 + rnd(-1, 1), 38, 44.5) * 1000;
-      segs.push({ t0: t50 + j * 60000, dur, dist: 50 }); fine = t50 + j * 60000 + dur;
+    const t100 = t + 300000;
+    for (let j = 0; j < 4; j++) {
+      const dur = clamp(80 + d * 0.4 + set * 0.8 + j * 0.3 + rnd(-1.5, 1.5), 75, 86) * 1000;
+      segs.push({ t0: t100 + j * 105000, dur, dist: 100 }); fine = t100 + j * 105000 + dur;
     }
     t = fine + 60000;
   }
