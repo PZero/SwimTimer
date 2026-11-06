@@ -101,7 +101,7 @@
 
 <header>
   <div class="cron">
-    <small>Tempo di sessione</small>
+    <small><span id="giroTesto">In attesa della partenza</span> &middot; sessione <span id="sessTesto" class="num">00:00</span></small>
     <div id="cronometro" class="num">00:00<span class="dec">.0</span></div>
   </div>
   <div class="info">
@@ -187,8 +187,14 @@ function nuovoStato(n) {
     flashId: 0,               // incrementato a ogni arrivo, per riavviare l'animazione
   };
 }
+/* Giro di partenze: il cronometro grande riparte quando il PRIMO nuotatore inizia una nuova ripetuta.
+   E' solo un riferimento visivo (come l'orologio a parete): i tempi di ogni nuotatore si calcolano
+   sempre dalla SUA partenza (s.tStart), quindi chi sta ancora arrivando non ne e' influenzato. */
+const giro = { n: 0, tStart: null };
+
 function azzeraModello() {
   modello.clear(); tagConnessi.clear();
+  giro.n = 0; giro.tStart = null;
   NUOTATORI.forEach(n => { modello.set(n.tag, nuovoStato(n)); });
 }
 
@@ -203,6 +209,7 @@ function ricevi(ev) {
   switch (ev.tipo) {
     case 'partenza':
       s.stato = 'vasca'; s.rip += 1; s.tStart = ev.t_ms; s.tVirata = null;
+      if (s.rip > giro.n) { giro.n = s.rip; giro.tStart = ev.t_ms; }   // primo a ripartire: nuovo giro
       break;
     case 'virata':
       if (s.tStart != null) s.tVirata = ev.t_ms;   // solo memorizzata: si mostra all'arrivo
@@ -405,8 +412,13 @@ function coloreFatica(scala) { return scala < 40 ? 'var(--verde)' : scala < 75 ?
 // Disegno a ogni frame: cronometro di sessione, tempi che girano, fatica
 function disegna(tSess) {
   sporchi.forEach(disegnaEventi); sporchi.clear();
-  const [mmss, dec] = fmtSessione(tSess);
+  // cronometro grande: tempo dall'ultima partenza del giro; tempo di sessione in piccolo
+  const [mmss, dec] = fmtSessione(giro.tStart != null ? Math.max(0, tSess - giro.tStart) : 0);
   if (cron.cache !== mmss + dec) { cron.cache = mmss + dec; cron.el.innerHTML = mmss + '<span class="dec">' + dec + '</span>'; }
+  const sess = fmtSessione(tSess)[0];
+  if (cron.sess.textContent !== sess) cron.sess.textContent = sess;
+  const gt = giro.n > 0 ? 'Partenza ripetuta ' + giro.n + '/' + RIPETUTE_TOT : 'In attesa della partenza';
+  if (cron.giro.textContent !== gt) cron.giro.textContent = gt;
   modello.forEach((s, tag) => {
     const ref = refs.get(tag);
     const inVasca = s.stato === 'vasca' && s.tStart != null;
@@ -430,7 +442,8 @@ function disegna(tSess) {
 /* =====================================================================
    CABLAGGIO: cronometro con requestAnimationFrame, controlli demo, ora/data
    ===================================================================== */
-const cron = { el: document.getElementById('cronometro'), cache: '' };
+const cron = { el: document.getElementById('cronometro'), cache: '',
+  sess: document.getElementById('sessTesto'), giro: document.getElementById('giroTesto') };
 const tagUi = { box: document.getElementById('tagStato'), testo: document.getElementById('tagTesto'), cache: '' };
 const btnDemo = document.getElementById('btnDemo');
 
