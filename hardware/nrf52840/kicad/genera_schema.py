@@ -8,7 +8,7 @@ import uuid
 import os
 from pathlib import Path
 
-from dati_scheda import COMPONENTI, NC_U1, NOME, VARIANTE, VERSIONE
+from dati_scheda import COMPONENTI, DNP, NC_U1, NOME, VARIANTE, VERSIONE
 
 QUI = Path(__file__).parent
 KICAD = Path(os.environ.get("KICAD_DIR", Path.home() / "AppData/Local/Programs/KiCad/10.0"))
@@ -107,6 +107,8 @@ def main():
             lib_symbols[lib_id] = simbolo_piatto(libreria, nome)
             if nome.startswith("W25Q"):   # flash: i pin sono collegati solo da etichette (niente driver nello schema, ERC)
                 lib_symbols[lib_id] = re.sub(r"\(pin (power_in|input|output|bidirectional) ", "(pin passive ", lib_symbols[lib_id])
+            if nome.startswith(("MCP73831", "TPS22917")):   # v0.6: i pin di alimentazione/uscita dei due circuiti integrati sono collegati solo da etichette (ERC)
+                lib_symbols[lib_id] = re.sub(r"\(pin (power_in|power_out|input|output|open_collector|tri_state) ", "(pin passive ", lib_symbols[lib_id])
             if "TagConnect" in nome:   # i pin VCC/GND del connettore di programmazione non sono alimentazioni da pilotare (ERC)
                 lib_symbols[lib_id] = lib_symbols[lib_id].replace("power_in", "passive")
         if rif not in pos:
@@ -120,8 +122,8 @@ def main():
             f'{" (hide yes)" if nascosta else ""}))')
         pin_uuid = " ".join(f'(pin "{n}" (uuid "{uid(rif, "pin", n)}"))' for n in sp)
         simboli.append(
-            f'(symbol (lib_id "{lib_id}") (at {x} {y} 0) (unit 1) (exclude_from_sim no) (in_bom {"yes" if lcsc else "no"}) '
-            f'(on_board yes) (dnp no) (uuid "{uid(rif)}")\n'
+            f'(symbol (lib_id "{lib_id}") (at {x} {y} 0) (unit 1) (exclude_from_sim no) (in_bom {"yes" if lcsc and rif not in DNP else "no"}) '
+            f'(on_board yes) (dnp {"yes" if rif in DNP else "no"}) (uuid "{uid(rif)}")\n'
             f'  {prop("Reference", rif, -3.81)}\n  {prop("Value", valore, 3.81)}\n'
             f'  {prop("Footprint", impronta, 0, True)}\n  {prop("Datasheet", "", 0, True)}\n'
             f'  {prop("LCSC", lcsc, 0, True)}\n  {pin_uuid}\n'

@@ -12,7 +12,7 @@ import os
 #   "collaudo"   : primi 2 tag, variante 1c (quasi quadrata, indossabile): Tag-Connect + piazzole di prova sotto, 0 ohm sulla corrente
 #   "definitiva" : piu' piccola possibile, senza piazzole di prova (DA FARE)
 VARIANTE = os.environ.get("SWIMTAG_VARIANTE", "collaudo")
-if VARIANTE not in ("collaudo", "definitiva", "economica"):
+if VARIANTE not in ("collaudo", "definitiva", "economica", "v06"):
     raise SystemExit(f"VARIANTE sconosciuta: {VARIANTE}")
 if VARIANTE == "definitiva":
     raise NotImplementedError("variante definitiva: non ancora implementata (v0.3 solo collaudo)")
@@ -162,3 +162,8 @@ def reti():
 if VARIANTE == "economica":
     from dati_economica import (COMPONENTI, NC_U1, ANTENNA_H, SCHEDA_L, SCHEDA_H_TOT, VERSIONE, TITOLO_SERIGRAFIA,  # noqa: F401,F811
                                 N_STRATI, SPESSORE, PISTA, DISTANZA, VIA_D, VIA_FORO)
+DNP = ()   # componenti sulla scheda ma non montati (fuori da BOM e CPL): solo v0.6
+# ---- v0.6 "Rev0": 4 strati, caricatore e interruttore in SOT-23 (nessun BGA), J1 DNP ----
+if VARIANTE == "v06":
+    from dati_v06 import (COMPONENTI, NC_U1, ANTENNA_H, SCHEDA_L, SCHEDA_H_TOT, VERSIONE, TITOLO_SERIGRAFIA,  # noqa: F401,F811
+                          N_STRATI, SPESSORE, PISTA, DISTANZA, VIA_D, VIA_FORO, DNP)

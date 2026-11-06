@@ -27,3 +27,6 @@ Risolte: modulo E73 (Raytac a stock 0), IMU LSM6DSV16X, flash 16 MB, interruttor
 26. Cella Ampul 401012 (3,31 €, senza connettore, polo +/− da verificare col tester): ne ordini 4?
 29. 16 MB bastano? ~97 min a 240 Hz, ~24 min a 960 Hz sei assi: quale frequenza usiamo per le prime registrazioni?
 30. Traslatore di livello sul programmatore (SWD 3,3 V del Pi contro 1,8 V del tag al primo avvio): lo aggiungiamo (1–2 €) o ti basta il metodo con le 1 kΩ e REGOUT0 scritto subito?
+31. Ordine NextPCB v0.6 (216,39 $ per 20 pz): aspetti Viviane (sponsorizzazione) fino a mercoledì 11 novembre o ordini subito?
+32. XIAO nRF52840 Sense: ordini il pacco da 3 su Amazon (variante Sense da confermare) e le celle LP-401230 da 100 mAh?
+33. Versione inglese del video di presentazione (testi, miniatura, descrizione YouTube): la facciamo?

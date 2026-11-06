@@ -10,7 +10,7 @@ from pathlib import Path
 import pcbnew
 
 from dati_scheda import (ANTENNA_H, COMPONENTI, DISTANZA, N_STRATI, NOME, PISTA, SCHEDA_H_TOT as SCHEDA_H, SCHEDA_L,
-                         SPESSORE, TITOLO_SERIGRAFIA, VARIANTE, VIA_D, VIA_FORO)
+                         SPESSORE, TITOLO_SERIGRAFIA, VARIANTE, VIA_D, VIA_FORO, DNP)
 from genera_schema import nomi_pin, uid
 
 QUI = Path(__file__).parent
@@ -47,7 +47,7 @@ def zona(board, nome_rete, layer, x0, y0, x1, y1, reti):
         z.AppendCorner(punto(x, y), -1)
     z.SetMinThickness(mm(0.15))
     z.SetLocalClearance(mm(0.15))
-    if N_STRATI == 2:   # 2 strati: via la rame di massa isolata (isole) sopra
+    if N_STRATI == 2 or VARIANTE == "v06":   # via la rame di massa isolata (isole): 2 strati sopra; v0.6 su tutti gli strati (isole = falsi collegamenti aperti nel DRC)
         z.SetIslandRemovalMode(pcbnew.ISLAND_REMOVAL_MODE_ALWAYS)
     z.SetPadConnection(pcbnew.ZONE_CONNECTION_FULL)  # massa piena: niente raggi termici "affamati" sui pad piccoli
     board.Add(z)
@@ -121,6 +121,8 @@ def main(solo_piano_interno=False):
         fp.SetField("LCSC", lcsc)
         if not lcsc:  # piazzole: non vanno in distinta né nel file di montaggio
             fp.SetAttributes(fp.GetAttributes() | pcbnew.FP_EXCLUDE_FROM_BOM | pcbnew.FP_EXCLUDE_FROM_POS_FILES)
+        if rif in DNP:   # montaggio a mano: fuori da BOM e dal file di posizione, marcato DNP
+            fp.SetAttributes(fp.GetAttributes() | pcbnew.FP_EXCLUDE_FROM_BOM | pcbnew.FP_EXCLUDE_FROM_POS_FILES | pcbnew.FP_DNP)
         board.Add(fp)
         fp.SetPosition(punto(x, y))
         fp.SetOrientationDegrees(rot)
@@ -143,7 +145,7 @@ def main(solo_piano_interno=False):
         # in serigrafia solo i riferimenti, piccoli; nascosti valore, codice LCSC e testi delle librerie
         for campo in fp.GetFields():
             campo.SetVisible(campo.IsReference())
-        if VARIANTE == "economica" and rif == "U3":   # contorno serigrafico del SOIC: toccherebbe i pad del modulo, tolto
+        if VARIANTE in ("economica", "v06") and rif == "U3":   # contorno serigrafico del SOIC: toccherebbe i pad del modulo, tolto
             for disegno in list(fp.GraphicalItems()):
                 if disegno.GetLayer() == pcbnew.F_SilkS:
                     fp.Remove(disegno)
@@ -177,7 +179,7 @@ def main(solo_piano_interno=False):
     k.SetZoneName("antenna")
     board.Add(k)
 
-    if VARIANTE == "economica" and os.environ.get("SWT_KEEPOUT", "1") != "0":   # Ebyte: niente piste sotto il modulo sul suo stesso lato: zona centrale F.Cu senza piste (via e pad ammessi)
+    if VARIANTE in ("economica", "v06") and os.environ.get("SWT_KEEPOUT", "1") != "0":   # Ebyte: niente piste sotto il modulo sul suo stesso lato: zona centrale F.Cu senza piste (via e pad ammessi)
         from dati_economica import MOD_X
         k2 = pcbnew.ZONE(board)
         k2.SetIsRuleArea(True)
@@ -199,12 +201,12 @@ def main(solo_piano_interno=False):
         t.SetLayer(layer)
         t.SetPosition(punto(x, y))
         t.SetTextSize(punto(size, size))
-        t.SetTextThickness(mm(0.15 if VARIANTE == "economica" else 0.13))
+        t.SetTextThickness(mm(0.15 if VARIANTE in ("economica", "v06") else 0.13))
         t.SetTextAngleDegrees(angolo)
         t.SetMirrored(specchio)
         board.Add(t)
 
-    if VARIANTE == "economica":
+    if VARIANTE in ("economica", "v06"):
         serigrafia_economica(board, testo)
     else:
         for rif, _, valore, _, _, _, (x, y, _, lato) in COMPONENTI:
@@ -226,7 +228,7 @@ def main(solo_piano_interno=False):
             for pad in fp.Pads():
                 if pad.GetNumber() in ("1", "2"):
                     q = pad.GetPosition()
-                    if VARIANTE == "economica":   # header 1,27 mm (orizzontale): il segno sta sopra il pad
+                    if VARIANTE in ("economica", "v06"):   # header 1,27 mm (orizzontale): il segno sta sopra il pad
                         testo("+" if pad.GetNumber() == "1" else "-", pcbnew.ToMM(q.x), pcbnew.ToMM(q.y) - 1.25, pcbnew.F_SilkS, 1.0)
                         continue
                     testo("+" if pad.GetNumber() == "1" else "-", pcbnew.ToMM(q.x) + 1.2, pcbnew.ToMM(q.y), pcbnew.F_SilkS, 0.9)

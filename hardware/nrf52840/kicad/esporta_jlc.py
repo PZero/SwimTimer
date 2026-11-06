@@ -21,7 +21,13 @@ SCH = QUI / f"{NOME}.kicad_sch"
 CORREZIONE_ROT = {"Package_SO:SOIC-": 270}
 # correzioni per designatore, dall'anteprima JLC della v0.5 (2026-11-05): il modello JLC dell'AO3401A ha i due pin
 # dal lato opposto (+180°); il TPS22916C JLC a 0° ha A1 in basso a sinistra, il nostro A1 (VOUT) è in basso a destra (+90°)
-CORREZIONE_REF = {"Q1": 180, "U6": 90}
+CORREZIONE_REF_PER_VERSIONE = {
+    "v0.5": {"Q1": 180, "U6": 90},
+    # v0.6: Q1 (stesso AO3401A SOT-23) resta +180; U6 e' ora un SOT-23-6 (la correzione +90 del DSBGA NON vale) e U4 un SOT-23-5:
+    # le loro correzioni sono SCONOSCIUTE fino all'anteprima JLC (nessuna applicata; i SOT-23 della libreria KiCad spesso vogliono +180)
+    "v0.6": {"Q1": 180},
+}
+CORREZIONE_REF = CORREZIONE_REF_PER_VERSIONE.get(VERSIONE, {})
 STRATI = ("F.Cu,In1.Cu,In2.Cu,B.Cu" if N_STRATI == 4 else "F.Cu,B.Cu") + ",F.Paste,B.Paste,F.Silkscreen,B.Silkscreen,F.Mask,B.Mask,Edge.Cuts"
 
 

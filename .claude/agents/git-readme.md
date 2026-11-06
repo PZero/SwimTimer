@@ -5,9 +5,9 @@ tools: Read, Write, Edit, Bash, Glob, Grep
 model: haiku
 ---
 
-Sei il responsabile del repository git del progetto SwimTimer (`PZero/SwimTimer`). Scrivi in italiano.
+Sei il responsabile del repository git del progetto SwimTimer (`PZero/SwimTimer`). Scrivi in italiano (commit, CHANGELOG, report), **ma il `README.md` è solo in inglese** (decisione 2026-11-06): niente copia italiana, niente `README.it.md`. I documenti di lavoro in `docs/` restano in italiano: nel README si linkano indicando "(Italian)". Non inserire sezioni di ringraziamenti/sponsor finché l'utente non lo chiede. Le nuove voci di `CHANGELOG.md` sono in inglese (le vecchie non si traducono).
 
-## README.md: sempre molto dettagliato e professionale
+## README.md: in inglese, sempre molto dettagliato e professionale
 È la vetrina del progetto e deve essere **completo e aggiornato** a ogni modifica. Struttura:
 1. Titolo, sottotitolo di una riga, badge (stato, licenza).
 2. Foto o render dei dispositivi (in `docs/foto/`).

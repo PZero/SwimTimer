@@ -1,42 +1,37 @@
 # Stato del progetto
 
-**Ultimo aggiornamento:** 2026-11-04. Tutto il progetto è nel repository unico e pubblico `PZero/SwimTimer` (`main`); il repository privato `SwimTimer-nrf52840` è dismesso.
+**Ultimo aggiornamento:** 2026-11-06. Tutto il progetto è nel repository unico e pubblico `PZero/SwimTimer` (`main`). Fase: ideazione/prototipo; ordine dei primi 20 tag in preparazione su NextPCB.
 
 ## Fotografia
-- **Scheda nRF52840 v0.5 pronta** (commit 01c6b8b): 21,59 × 28,0 mm, 2 strati 0,8 mm, DRC 0, ERC 0 errori, parità schema/PCB 0, `kicad/verifica_v05.py` 100/100 pin, 369 piste, 36 via. File JLC in `hardware/nrf52840/kicad/jlc/v0.5_swimtag_economica/`; la v0.4 è congelata in `jlc/v0.4_swimtag_economica/` (rigenerabile dal commit 8fd6cc0).
-- Novità v0.5: TPS22916C (U6) su VDD_IMU con ON su P0.04, TVS D3, AO3401A (Q1) contro l'inversione della cella, 100 kΩ VIN-GND, TP8 VDD_IMU, IMU_MISO/CS su P0.08/P0.12. Dettagli: blocco "Revisione v0.5" in `hardware/nrf52840/progetto.md`.
-- **Costo ~125 €** (Standard PCBA, raggi X, coupon; ENIG +5–10 €): **sopra il tetto di 100 €**. Tagli: senza raggi X ~109 €, + senza TVS ~105 €, + senza header ~100,5 €. Decide l'utente.
-- Revisioni esterne (Gemini, Copilot) in `hardware/nrf52840/revisioni_esterne.md`: modifiche applicate nella v0.5; S1 di Copilot (TS a massa) è un falso positivo.
-- Sfondi tecnici v0.5 in `hardware/wallpaper_v0.5/png/` (20 file; la cartella `wallpaper_v0.4` è storica). **Programmatore** = HAT 65 × 56,5 mm per Raspberry Pi 3/4 (OpenOCD, pogo, toner transfer, ricarica 5 V): `hardware/programmatore/Programmatore_SwimTag_v0.5.pdf`, non ancora costruito. Foto/immagine di dove saldare la cella: `hardware/nrf52840/saldatura_cella_v0.5.png`.
-- Video di presentazione su YouTube (https://youtu.be/_2UzpOqblVI), link nel README; sorgenti e miniatura in `media/video/` (il file video non è nel repository).
-- Prototipo ESP32-S3 + BMI160, firmware 0.4.3, pagina `tools/index.html` (online su https://pzero.github.io/SwimTimer/), display LilyGO T-RGB: funzionanti sul tavolo, nessuna prova in vasca.
-- **Firmware del tag nRF52840: da scrivere** (Zephyr / nRF Connect SDK).
+- **Scheda v0.6 "Rev0"** (`hardware/nrf52840/kicad/swimtag_v06.*`): 4 strati 0,8 mm, 21,59 × 28,5 mm, senza BGA (NextPCB Rev0 rifiuta passo < 0,45 mm). MCP73831 (15 mA) al posto del BQ25101, TPS22917 al posto del TPS22916C, J1 DNP (la cella si salda a mano), D4 + R2 per CHG_N. DRC 0, ERC 0, 102 pin 0 differenze. Uscite in `nextpcb/v0.6/` (gerber, BOM, CPL, render, `assembly_pin1.png`, `NOTE_ORDINE.md`) e `jlc/v0.6_swimtag_v06/`.
+- **v0.5** (2 strati, 28 mm, BQ25101 BGA) resta invariata come riferimento; pannelli 3×1 e 2×1 in `nextpcb/` rifiutati dal servizio Rev0 (niente file già pannellizzati).
+- **Preventivo NextPCB Rev0 in carrello:** 20 pz (5 pannelli 2×2, V-cut richiesto dal pannello), PCB 71,49 $ + componenti 144,90 $ + SMT 252,89 $; coupon Rev0 −252,89 $ (solo SMT) → **216,39 $** (~10,8 $/tag) più spedizione e IVA di importazione. Consegna stimata 2026-11-12. Con 2 strati si risparmierebbero solo ~25–40 $ ma crescerebbe la scheda e servirebbe nuovo sbroglio: **si resta a 4 strati**.
+- Anteprima componenti controllata uno per uno: U2, U3, D1 ruotati di 180° dall'utente, U4/U6/Q1/D2/D4 corretti, U1 solo baricentro (coperto da nota). Sostituzioni: D3 = Leiditech LC05CI; C2–C6 e R3 da annotare.
+- **XIAO nRF52840 Sense** come tag di prova o definitivo: documentazione in `hardware/xiao/` (cella LP-401230 100 mAh, minimo 50 mA di carica, riavvio IMU via P1.08, sacchetto sottovuoto).
+- Associazione nuotatore–tag con base di ricarica a slot + gettone NFC (decisione 2026-11-05); versione finale senza flash esterna (buffer RAM ~10 s, solo eventi).
+- Prototipo ESP32-S3 + BMI160 (firmware 0.4.3, `tools/index.html`, display LilyGO T-RGB): funzionante sul tavolo, nessuna prova in vasca. Firmware nRF52840: da scrivere.
+- README solo in inglese, senza ringraziamenti; `docs/` in italiano.
 
 ## Prossimi passi
-1. Decidere il costo (tetto 100 € contro ~125 €) e la finitura HASL o ENIG (consigliata per BQ25101 a 0,4 mm e IMU LGA).
-2. Anteprima JLC: rotazioni di U2, U4, U6, Q1, D1, D2, D3, J1; il TPS22916C è probabilmente "Standard only"; stock dell'E73.
-3. Aprire un ticket DFM a JLC (BQ25101 e TPS22916C a 0,4 mm) prima di pagare; poi ordine di 2 schede.
-4. A scheda arrivata: prova a banco di Q1 (cella dritta e invertita), prima accensione da alimentatore limitato a ~50 mA, costruire il programmatore, scrivere UICR (`REGOUT0`, `PSELRESET`), prova di portata dell'antenna prima della resina (antenna a 0,3 mm dal bordo, scheda 28 mm).
-5. Firmware: SPI, flash, registrazione, MCUboot, sonno con INT dell'IMU, sottotensione, System OFF in carica, sequenze del TPS22916C (5–10 ms).
-6. Prototipo ESP32 (la pagina online servirà anche per i test a secco del tag): sessioni registrate con video, messa a punto degli algoritmi, prova in vasca; tap hardware al posto di quello simulato; FIFO del BMI160 (~44 Hz reali).
-7. Variante definitiva: vibratore, pressione, custodia di ricarica a più posti.
-8. Cancellare a mano la cartella temporanea `C:\swt_chk`.
+1. Aspettare il contatto di Viviane (NextPCB, programma sponsorizzazione); scadenza consigliata mercoledì 2026-11-11, poi ordinare o meno.
+2. Prima di ordinare: incollare `NOTE_ORDINE.md` nelle note, scrivere a Shelly (V-cut e U1), leggere i termini "No Touch" del Rev0, annotare gli MPN scelti per C2–C6 e R3.
+3. A schede arrivate: prova a banco (Q1, accensione a ~50 mA), REGOUT0 a 3,0 V (livello CHG_N 0,4 V contro VIL 0,54 V), costruire il programmatore, prova di portata antenna.
+4. Decidere l'acquisto dei XIAO Sense (3 pezzi Amazon, variante da confermare) e delle celle LP-401230.
+5. Firmware: SPI, registrazione, sonno con INT dell'IMU, power-cycle dell'IMU (P1.08, SDA/SCL a 0), NFC/base a slot.
+6. Prototipo ESP32: sessioni con video, prova in vasca. Versione inglese del video/miniatura (da confermare).
+7. Cancellare a mano la cartella temporanea `C:\swt_chk`.
 
 ## Problemi aperti
-- A sola batteria il tag ESP32 non fa il lampo blu e non si vede in Bluetooth (LED rosso, 3,87 V ai pad); latch-up del BMI160 dopo spegnimenti bruschi; display a batteria che non si accende senza USB.
-- Riavvii spontanei osservati; tap software poco affidabile (~1 volta su 10).
-- Brevetti (FORM US 11833392): serve una verifica di libertà di operare per l'uso commerciale.
-- Il BLE non attraversa l'acqua; custodia stagna e resina da definire (essiccare senza la cella). Nessun test automatico.
-- Zona antenna dell'E73 non quotata da Ebyte; zona senza piste F.Cu sotto il modulo non eliminabile del tutto: prova di portata obbligatoria.
-- Livelli SWD: 1 kΩ in serie non sono un traslatore (VDD 1,8 V al primo avvio): valutare un traslatore sul programmatore.
-- Q1 (AO3401A) non provato a banco; polarità di D1, D2, D3, J1 e rotazioni da confermare nell'anteprima JLC.
+- Rischio V-cut con componenti a 0,3–0,6 mm dal bordo (accettato con note a NextPCB); le note potrebbero essere ignorate nel Rev0.
+- Livello CHG_N con D4 (1N4148WS) borderline a VDD 1,8 V; fix: REGOUT0 3,0 V o Schottky.
+- Latch-up del BMI160 e riavvii del tag ESP32 a batteria; tap software poco affidabile.
+- Brevetti (FORM US 11833392): verifica di libertà di operare per l'uso commerciale.
+- Il BLE non attraversa l'acqua; custodia stagna da definire. Nessun test automatico.
+- Zona antenna dell'E73 non quotata: prova di portata obbligatoria.
 
 ## Decisioni in attesa dell'utente
-- Costo dell'ordine e tagli (raggi X, TVS, header); HASL o ENIG.
-- Ordine dei prototipi della scheda nRF52840.
-- Domande 14 (budget JLC), 18 (vibratore), 26 (cella con spina JST), 29 (frequenza di registrazione): vedi `docs/DOMANDE-APERTE.md`.
+- Ordine NextPCB dopo Viviane; acquisto XIAO e celle; frequenza di registrazione; vibratore. Vedi `docs/DOMANDE-APERTE.md`.
 
 ## Riferimenti
-- Prototipo: `hardware/bom.md`, `hardware/schema.md`, `docs/LEZIONI-APPRESE.md`, `docs/RICERCA-ALGORITMI.md`.
-- Scheda: `hardware/nrf52840/progetto.md`, `verifica_v0.4.md`, `revisioni_esterne.md`, `bom.md`; programmatore: `hardware/programmatore/README.md`.
-- Storico v0.3 (collaudo, 26 × 30 mm, 4 strati) e v0.4: `hardware/nrf52840/progetto.md` e `CHANGELOG.md`.
+- Scheda: `hardware/nrf52840/progetto.md`, `kicad/nextpcb/v0.6/NOTE_ORDINE.md`; XIAO: `hardware/xiao/README.md`; programmatore: `hardware/programmatore/README.md`.
+- Prototipo: `hardware/bom.md`, `docs/LEZIONI-APPRESE.md`, `docs/RICERCA-ALGORITMI.md`.

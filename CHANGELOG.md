@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-11-06
+- **Board v0.6 "Rev0"** (nRF52840 tag, 4 layers, no BGA): MCP73831 charger, TPS22917 load switch, J1 left DNP, D4 + R2 added, D3 replaced by LC05CI. Design kept at 4 layers on purpose.
+- **NextPCB order files** in `hardware/nrf52840/kicad/nextpcb/v0.6/` (Gerber, BOM, CPL, `NOTE_ORDINE.md`). Quote for 20 boards: 216.39 USD after coupon.
+- **Panel generators** `crea_pannelli.py`, `cuci_massa.py`, `esporta_nextpcb.py`, `verifica_v06.py` in `hardware/nrf52840/kicad/`. Panels v0.5 3x1 and 2x1 were rejected by the Rev0 review.
+- **XIAO documentation** in `hardware/xiao/`.
+- **Charging base** redesigned as a slot-based base with NFC tokens (planned, see `docs/DECISIONI.md`).
+- **README** now in English only (decision of 2026-11-06); no Italian copy. Working documents in `docs/` remain in Italian.
+- Security check on the public repository (tracked and untracked files): no keys, tokens, passwords, `.env` or personal data. Absolute paths with the Windows user name were not found.
+
 ## 2026-11-04
 - Allineamento del ramo della scheda con `main` del repository pubblico (firmware 0.4.3, pagina di analisi `tools/index.html`, documenti).
 - **Scheda v0.5** (commit 01c6b8b), 21,59 x 28,0 mm (a 26-27,5 lo sbroglio a 2 strati non chiude), 2 strati: TPS22916C (U6) su VDD_IMU con ON su P0.04 e R7 1 MOhm, R6 su VDD_IMU, C5 4,7 uF 10 V, C7 tolto e C6 4,7 uF, R8 100 kOhm VIN-GND, TVS D3 PTVSLC3D5VB prima di D2, AO3401A (Q1) con R9 contro l'inversione della cella, TP8 VDD_IMU, IMU_MISO/CS su P0.08/P0.12 (XL1/XL2 liberi), serigrafia 1,0 mm. DRC 0, ERC 0 errori, `verifica_v05.py` 100/100 pin, 28 reti, 369 piste, 36 via. File JLC in `jlc/v0.5_swimtag_economica/` (v0.4 congelata). Costo stimato circa 125 EUR (sopra il tetto di 100): tagli possibili senza raggi X ~109, senza TVS ~105, senza header ~100,5.
