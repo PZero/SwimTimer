@@ -522,7 +522,9 @@
         <div class="etichetta">Tag via Bluetooth <span class="mono" id="xiaoVer" style="text-transform:none;letter-spacing:0;font-weight:500"></span></div>
         <div class="comandi" style="margin-top:6px">
           <button class="piccolo" id="xiaoSonno" disabled title="Il tag va in sospensione: si risveglia con un doppio tap o collegando l'USB">Sospendi</button>
-          <button class="piccolo" id="xiaoFw" disabled title="Carica un pacchetto .zip (arduino-cli o adafruit-nrfutil) via Bluetooth">Aggiorna firmware</button>
+          <!-- Nascosto: Chrome/Edge bloccano in Web Bluetooth il servizio DFU Nordic legacy (00001530-...) usato dal
+               bootloader Adafruit della XIAO. Per ora l'aggiornamento via BLE si fa con l'app nRF Connect for Mobile. -->
+          <button class="piccolo" id="xiaoFw" disabled hidden title="Carica un pacchetto .zip (arduino-cli o adafruit-nrfutil) via Bluetooth">Aggiorna firmware</button>
           <input type="file" id="xiaoFwFile" accept=".zip" hidden>
         </div>
         <div class="xiao-barra" id="xiaoFwBarraBox" hidden style="margin-top:8px"><div id="xiaoFwBarra"></div></div>
@@ -1790,7 +1792,7 @@ function aggiornaFw() {
   $('fwFileBtn').disabled = !ble || !!ota;
   $('fwChiudi').textContent = ota ? 'Annulla' : 'Chiudi';
   if (!ota) $('fwSpiega').textContent = !sorgente ? 'Collega il tag via Bluetooth per aggiornarlo.'
-    : !ble ? (sorgente.nome === 'Bluetooth' && sorgente.dfuCp ? 'Questa finestra aggiorna il tag ESP32. Per la XIAO usa il pulsante «Aggiorna firmware» nella tab XIAO (pacchetto .zip).'
+    : !ble ? (sorgente.nome === 'Bluetooth' && String(versioneTag || '').startsWith('xiao') ? 'Questa finestra aggiorna il tag ESP32. La XIAO si aggiorna via cavo USB oppure via Bluetooth con l’app nRF Connect for Mobile (DFU con il pacchetto .zip): il browser blocca il servizio di aggiornamento Nordic.'
       : sorgente.nome === 'Bluetooth' ? 'Il firmware del tag non supporta ancora l’aggiornamento via Bluetooth: va caricato una volta via cavo.' : 'L’aggiornamento avviene solo via Bluetooth: collega il tag con il pulsante Bluetooth.')
     : 'L’aggiornamento avviene via Bluetooth in 1–2 minuti. Se la nuova versione non parte, il tag torna da solo a quella precedente. Tieni il tag vicino e la pagina aperta.';
   $('fwAvanz').hidden = !ota;

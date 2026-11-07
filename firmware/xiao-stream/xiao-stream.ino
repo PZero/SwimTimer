@@ -6,7 +6,7 @@
 #include <stdarg.h>
 #include "nrf_gpio.h"
 
-#define VERSIONE "xiao-0.3.0"
+#define VERSIONE "xiao-0.3.2"
 
 // ---- Pin (numeri Arduino della variante Seeed, vedi variant.h) ----
 // LED RGB attivi bassi: LED_RED/LED_GREEN/LED_BLUE (P0.26/P0.30/P0.06)
@@ -19,9 +19,14 @@
 // ---- Parametri regolabili ----
 #define TAP_SOGLIA 12          // soglia del doppio tap (0..31), 1 LSB = 62,5 mg a +-2 g: 12 = 0,75 g. Piu' basso = piu' sensibile
 #define SOGLIA_BIAS_DPS 2.5f   // il giroscopio e' "fermo" se in 0,5 s ogni asse varia meno di cosi'
-#define INATTIVITA_MS 60000UL  // sospensione automatica dopo questo tempo senza movimento (0 = mai)
-#define MOTO_GYRO_DPS 8.0f     // movimento: un asse del giroscopio oltre questa velocita'...
-#define MOTO_ACC_G 0.08f       // ...oppure un asse dell'accelerometro che cambia piu' di cosi' tra due pacchetti
+// Sospensione automatica: il tag dorme se resta "abbastanza fermo" per INATTIVITA_S secondi.
+// Si valuta un blocco al secondo (media di 25 pacchetti, cosi' le vibrazioni del tavolo si annullano):
+//  - rotazione media sotto QUIETE_GYRO_DPS (un tavolo ~0-1 dps; una testa a riposo ha spesso 3-20 dps)
+//  - direzione della gravita' entro QUIETE_ANGOLO_GRADI da quella d'inizio quiete
+//    (un tavolo non s'inclina; una testa, anche ferma, ondeggia di qualche grado in un minuto)
+#define INATTIVITA_S 60        // 0 = mai
+#define QUIETE_GYRO_DPS 3.0f
+#define QUIETE_ANGOLO_GRADI 3.0f
 #define LOG_RIGHE 50
 #define LOG_LEN 44
 
@@ -266,7 +271,7 @@ static void aggiornaStato(bool forzaLog) {
 
 // ---------------- Sospensione (System OFF, risveglio con doppio tap o USB) ----------------
 static void vaInSospensione() {
-  logRiga("sospensione: doppio tap o USB per riattivare");
+  logRiga("sospensione (2 tap/USB)");
   for (int i = 0; i < 150; i++) { inviaLog(); delay(2); }   // lascia partire le ultime righe
   Bluefruit.Advertising.restartOnDisconnect(false);
   Bluefruit.Advertising.stop();
@@ -406,23 +411,43 @@ void setup() {
   aggiornaStato(true);
 }
 
-// Sospensione automatica: se per INATTIVITA_MS il tag non si muove (giroscopio quasi zero e
-// accelerometro costante) va in sospensione; si risveglia col doppio tap o con la USB.
+// Sospensione automatica: chiamata a ogni pacchetto (25 Hz). Ogni secondo valuta un blocco:
+// fermo = rotazione media bassa E gravita' nella stessa direzione d'inizio quiete.
+// Dopo INATTIVITA_S blocchi fermi di fila va in sospensione (doppio tap o USB per riattivare).
+// Ogni 10 s scrive nel log i valori misurati, utili per tarare le soglie.
 static void controllaInattivita(uint32_t ora) {
-  static uint32_t ultimoMoto = 0;
-  static int16_t accPrec[3];
-  static bool primo = true;
-  if (INATTIVITA_MS == 0) return;
-  const int16_t sogliaG = (int16_t)(MOTO_GYRO_DPS * 16.4f), sogliaA = (int16_t)(MOTO_ACC_G * 2048.0f);
-  bool moto = primo;
-  for (int i = 0; i < 3; i++) {
-    if (abs(gir[i]) > sogliaG || abs(acc[i] - accPrec[i]) > sogliaA) moto = true;
-    accPrec[i] = acc[i];
+  static float sa[3], sg; static int n = 0;
+  static float rif[3]; static bool rifOk = false;
+  static int secFermo = 0; static float gMax = 0, angMax = 0;
+  (void)ora;
+  if (INATTIVITA_S == 0) return;
+  float g2 = 0;
+  for (int i = 0; i < 3; i++) { sa[i] += acc[i] / 2048.0f; float w = gir[i] / 16.4f; g2 += w * w; }
+  sg += sqrtf(g2);
+  if (++n < 25) return;                                  // blocco di 1 s
+  float a[3], an = 0, gMed = sg / n;
+  for (int i = 0; i < 3; i++) { a[i] = sa[i] / n; an += a[i] * a[i]; sa[i] = 0; }
+  sg = 0; n = 0;
+  an = sqrtf(an);
+  if (an < 0.5f) return;                                 // caduta libera / dato anomalo: ignora
+  for (int i = 0; i < 3; i++) a[i] /= an;
+  float ang = 0;
+  if (rifOk) {
+    float d = a[0] * rif[0] + a[1] * rif[1] + a[2] * rif[2];
+    ang = acosf(constrain(d, -1.0f, 1.0f)) * 57.2958f;
   }
-  primo = false;
-  if (moto) { ultimoMoto = ora; return; }
-  if (ora - ultimoMoto >= INATTIVITA_MS) {
-    logRiga("fermo da %lu s: sospensione", (unsigned long)(INATTIVITA_MS / 1000));
+  if (rifOk && gMed < QUIETE_GYRO_DPS && ang < QUIETE_ANGOLO_GRADI) {
+    secFermo++;
+    gMax = max(gMax, gMed); angMax = max(angMax, ang);
+  } else {                                               // movimento: nuova quiete da qui
+    if (secFermo >= 10) logRiga("moto dopo %ds rot%.1f ang%.1f", secFermo, gMed, ang);
+    for (int i = 0; i < 3; i++) rif[i] = a[i];
+    rifOk = true; secFermo = 0; gMax = 0; angMax = 0;
+  }
+  if (secFermo > 0 && secFermo % 10 == 0)
+    logRiga("quiete %ds rot%.1f ang%.1f", secFermo, gMax, angMax);
+  if (secFermo >= INATTIVITA_S) {
+    logRiga("fermo da %d s: sospensione", INATTIVITA_S);
     vaInSospensione();
   }
 }

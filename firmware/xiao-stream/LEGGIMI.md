@@ -20,11 +20,12 @@ La compilazione crea gia' il pacchetto DFU: `C:\Temp\xs\build\xiao-stream.ino.zi
 
     adafruit-nrfutil dfu genpkg --dev-type 0x0052 --sd-req 0xB6 --application xiao-stream.ino.hex pacchetto.zip
 
-(il valore di `--sd-req` e' quello di `build.sd_fwid` in `boards.txt` del core). Nella tab XIAO:
-1. Collega il tag via Bluetooth, premi **Aggiorna firmware** e scegli il .zip.
-2. Il tag entra nel bootloader (si scollega). Premi **Scegli il tag in aggiornamento** e seleziona il dispositivo che compare (nome tipo "DfuTarg"/"XIAO-BOOT", indirizzo diverso dall'originale). Se non compare, il pulsante passa a «Mostra tutti i dispositivi».
-3. Barra di avanzamento (~130 KB a pacchetti da 20 byte, qualche minuto). Al termine il tag si riavvia: ricollegalo e leggi la versione.
-Il protocollo e' il DFU Nordic legacy (control point 00001531, packet 00001532 del servizio 00001530), scritto in JS senza librerie (il .zip si legge con `DecompressionStream`). Il bootloader resta sempre recuperabile via USB con doppio tap su reset.
+(il valore di `--sd-req` e' quello di `build.sd_fwid` in `boards.txt` del core).
+
+**Dal browser NON funziona (verificato 2026-11-07):** Chrome/Edge mettono nella blocklist di Web Bluetooth il servizio DFU Nordic legacy `00001530-1212-efde-1523-785feabcd123` (niente verifica di firma), quindi la pagina non lo vede. Il pulsante «Aggiorna firmware» della tab XIAO e' nascosto; il codice JS del DFU legacy resta nella pagina (provato solo contro un bootloader simulato in node).
+
+Come aggiornare via Bluetooth oggi: app **nRF Connect for Mobile** (Nordic, Android/iOS) → collegati a "SwimTag" → pulsante **DFU** → scegli il .zip. Il bootloader resta sempre recuperabile via USB con doppio tap su reset.
+Per il tag definitivo: Zephyr + MCUboot + aggiornamento SMP, compatibile con Web Bluetooth, con firma e ritorno automatico alla versione precedente.
 
 ## Protocollo (little endian)
 - Servizio `7a1e0001-5b1d-4c8e-9f3a-1d2c3b4a5e60`.
