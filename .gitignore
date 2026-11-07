@@ -39,3 +39,6 @@ media/video/*.wav
 media/video/*.mov
 media/video/fotogrammi/
 media/video/tmp/
+
+# eccezione: firmware XIAO pubblicato per l aggiornamento via Bluetooth
+!firmware/xiao-stream/release/xiao.bin
