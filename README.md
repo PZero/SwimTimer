@@ -4,7 +4,7 @@ Automatic lap times in the pool: a tag under the swim cap and a poolside display
 
 ![Status](https://img.shields.io/badge/status-ESP32%20prototype%20working-yellow) ![Board](https://img.shields.io/badge/nRF52840%20tag-v0.6%20Rev0%20ready%20for%20preview-green) ![Repository](https://img.shields.io/badge/repository-public-blue) ![License](https://img.shields.io/badge/license-to%20be%20defined-lightgrey)
 
-Updated on **2026-11-06**. Single public repository `PZero/SwimTimer`: ESP32 prototype, firmware, analysis web page (GitHub Pages: https://pzero.github.io/SwimTimer/), nRF52840 tag (KiCad, Gerber, JLCPCB and NextPCB files), programmer HAT, technical wallpapers and video.
+Updated on **2026-11-07**. Single public repository `PZero/SwimTimer`: ESP32 prototype, firmware, analysis web page (GitHub Pages: https://pzero.github.io/SwimTimer/), nRF52840 tag (KiCad, Gerber, JLCPCB and NextPCB files), programmer HAT, technical wallpapers and video.
 
 > **Language.** This README is in English. Internal working documents in [`docs/`](docs/) (state, decisions, requirements, design) are written in Italian.
 
@@ -19,6 +19,7 @@ Watch it on YouTube: **https://youtu.be/EVrdSybpnE4** (Italian version: https://
 ## Table of contents
 - [What is SwimTimer](#what-is-swimtimer)
 - [Current status](#current-status)
+- [Test methodology: raw data, video and hand annotation](#test-methodology-raw-data-video-and-hand-annotation)
 - [System architecture](#system-architecture)
 - [ESP32 prototype, firmware 0.4.3 and analysis page](#esp32-prototype-firmware-043-and-analysis-page)
 - [nRF52840 tag](#nrf52840-tag)
@@ -51,10 +52,24 @@ Watch it on YouTube: **https://youtu.be/EVrdSybpnE4** (Italian version: https://
 | LilyGO T-RGB display (4-hand pace clock) | Working on the bench |
 | nRF52840 tag **v0.5 "economy"** | Ready: 21.59 x 28.0 mm, 2 layers, DRC 0, ERC 0 errors, `verifica_v05.py` 100/100 pins. JLCPCB files plus NextPCB files (single board and 3x1 / 2x1 panels); JLC placement preview checked, Q1 and U6 rotations fixed (commit `dea9744`) |
 | nRF52840 tag **v0.6 "Rev0"** (new) | 4 layers 0.8 mm, 21.59 x 28.5 mm, no BGA (NextPCB Rev0 rejects pitch below 0.45 mm). Files generated; JLC rotations of the new SOT-23 parts still to verify in a JLC preview |
-| XIAO nRF52840 Sense test tags | Bill of materials and procedure written ([`hardware/xiao/README.md`](hardware/xiao/README.md)); not yet ordered. Streaming firmware 0.4.2 tested on a board; pool recording mode 0.5.0/0.5.1 written, not yet tested on hardware or in the pool |
+| XIAO nRF52840 Sense test tags | One board in use on the bench ([`hardware/xiao/README.md`](hardware/xiao/README.md)). Streaming firmware 0.4.2 tested; pool recording mode 0.5.0 flashed on the board (tap wake-up and recording start confirmed, download and data not yet checked), 0.5.1 compiled; not yet used in the pool |
 | Order | **Not placed yet**: preview, finish choice (HASL/ENIG), DFM ticket and cost decision pending |
 | nRF52840 tag firmware | To be written (Zephyr / nRF Connect SDK) |
 | Programmer HAT for Raspberry Pi 3/4 | Designed, regenerated on v0.5 (TP1-TP7 unchanged), DRC 0; **not built yet** |
+
+## Test methodology: raw data, video and hand annotation
+
+The core of SwimTimer is a set of **filters** that recognise strokes, breaths, turns, starts and finishes from the IMU of a tag worn under the cap. Before writing those filters we need **ground truth**: real swimming data in which every event is known. For this phase the tag is a **Seeed XIAO nRF52840 Sense** (same SoC as the custom board, which is still being manufactured) running the pool recording firmware [`firmware/xiao-stream`](firmware/xiao-stream/) 0.5.x.
+
+1. **Record raw data in the pool.** The swimmer wakes the tag (2 taps, blue LED, 2 taps): it records the raw accelerometer and gyroscope at 208 Hz to its flash, with BLE off (BLE does not cross water). The swimmer is filmed from the deck with a phone (H.264, 30 fps).
+2. **Sync gesture.** With the tag under the cap, the swimmer gives **5 large, clearly visible taps** on it. The taps are sharp peaks in the data and visible frames in the video: the **5th tap** is the common reference point.
+3. **Swim 5-10 minutes,** then put the tag in the bag: after 180 s of rest it closes the recording and sleeps. The data survives even if the battery runs out on the way home.
+4. **Download at home over USB** from the *Recording* tab of [`tools/index.html`](tools/index.html) (Web Serial) or with [`scarica.py`](firmware/xiao-stream/scarica.py): a `.swr` file.
+5. **Align video and data** in the *Annotation* tab: press **X** on the video frame of the 5th tap and click the 5th peak in the zoomable raw-data chart. The page computes the offset; from then on the data follow the video, forwards and backwards.
+6. **Annotate events by hand** while watching the video (slow motion, frame by frame): **B** stroke (hand entry), **R** breath (mouth out of the water), **V** turn start, **F** turn end, **P** start, **A** arrival. Events are stored in video time, so a later offset correction moves them all at once; they are saved as a project JSON and a CSV.
+7. **Develop the filters** on the raw data, re-process the same recording and **compare** the automatic events with the hand-annotated ones (matches within a time tolerance, precision, recall, timing error). This happens only after the whole session has been annotated.
+
+Recordings, videos and annotation projects are health data: they stay on the PC and are excluded from git; the repository only contains code and invented test data.
 
 ## System architecture
 
@@ -313,7 +328,7 @@ Main warnings:
 
 ## XIAO nRF52840 Sense test tags
 
-A cheap path to test now, while the custom boards are in the making: two **Seeed XIAO nRF52840 Sense** boards (same SoC, Zephyr / nRF Connect SDK firmware), worn under the cap. They record the IMU to flash while in the water and download the data over BLE out of the water. Full bill of materials, procedures, risks and sources (Italian): [`hardware/xiao/README.md`](hardware/xiao/README.md).
+A cheap path to test now, while the custom boards are in the making: two **Seeed XIAO nRF52840 Sense** boards (same SoC, Arduino firmware for now), worn under the cap. They record the raw IMU to flash while in the water (BLE off) and the data is downloaded over USB at home. Full bill of materials, procedures, risks and sources (Italian): [`hardware/xiao/README.md`](hardware/xiao/README.md).
 
 - **Board.** XIAO nRF52840 Sense (LSM6DS3TR-C IMU on I2C, 2 MB QSPI flash, TI BQ25101 charger), about 16 EUR each with VAT.
 - **Cell.** **LP-401230, 100 mAh** with protection (30.5 x 12.0 x 4.05 mm). The 40 mAh cell used on the custom boards is **unsuitable**: the XIAO charger delivers at least 50 mA, i.e. 1.25 C on 40 mAh.
@@ -345,7 +360,7 @@ BLE does not cross water, so for the first pool session the tag records the **ra
 - **Download over USB only.** [`scarica.py`](firmware/xiao-stream/scarica.py) (needs `pyserial`) or the "Recording" tab of the page (Web Serial). Output: a `.swr` file plus CSV.
 - **`.swr` format.** Specified in [`swr_formato.h`](firmware/xiao-stream/swr_formato.h); decoders [`swr.py`](firmware/xiao-stream/swr.py) and [`tools/swr.js`](tools/swr.js). 11 unit tests on invented data only (`python -m unittest test_swr`). The parity check [`tools/parita_swr.mjs`](tools/parita_swr.mjs) still has to be run on a real recording.
 - **Web page.** [`tools/index.html`](tools/index.html) has two new tabs. *Recording*: Web Serial download and erase, open a `.swr` file. *Annotation*: raw-data charts with zoom, video at 30 fps, synchronisation with key X on the 5th tap, events B/R/V/F/P/A saved in video time, project JSON and CSV export. The old tab is renamed "Reg. ESP32".
-- **Verification status.** 0.5.0 is **not yet tested on hardware**: FIFO order and burst reads, chip erase, QSPI without SoftDevice and power consumption (estimated 1.5-2 mA while recording) are unverified. 0.5.1 is compiled but not yet flashed. The C++ encoder has never been run on a PC: C++/Python parity holds by construction only. The page tabs were tested with simulated data only. `.swr` files and CSV are health data and are ignored by git.
+- **Verification status.** 0.5.0 is flashed on the board: the 2-taps-blue-2-taps wake-up and the start of recording (green blink every 8 s) are confirmed; the download and the recorded data are **not yet checked**: FIFO order and burst reads, chip erase, QSPI without SoftDevice and power consumption (estimated 1.5-2 mA while recording) are unverified. 0.5.1 is compiled but not yet flashed. The C++ encoder has never been run on a PC: C++/Python parity holds by construction only. The page tabs were tested with simulated data only. `.swr` files and CSV are health data and are ignored by git.
 - **Next steps.** Dry run of 0.5.0 at home, first pool session with video, hand annotation of all events, then filter development and comparison.
 
 ## External reviews (v0.4)

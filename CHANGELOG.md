@@ -1,6 +1,7 @@
 # Changelog
 
 ## 2026-11-07 (pool recording mode)
+- **README:** new section "Test methodology: raw data, video and hand annotation" (XIAO tag, 5-tap sync, USB download, X alignment, B/R/V/F/P/A annotation, then filters and comparison); stale lines on the XIAO fixed (Arduino firmware, USB download, board in use).
 - **Release binary:** rebuilt the published `firmware/xiao-stream/release/xiao.bin` (still 0.4.2, same source) with `-fmacro-prefix-map`, removing a local build path that contained the Windows user name; `xiao.json` updated (144916 bytes, CRC32 `740823a6`).
 - **XIAO firmware 0.5.0 "pool recording mode"** in `firmware/xiao-stream/`: records the raw IMU to the 2 MB QSPI flash (208 Hz, +-16 g, +-1000 dps, 256-byte pages with CRC16, int8 delta compression, about 25 min) with BLE off. Start: 2 taps, blue LED, 2 taps; new wake-ups append a segment; erase: 2 taps, blue LED, 6 taps, 2 confirmation taps. Stops after 180 s of rest, memory full or battery < 3.3 V. Data survives battery loss; download over USB only. New `flash_qspi.h` (direct `nrfx_qspi` driver) and `swr_formato.h`.
 - **Fix of the 2-tap wake bug**: the Adafruit bootloader clears `RESETREAS`, so the reset cause was lost; a marker is now written in `GPREGRET2` before every System OFF.
