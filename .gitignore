@@ -33,6 +33,11 @@ desktop.ini
 # Scritto dalla CI al momento della compilazione
 firmware/test-collegamenti/versione.h
 
+# Registrazioni in vasca della XIAO (dati di salute): mai nel repository
+*.swr
+firmware/xiao-stream/registrazioni/
+firmware/xiao-stream/*.csv
+
 # Video: non nel repository (pubblicato su YouTube, link nel README)
 media/video/*.mp4
 media/video/*.wav
@@ -42,3 +47,9 @@ media/video/tmp/
 
 # eccezione: firmware XIAO pubblicato per l aggiornamento via Bluetooth
 !firmware/xiao-stream/release/xiao.bin
+
+# Prova in piscina: progetti di annotazione, eventi esportati, video (dati di salute / personali)
+*.swimproj.json
+eventi*.csv
+*.mp4
+*.mov

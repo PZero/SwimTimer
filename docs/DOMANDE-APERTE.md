@@ -15,7 +15,7 @@
 14. ~~Piste della scheda nRF52840~~: tracciate nella v0.2 (DRC 0 errori).
 15. ~~GitHub Pages~~: attivato il 2026-10-26.
 16. Per l'uso commerciale: vuoi far fare una verifica di libertà di operare (brevetti) prima di vendere?
-17. Quando e dove registriamo la prima sessione con video (battito di mani per sincronizzare)?
+17. ~~Prima sessione con video~~: deciso, 5 colpi sulla tag sotto la cuffia, video a 30 fps; manca solo la data.
 18. ~~Batteria del tag al 2%~~: batteria sostituita, lettura verificata col tester.
 19. A sola batteria, dopo l'accensione con l'interruttore: quanto misura il pin 3V3? E con il tag collegato via Bluetooth, staccando l'USB i dati continuano ad arrivare?
 20. Scheda nRF52840 v0.2: applichiamo le 4 modifiche dalle lezioni apprese (alimentazione commutata del sensore, misuratore di carica, spegnimento vero, etichette +/−), sapendo che serve rifare parte delle piste?
@@ -36,3 +36,8 @@ Risolte: modulo E73 (Raytac a stock 0), IMU LSM6DSV16X, flash 16 MB, interruttor
 37. Taratura batteria: leggi col tester la tensione della cella e la inserisci in «Taratura» (il tag legge ~1% in meno).
 38. Soglie della sospensione automatica (rotazione 3 dps, inclinazione 3°, 60 s): da tarare con la scheda sotto la cuffia a riposo; poi provare i 4 tap e la sospensione a batteria bassa.
 39. Per il tag definitivo: firmware Zephyr con MCUboot e aggiornamento SMP (compatibile con Web Bluetooth) o proseguire con Arduino?
+40. Prova a secco della 0.5.0 (registrare a casa, scaricare via USB, `node tools/parita_swr.mjs <file>`): quando la fai? Poi la prima registrazione in piscina (5–10 min).
+41. Telefono per il video: confermi H.264 a 30 fps (evitare HEVC e frequenza variabile)?
+42. Compressione: quanti minuti entrano davvero nei dati veri (prevista ~25 min con dati regolari)? Dipende dai tratti con movimenti bruschi.
+43. LED sotto la cuffia: se non si vede, serve un altro segnale (cicalino fuori dal tag) oppure basta controllare da PC?
+44. Caricare la 0.5.1 (lampo blu a ogni tocco): serve la tag in modalità normale (USB collegata).

@@ -10,6 +10,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+<link rel="stylesheet" href="annotazione.css">
 <style>
   :root {
     --bg: #f2f4f7; --card: #ffffff; --card-2: #f7f9fb; --testo: #0f1720; --tenue: #5d6b7a; --debole: #8794a2;
@@ -287,8 +288,10 @@
     </div>
     <div class="segmentato schede-vista" id="schedeVista" role="tablist" aria-label="Sezione">
       <button data-v="vivo" aria-pressed="true">Dal vivo</button>
-      <button data-v="reg" aria-pressed="false">Registrazioni</button>
+      <button data-v="reg" aria-pressed="false">Reg. ESP32</button>
       <button data-v="xiao" aria-pressed="false">XIAO</button>
+      <button data-v="swr" aria-pressed="false">Registrazione</button>
+      <button data-v="ann" aria-pressed="false">Annotazione</button>
     </div>
     <div class="comandi">
       <span class="pillola" id="pillola"><span class="punto"></span><span id="stato">Non collegato</span></span>
@@ -439,7 +442,7 @@
     <!-- Registrazioni -->
     <section class="scheda s12" id="schedaReg">
       <header>
-        <h2>Registrazioni sul tag <small>toc toc = inizio · toc toc toc = fine</small></h2>
+        <h2>Registrazioni sul tag ESP32 (prototipo) <small>toc toc = inizio · toc toc toc = fine</small></h2>
         <div class="comandi">
           <button class="piccolo" id="regAvvia" disabled>● Avvia</button>
           <button class="piccolo" id="regFerma" disabled>■ Ferma</button>
@@ -484,6 +487,10 @@
     </section>
 
   </div>
+
+  <!-- Prova in piscina: scarico USB (tools/registrazione.js) e annotazione video + dati (tools/annotazione.js) -->
+  <div class="griglia" id="vistaSwr" hidden></div>
+  <div class="griglia" id="vistaAnn" hidden></div>
 
   <div class="griglia" id="vistaXiao" hidden>
     <!-- Tag di prova XIAO nRF52840 Sense -->
@@ -1909,6 +1916,8 @@ function mostraVista(v) {
   $('vistaVivo').hidden = v !== 'vivo';
   $('vistaReg').hidden = v !== 'reg';
   $('vistaXiao').hidden = v !== 'xiao';
+  $('vistaSwr').hidden = v !== 'swr';
+  $('vistaAnn').hidden = v !== 'ann';
   $('schedeVista').querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v === v)));
   if (v === 'reg') disegnaTraccia();
 }
@@ -3012,5 +3021,8 @@ function aggiornaTesti() {
 }
 requestAnimationFrame(ciclo);
 </script>
+<script src="swr.js"></script>
+<script src="registrazione.js"></script>
+<script src="annotazione.js"></script>
 </body>
 </html>

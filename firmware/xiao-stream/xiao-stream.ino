@@ -1,4 +1,4 @@
-// SwimTimer - XIAO nRF52840 Sense: streaming IMU via BLE, log, sospensione, OTA via BLE (0.4.0)
+// SwimTimer - XIAO nRF52840 Sense: streaming IMU via BLE, log, sospensione, OTA via BLE (0.5.0)
 // Core: Seeeduino:nrf52 (non mbed) con Bluefruit. Protocollo e uso: vedi LEGGIMI.md
 #include <Arduino.h>
 #include <Wire.h>
@@ -6,9 +6,11 @@
 #include <stdarg.h>
 #include "nrf_gpio.h"
 #include <InternalFileSystem.h>
+#include "flash_qspi.h"          // flash QSPI da 2 MB della XIAO (registrazione in vasca), sopra nrfx_qspi
+#include "swr_formato.h"
 #include <flash/flash_nrf5x.h>   // scrittura flash compatibile con il SoftDevice (sd_flash_*)
 
-#define VER_NUM "0.4.2"
+#define VER_NUM "0.5.1"
 #define VERSIONE "xiao-" VER_NUM
 // Marcatore cercato nel binario dalla pagina (come per l'ESP32) e dall'OTA del tag
 __attribute__((used)) static const char marcatoreVersione[] = "SWIMTAG_VER=" VER_NUM ";";
@@ -35,10 +37,23 @@ __attribute__((used)) static const char marcatoreScheda[] = FIRMA_SCHEDA;
 #define INATTIVITA_S 60        // 0 = mai
 #define QUIETE_GYRO_DPS 3.0f
 #define QUIETE_ANGOLO_GRADI 3.0f
-// Risveglio con 4 tocchi: il primo doppio tap sveglia il chip, che aspetta un SECONDO doppio tap per
-// RISVEGLIO_FINESTRA_MS; se non arriva torna subito in System OFF (senza BLE, USB ne' log).
-#define RISVEGLIO_FINESTRA_MS 2000
-#define RISVEGLIO_PAUSA_MS 150   // dopo l'accensione dell'IMU si ignorano i residui del primo gesto
+// Risveglio con 4 tocchi: il primo doppio tap (2 tocchi) sveglia il chip, che poi conta in software
+// RISVEGLIO_TAP_EXTRA tocchi singoli entro RISVEGLIO_FINESTRA_MS; se non arrivano torna subito in System OFF
+// (senza BLE, USB ne' log).
+#define RISVEGLIO_FINESTRA_MS 3000
+#define TOCCO_LAMPO_MS 120     // il blu si spegne per questo tempo a ogni tocco contato
+#define MARCA_FALSO 0xC0   // 0xC0 | tocchi visti: sospensione dopo un falso risveglio (diagnostica)
+#define RISVEGLIO_PAUSA_MS 150   // dopo l'accensione dell'IMU si ignorano le oscillazioni residue del primo gesto
+#define RISVEGLIO_TAP_EXTRA 2    // tocchi singoli ancora da vedere dopo il doppio tap che ha svegliato il chip
+#define RISVEGLIO_GAP_MS 900     // dal 2o tocco extra in poi: tempo massimo fra due tocchi (poi la sequenza e' finita)
+#define RISVEGLIO_DEBOUNCE_MS 100 // due eventi piu' vicini di cosi' sono lo stesso tocco (rimbalzo)
+// Modalita' vasca (0.5.0): 4 tocchi senza USB = sveglia e registra su flash, BLE spento.
+#define QUIETE_REG_S 180         // la registrazione si chiude dopo tanti secondi "abbastanza fermo" (soglie QUIETE_*)
+#define BAT_MIN_AVVIO_MV 3400    // sotto questa tensione al risveglio non si registra
+#define BAT_STOP_MV 3300         // sotto questa tensione (3 letture di fila, ogni 5 s) la registrazione si chiude
+// Il bootloader Adafruit azzera RESETREAS prima di lanciare l'app: la causa "uscita da System OFF" non e' leggibile.
+// Prima di ogni System OFF si scrive questa marca in GPREGRET2 (che il bootloader non tocca); all'avvio la si legge.
+#define MARCA_SLEEP 0xB7
 #define LOG_RIGHE 50
 #define LOG_LEN 44
 
@@ -58,6 +73,10 @@ __attribute__((used)) static const char marcatoreScheda[] = FIRMA_SCHEDA;
 #define REG_INT_DUR2 0x5A
 #define REG_WAKE_UP_THS 0x5B
 #define REG_MD1_CFG  0x5E
+#define REG_FIFO_CTRL3 0x08
+#define REG_FIFO_CTRL5 0x0A
+#define REG_FIFO_STATUS1 0x3A
+#define REG_FIFO_OUT_L 0x3E
 
 // ---- UUID ----
 #define UUID_BASE(n) "7a1e" #n "-5b1d-4c8e-9f3a-1d2c3b4a5e60"
@@ -86,13 +105,14 @@ static uint16_t connHdl = BLE_CONN_HANDLE_INVALID;
 static char logBuf[LOG_RIGHE][LOG_LEN];
 static uint32_t logN = 0, logInvio = 0;   // righe scritte, prossima da inviare
 static volatile bool risposteAttive = false;
+static volatile bool dumpInCorso = false;   // durante DUMP niente testo sulla seriale (sporcherebbe il binario)
 
 static void logRiga(const char *fmt, ...) {
   char msg[LOG_LEN - 8];
   va_list ap; va_start(ap, fmt); vsnprintf(msg, sizeof(msg), fmt, ap); va_end(ap);
   uint32_t t = millis();
   snprintf(logBuf[logN % LOG_RIGHE], LOG_LEN, "%lu.%lu %s", (unsigned long)(t / 1000), (unsigned long)((t / 100) % 10), msg);
-  if (Serial) Serial.println(logBuf[logN % LOG_RIGHE]);
+  if (Serial && !dumpInCorso) Serial.println(logBuf[logN % LOG_RIGHE]);
   logN++;
 }
 
@@ -371,13 +391,48 @@ static void vaInSospensione(bool soloUsb) {
     nrf_gpio_cfg_sense_input(PIN_INT1_ASSOLUTO, NRF_GPIO_PIN_NOPULL, NRF_GPIO_PIN_SENSE_HIGH);
   }
   if (Serial) { Serial.flush(); delay(20); }
+  sd_power_gpregret_clr(1, 0xFF);
+  sd_power_gpregret_set(1, MARCA_SLEEP);
   sd_power_system_off();
   while (true) __WFE();
 }
 
-// Risveglio dal doppio tap: chiamata a inizio setup(), prima di USB e BLE. Ritorna true se arriva il secondo doppio tap.
+// Conta in software i tocchi singoli (TAP_SRC bit SINGLE_TAP; l'IMU deve essere in modalita' tocco singolo).
+//  - i primi ignoraMs ms non contano (oscillazione residua del gesto precedente)
+//  - fino a 2 tocchi vale la finestra totale finestraMs; dal 2o in poi ogni tocco deve arrivare entro gapMs dal precedente
+//  - si ferma a `massimo` tocchi; lampeggia = LED rosso a 5 Hz (conferma dell'azzeramento). Ritorna i tocchi contati.
+static uint8_t contaTocchi(uint32_t finestraMs, uint32_t ignoraMs, uint32_t gapMs, uint8_t massimo, bool lampeggia, bool invitoBlu = false) {
+  uint8_t n = 0, src = 0;
+  uint32_t t0 = millis(), ultimo = 0;
+  i2cLeggi(REG_TAP_SRC, &src, 1);                                   // azzera il latch
+  while (true) {
+    uint32_t ora = millis();
+    uint32_t limite = (n >= 2) ? ultimo + gapMs : t0 + finestraMs;
+    if (ora >= limite) break;
+    if (lampeggia) digitalWrite(LED_RED, ((ora / 100) & 1) ? HIGH : LOW);
+    // blu acceso = invito ai tocchi; si spegne per TOCCO_LAMPO_MS a ogni tocco contato (riscontro visivo)
+    if (invitoBlu && ora - t0 >= ignoraMs) digitalWrite(LED_BLUE, (n > 0 && ora - ultimo < TOCCO_LAMPO_MS) ? HIGH : LOW);
+    if (i2cLeggi(REG_TAP_SRC, &src, 1) && (src & 0x20)) {           // SINGLE_TAP
+      if (ora - t0 >= ignoraMs && (n == 0 || ora - ultimo >= RISVEGLIO_DEBOUNCE_MS)) {
+        n++; ultimo = ora;
+        if (invitoBlu) digitalWrite(LED_BLUE, HIGH);
+        if (n >= massimo) break;
+      }
+    }
+    delay(5);
+  }
+  if (lampeggia) digitalWrite(LED_RED, HIGH);
+  if (invitoBlu) digitalWrite(LED_BLUE, HIGH);
+  return n;
+}
+
+// Risveglio dal doppio tap: chiamata a inizio setup(), prima di USB e BLE. Ritorna true se arrivano altri tocchi
+// (almeno RISVEGLIO_TAP_EXTRA); i tocchi extra contati (max 6) restano in tocchiExtra: 2..5 = registra (2 tocchi, blu, 2 tocchi),
+// 6 = azzera (2 tocchi, blu, 6 tocchi).
 // All'uscita da System OFF i pin tornano al default: l'IMU perde l'alimentazione (P1.08) e quindi la configurazione,
 // perche' il reset dura piu' dei suoi tempi di spegnimento. Si riaccende, si riconfigura il tap e si ascolta.
+static uint8_t tocchiExtra = 0;
+static bool imuMutoAlRisveglio = false;
 static bool risveglioQuattroTap() {
   NRF_P1->PIN_CNF[8] = (GPIO_PIN_CNF_DIR_Output << GPIO_PIN_CNF_DIR_Pos) | (GPIO_PIN_CNF_INPUT_Disconnect << GPIO_PIN_CNF_INPUT_Pos) | (GPIO_PIN_CNF_DRIVE_H0H1 << GPIO_PIN_CNF_DRIVE_Pos);
   NRF_P1->OUTSET = 1UL << 8;
@@ -387,24 +442,26 @@ static bool risveglioQuattroTap() {
   Wire1.begin();
   Wire1.setClock(400000);
   uint8_t id = 0;
-  bool secondo = false;
-  if (!i2cLeggi(REG_WHO_AM_I, &id, 1) || id != 0x6A) return true;   // IMU muto: avvio normale
-  configuraTap();
-  delay(RISVEGLIO_PAUSA_MS);
-  attendiInt1Bassa(100);                                            // azzera il latch del primo gesto
-  uint32_t t0 = millis();
-  while (millis() - t0 < RISVEGLIO_FINESTRA_MS) {
-    if (digitalRead(PIN_INT1_ASSOLUTO)) {
-      uint8_t src = 0;
-      i2cLeggi(REG_TAP_SRC, &src, 1);
-      if (src & 0x10) { secondo = true; break; }                    // DOUBLE_TAP
-    }
-    delay(5);
+  bool ok = false;
+  for (int i = 0; i < 4 && !ok; i++) {                              // l'IMU puo' metterci piu' di 40 ms a partire
+    ok = i2cLeggi(REG_WHO_AM_I, &id, 1) && id == 0x6A;
+    if (!ok) delay(40);
   }
-  if (secondo) return true;
+  if (!ok) { imuMutoAlRisveglio = true; return true; }              // IMU muto: avvio normale (almeno si raggiunge via USB)
+  configuraTap();
+  // Conferma in SOFTWARE su tocchi singoli (non il DOUBLE_TAP hardware, che nell'oscillazione residua del primo gesto
+  // poteva scattare da solo e svegliare la tag con 2 soli tocchi).
+  i2cScrivi(REG_WAKE_UP_THS, 0x00);                                 // SINGLE_DOUBLE_TAP = 0: tocco singolo
+  i2cScrivi(REG_MD1_CFG, 0x40);                                     // tocco singolo su INT1 (solo per coerenza: si legge TAP_SRC)
+  pinMode(LED_BLUE, OUTPUT); digitalWrite(LED_BLUE, HIGH);
+  tocchiExtra = contaTocchi(RISVEGLIO_FINESTRA_MS, RISVEGLIO_PAUSA_MS, RISVEGLIO_GAP_MS, 6, false, true);
+  if (tocchiExtra >= RISVEGLIO_TAP_EXTRA) return true;
+  configuraTap();                                                   // torna alla configurazione del doppio tap per dormire
+  delay(20);
   // falso risveglio: di nuovo System OFF con la stessa configurazione
   attendiInt1Bassa(300);
   nrf_gpio_cfg_sense_input(PIN_INT1_ASSOLUTO, NRF_GPIO_PIN_NOPULL, NRF_GPIO_PIN_SENSE_HIGH);
+  NRF_POWER->GPREGRET2 = MARCA_FALSO | (tocchiExtra & 0x0F);   // falso risveglio: la marca vale come sleep e mostra i tocchi visti
   NRF_POWER->SYSTEMOFF = POWER_SYSTEMOFF_SYSTEMOFF_Enter;
   while (true) __WFE();
 }
@@ -728,6 +785,335 @@ static void inDisconnessione(uint16_t, uint8_t motivo) {
   logRiga("disconnesso (0x%02X)", motivo);
 }
 
+// ================= Memoria di registrazione (flash QSPI 2 MB, formato in swr_formato.h) =================
+static FlashQspi flash;
+static bool flashPronta = false;
+static uint32_t memPagine = SWR_TOT_PAGINE;
+
+static bool memInit() {
+  if (flashPronta) return true;
+  if (!flash.begin()) return false;
+  memPagine = min((uint32_t)SWR_TOT_PAGINE, (uint32_t)(flash.size() / SWR_PAGINA));
+  flashPronta = memPagine >= 64;
+  return flashPronta;
+}
+static bool memPaginaLibera(uint32_t p) {   // intestazione tutta 0xFF = mai scritta
+  uint8_t h[16];
+  flash.readBuffer(p * SWR_PAGINA, h, 16);
+  for (int i = 0; i < 16; i++) if (h[i] != 0xFF) return false;
+  return true;
+}
+// Prima pagina libera (= pagine usate). Le pagine si scrivono solo in ordine, quindi la ricerca e' binaria.
+// Se l'alimentazione e' mancata a meta' di una pagina, quella pagina risulta "usata" ma con CRC errata: si salta.
+static uint32_t memPrimaLibera() {
+  uint32_t lo = 0, hi = memPagine;
+  while (lo < hi) {
+    uint32_t m = (lo + hi) / 2;
+    if (memPaginaLibera(m)) hi = m; else lo = m + 1;
+  }
+  return lo;
+}
+static bool memLeggiPagina(uint32_t p, uint8_t *buf) {   // true se la CRC torna
+  flash.readBuffer(p * SWR_PAGINA, buf, SWR_PAGINA);
+  uint16_t crc = swrCrc16(buf, 14);
+  crc = swrCrc16(buf + 16, SWR_PAGINA - 16, crc);
+  return buf[14] == (crc & 0xFF) && buf[15] == (crc >> 8);
+}
+static bool memTuttaFF(uint32_t p) {
+  uint8_t b[SWR_PAGINA];
+  flash.readBuffer(p * SWR_PAGINA, b, SWR_PAGINA);
+  for (int i = 0; i < SWR_PAGINA; i++) if (b[i] != 0xFF) return false;
+  return true;
+}
+// Memoria "nostra"? true se vuota (pagina 0 libera) oppure se la pagina 0 e' un segmento valido.
+static bool memFormatoOk() {
+  if (memPaginaLibera(0)) return true;
+  uint8_t b[SWR_PAGINA];
+  return memLeggiPagina(0, b) && b[0] == SWR_T_SEGMENTO;
+}
+
+// ================= Modalita' vasca (nessun SoftDevice, nessun BLE) =================
+#define LED_R 1
+#define LED_G 2
+#define LED_B 4
+static void ledSet(uint8_t m) {   // LED RGB attivi bassi
+  digitalWrite(LED_RED, (m & LED_R) ? LOW : HIGH);
+  digitalWrite(LED_GREEN, (m & LED_G) ? LOW : HIGH);
+  digitalWrite(LED_BLUE, (m & LED_B) ? LOW : HIGH);
+}
+
+static SwrCodificatore cod;
+static uint32_t vPagina = 0, vCampioni = 0, vPagineSeg = 0;
+static uint16_t vSeg = 0, vMv = 0;
+static int8_t vTemp = 0;
+static uint8_t vFlagsProx = SWR_FLAG_PRIMA, vMotivo = 0, vErrI2c = 0;
+static bool vAttivo = false;   // registrazione avviata: attendi() serve anche il FIFO
+
+static int8_t tempDie() {   // sensore interno (senza SoftDevice si legge il registro), 0,25 gradi/LSB
+  NRF_TEMP->EVENTS_DATARDY = 0;
+  NRF_TEMP->TASKS_START = 1;
+  uint32_t t0 = millis();
+  while (!NRF_TEMP->EVENTS_DATARDY && millis() - t0 < 5) { }
+  int32_t t = NRF_TEMP->TEMP;
+  NRF_TEMP->TASKS_STOP = 1;
+  return (int8_t)(t / 4);
+}
+
+static void vServi();
+static void attendi(uint32_t ms) {   // attesa che continua a svuotare il FIFO dell'IMU
+  uint32_t t0 = millis();
+  while (millis() - t0 < ms) { if (vAttivo) vServi(); delay(vAttivo ? 10 : 1); }
+}
+static void lampi(uint8_t colore, uint8_t n, uint16_t onMs, uint16_t offMs) {
+  for (uint8_t i = 0; i < n; i++) { ledSet(colore); attendi(onMs); ledSet(0); if (i + 1 < n) attendi(offMs); }
+}
+
+static void dormiVasca(bool soloUsb) {
+  ledSet(0);
+  vAttivo = false;
+  if (flashPronta) flash.end();
+  if (soloUsb) {
+    i2cScrivi(REG_FIFO_CTRL5, 0x00); i2cScrivi(REG_CTRL2_G, 0x00); i2cScrivi(REG_CTRL1_XL, 0x00);
+    digitalWrite(PIN_LSM6DS3TR_C_POWER, LOW);   // batteria quasi scarica: IMU spento, si riparte solo con l'USB
+  } else {
+    i2cScrivi(REG_FIFO_CTRL5, 0x00); i2cScrivi(REG_FIFO_CTRL3, 0x00);
+    configuraTap();
+    delay(50);
+    attendiInt1Bassa(1000);
+    nrf_gpio_cfg_sense_input(PIN_INT1_ASSOLUTO, NRF_GPIO_PIN_NOPULL, NRF_GPIO_PIN_SENSE_HIGH);
+  }
+  NRF_POWER->GPREGRET2 = MARCA_SLEEP;
+  NRF_POWER->SYSTEMOFF = POWER_SYSTEMOFF_SYSTEMOFF_Enter;
+  while (true) __WFE();
+}
+
+// Scrive la pagina del codificatore nella prossima pagina libera
+static void vScrivi() {
+  if (vPagina >= memPagine - 1) { vMotivo = SWR_STOP_PIENA; return; }   // l'ultima pagina e' riservata alla chiusura
+  if (flash.writeBuffer(vPagina * SWR_PAGINA, cod.pag, SWR_PAGINA) != SWR_PAGINA) { vMotivo = SWR_STOP_ERRORE; return; }
+  vPagina++; vPagineSeg++;
+}
+static void vChiudiPagina() {
+  if (cod.nc == 0) return;
+  cod.chiudi(vPagina, vSeg, vMv, vTemp, vFlagsProx);
+  vFlagsProx &= ~(SWR_FLAG_PRIMA | SWR_FLAG_GAP);
+  vScrivi();
+  cod.azzera();
+}
+
+// Quiete: stesse soglie della sospensione automatica (rotazione media < QUIETE_GYRO_DPS, gravita' entro QUIETE_ANGOLO_GRADI),
+// valutate su blocchi da ~1 s; dopo QUIETE_REG_S secondi di fila la registrazione si chiude.
+static void vQuiete(const int16_t *s) {
+  static float ga[3], gg[3]; static int ng = 0;          // gruppo di 8 campioni (~38 ms)
+  static float sa[3], sg3[3], sgm; static int nb = 0;    // blocco da ~1 s
+  static float rif[3], bias[3]; static bool rifOk = false;
+  static int secFermo = 0;
+  for (int i = 0; i < 3; i++) { ga[i] += s[i]; gg[i] += s[3 + i]; }
+  if (++ng < 8) return;
+  float g2 = 0;
+  for (int i = 0; i < 3; i++) {
+    gg[i] /= ng;                                          // media del gruppo (LSB grezzi)
+    float w = (gg[i] - bias[i]) * 0.035f;                 // dps
+    g2 += w * w;
+    sa[i] += ga[i] / ng / 2048.0f;
+    sg3[i] += gg[i];
+    ga[i] = 0; gg[i] = 0;
+  }
+  sgm += sqrtf(g2); nb++;
+  ng = 0;
+  if (nb < 26) return;
+  float a[3], an = 0, gMed = sgm / nb, bm[3];
+  for (int i = 0; i < 3; i++) { a[i] = sa[i] / nb; an += a[i] * a[i]; sa[i] = 0; bm[i] = sg3[i] / nb; sg3[i] = 0; }
+  sgm = 0; nb = 0;
+  an = sqrtf(an);
+  if (an < 0.5f) return;
+  for (int i = 0; i < 3; i++) a[i] /= an;
+  float ang = 0;
+  if (rifOk) ang = acosf(constrain(a[0] * rif[0] + a[1] * rif[1] + a[2] * rif[2], -1.0f, 1.0f)) * 57.2958f;
+  if (rifOk && gMed < QUIETE_GYRO_DPS && ang < QUIETE_ANGOLO_GRADI) {
+    secFermo++;
+    for (int i = 0; i < 3; i++) bias[i] += 0.1f * (bm[i] - bias[i]);   // in quiete il giroscopio misura il suo bias
+  } else {
+    for (int i = 0; i < 3; i++) rif[i] = a[i];
+    rifOk = true; secFermo = 0;
+  }
+  if (secFermo >= QUIETE_REG_S && !vMotivo) vMotivo = SWR_STOP_QUIETE;
+}
+
+static void vCampione(const int16_t *s, uint32_t t) {
+  if (vMotivo) return;
+  if (cod.nc && !cod.sta(s)) vChiudiPagina();
+  if (vMotivo) return;
+  cod.aggiungi(s, t);
+  vCampioni++;
+  vQuiete(s);
+}
+
+// Svuota il FIFO dell'IMU (6 parole da 16 bit per campione: Gx Gy Gz Ax Ay Az) e codifica i campioni
+static void vServi() {
+  if (vMotivo) return;
+  uint8_t st[2];
+  if (!i2cLeggi(REG_FIFO_STATUS1, st, 2)) { if (++vErrI2c > 100) vMotivo = SWR_STOP_ERRORE; return; }
+  vErrI2c = 0;
+  uint32_t tr = millis();
+  if (st[1] & 0x40) {                                    // overrun: FIFO ripartito, i campioni persi si vedono dal flag e dal tempo
+    vChiudiPagina();
+    vFlagsProx |= SWR_FLAG_GAP;
+    i2cScrivi(REG_FIFO_CTRL5, 0x00);
+    i2cScrivi(REG_FIFO_CTRL5, 0x2E);
+    return;
+  }
+  uint16_t parole = st[0] | ((st[1] & 0x0F) << 8);
+  uint16_t insiemi = parole / 6;
+  if (insiemi > 120) insiemi = 120;                      // al massimo ~0,6 s per chiamata
+  for (uint16_t k = 0; k < insiemi && !vMotivo;) {
+    uint8_t n = min((uint16_t)2, (uint16_t)(insiemi - k));
+    uint8_t b[24];
+    if (!i2cLeggi(REG_FIFO_OUT_L, b, 12 * n)) { if (++vErrI2c > 100) vMotivo = SWR_STOP_ERRORE; return; }
+    for (uint8_t j = 0; j < n; j++, k++) {
+      int16_t w[6], s[6];
+      for (int i = 0; i < 6; i++) w[i] = (int16_t)(b[12 * j + 2 * i] | (b[12 * j + 2 * i + 1] << 8));
+      s[0] = w[3]; s[1] = w[4]; s[2] = w[5]; s[3] = w[0]; s[4] = w[1]; s[5] = w[2];   // ax ay az gx gy gz
+      uint32_t eta = ((uint32_t)(insiemi - 1 - k) * 4800UL + 500) / 1000;                // ms prima della lettura
+      vCampione(s, tr - eta);
+    }
+  }
+}
+
+static bool vImuAvvia() {
+  i2cScrivi(REG_CTRL3_C, 0x01);                          // reset software: tutto ai valori di default
+  delay(20);
+  i2cScrivi(REG_CTRL3_C, 0x44);                          // BDU + auto-incremento indirizzo
+  i2cScrivi(REG_FIFO_CTRL5, 0x00);                       // FIFO in bypass (svuotato)
+  i2cScrivi(REG_FIFO_CTRL3, 0x09);                       // giroscopio e accelerometro nel FIFO, senza decimazione
+  i2cScrivi(REG_CTRL1_XL, 0x54);                         // 208 Hz, +-16 g
+  i2cScrivi(REG_CTRL2_G, 0x58);                          // 208 Hz, +-1000 dps
+  i2cScrivi(REG_FIFO_CTRL5, 0x2E);                       // FIFO continuo a 208 Hz
+  uint8_t v = 0;
+  return i2cLeggi(REG_CTRL1_XL, &v, 1) && v == 0x54;
+}
+
+static void vAzzera() {
+  if (memPaginaLibera(0)) { lampi(LED_B, 1, 300, 0); dormiVasca(false); }   // gia' vuota
+  uint8_t n = contaTocchi(4000, 600, 900, 2, true);                           // conferma: 2 tocchi mentre il LED rosso lampeggia
+  if (n >= 2) {
+    ledSet(LED_R);
+    flash.eraseChip();                                                         // alcuni secondi
+    ledSet(0);
+    lampi(LED_B, 3, 150, 150);
+  }
+  dormiVasca(false);
+}
+
+static void modalitaVasca() {
+  pinMode(LED_RED, OUTPUT); pinMode(LED_GREEN, OUTPUT); pinMode(LED_BLUE, OUTPUT);
+  ledSet(0);
+  pinMode(PIN_NCHG, INPUT_PULLUP);
+  pinMode(PIN_LSM6DS3TR_C_POWER, OUTPUT);
+  if (imuMutoAlRisveglio) { lampi(LED_R, 10, 60, 60); dormiVasca(false); }
+  vcalCarica();
+  vMv = batteriaMv();
+  if (vMv > 0 && vMv < BAT_MIN_AVVIO_MV) { lampi(LED_R, 3, 200, 200); dormiVasca(false); }   // batteria troppo scarica: non si registra
+  if (!memInit()) { lampi(LED_R, 10, 60, 60); dormiVasca(false); }
+  if (tocchiExtra >= 6) vAzzera();                                                           // 2 tocchi, blu, 6 tocchi: azzeramento
+  if (!memFormatoOk()) { ledSet(LED_B); flash.eraseChip(); ledSet(0); }                      // flash mai usata o con altro contenuto
+  uint32_t libera = memPrimaLibera();
+  if (libera + 2 >= memPagine) { lampi(LED_R, 5, 150, 150); dormiVasca(false); }             // memoria piena: serve l'azzeramento
+  if (!memTuttaFF(libera)) { lampi(LED_R, 10, 60, 60); dormiVasca(false); }                  // pagina non cancellata: stato anomalo
+  // numero del segmento = quello dell'ultima pagina valida + 1
+  vSeg = 0;
+  for (uint32_t q = libera; q > 0 && libera - q < 64; q--) {
+    uint8_t b[SWR_PAGINA];
+    if (memLeggiPagina(q - 1, b)) { vSeg = (b[12] | (b[13] << 8)) + 1; break; }
+  }
+  vPagina = libera; vPagineSeg = 0; vCampioni = 0;
+  vTemp = tempDie();
+  // pagina di segmento
+  uint8_t p[SWR_PAGINA];
+  memset(p, 0xFF, sizeof(p));
+  p[16] = SWR_ODR_X10 & 0xFF; p[17] = SWR_ODR_X10 >> 8;
+  p[18] = SWR_ACC_UG_LSB & 0xFF; p[19] = SWR_ACC_UG_LSB >> 8;
+  p[20] = SWR_GIRO_MDPS_LSB; p[21] = 0;
+  memset(p + 22, 0, 6);                                  // bias del giroscopio non misurato (si stima a casa)
+  p[28] = causaReset; p[29] = tocchiExtra;
+  memset(p + 30, 0, 8); strncpy((char *)p + 30, VER_NUM, 7);
+  swrIntestazione(p, SWR_T_SEGMENTO, SWR_FORMATO, vPagina, millis(), vMv, vTemp, 0, vSeg);
+  if (flash.writeBuffer(vPagina * SWR_PAGINA, p, SWR_PAGINA) != SWR_PAGINA) { lampi(LED_R, 10, 60, 60); dormiVasca(false); }
+  vPagina++; vPagineSeg++;
+  if (!vImuAvvia()) { lampi(LED_R, 10, 60, 60); dormiVasca(false); }
+  vAttivo = true;
+  lampi(LED_G, 3, 150, 150);                             // registrazione avviata (nel frattempo il FIFO viene svuotato)
+
+  uint32_t tBat = millis(), tLed = millis();
+  uint8_t sotto = 0;
+  while (!vMotivo) {
+    vServi();
+    uint32_t ora = millis();
+    if (ora - tBat >= 5000) {
+      tBat = ora;
+      vMv = batteriaMv(); vTemp = tempDie();
+      if (vMv > 0 && vMv < BAT_STOP_MV) { if (++sotto >= 3 || vMv < 3100) vMotivo = SWR_STOP_BATTERIA; } else sotto = 0;
+    }
+    if (ora - tLed >= 8000 && !vMotivo) {                // un lampo ogni 8 s
+      tLed = ora;
+      if (vMv > 0 && vMv < 3500) lampi(LED_R, 1, 30, 0);
+      else if (vPagina * 100UL >= memPagine * 80UL) lampi(LED_R | LED_G, 2, 30, 100);
+      else lampi(LED_G, 1, 30, 0);
+    }
+    delay(40);
+  }
+  // chiusura sicura: pagina parziale, pagina di chiusura, poi sospensione
+  vAttivo = false;
+  uint8_t motivo = vMotivo;
+  vMotivo = 0;
+  vChiudiPagina();
+  if (vMotivo == 0 || vMotivo == SWR_STOP_PIENA) {
+    memset(p, 0xFF, sizeof(p));
+    memcpy(p + 16, &vCampioni, 4); memcpy(p + 20, &vPagineSeg, 4);
+    swrIntestazione(p, SWR_T_CHIUSURA, motivo, vPagina, millis(), vMv, vTemp, 0, vSeg);
+    if (vPagina < memPagine) flash.writeBuffer(vPagina * SWR_PAGINA, p, SWR_PAGINA);
+  }
+  if (motivo == SWR_STOP_PIENA) lampi(LED_R, 5, 150, 150);
+  else if (motivo == SWR_STOP_BATTERIA) lampi(LED_R, 3, 200, 200);
+  else if (motivo == SWR_STOP_ERRORE) lampi(LED_R, 10, 60, 60);
+  dormiVasca(motivo == SWR_STOP_BATTERIA);
+}
+
+// ================= Comandi da seriale (modalita' normale, con USB): DUMP, MEM, ERASE =================
+static void comandiSeriale() {
+  static char buf[24]; static uint8_t n = 0;
+  while (Serial.available()) {
+    char c = Serial.read();
+    if (c == '\r') continue;
+    if (c != '\n') { if (n < sizeof(buf) - 1) buf[n++] = c; continue; }
+    buf[n] = 0; n = 0;
+    if (!strcmp(buf, "DUMP") || !strcmp(buf, "MEM") || !strcmp(buf, "ERASE")) {
+      if (!memInit()) { Serial.println("X flash"); continue; }
+      if (!strcmp(buf, "MEM")) {
+        Serial.printf("K mem %lu %lu\n", (unsigned long)memPrimaLibera(), (unsigned long)memPagine);
+      } else if (!strcmp(buf, "ERASE")) {
+        flash.eraseChip();
+        Serial.println("K erase ok");
+      } else {
+        uint32_t usate = memPrimaLibera();
+        dumpInCorso = true;
+        Serial.printf("SWR1 %lu\n", (unsigned long)usate);
+        static uint8_t blocco[1024];
+        for (uint32_t p = 0; p < usate; p += 4) {
+          uint32_t np = min((uint32_t)4, usate - p);
+          flash.readBuffer(p * SWR_PAGINA, blocco, np * SWR_PAGINA);
+          Serial.write(blocco, np * SWR_PAGINA);
+        }
+        Serial.printf("\nEND %lu\n", (unsigned long)usate);
+        Serial.flush();
+        dumpInCorso = false;
+      }
+    } else if (buf[0]) {
+      Serial.println("X comando");
+    }
+  }
+}
+
 void setup() {
   // Causa del reset dal registro RESETREAS (prima che il SoftDevice lo gestisca)
   uint32_t rr = NRF_POWER->RESETREAS;
@@ -739,9 +1125,15 @@ void setup() {
   else if (rr & POWER_RESETREAS_LOCKUP_Msk) causaReset = 6;
   else if (rr & POWER_RESETREAS_RESETPIN_Msk) causaReset = 8;
   else causaReset = 0;
+  uint8_t marca = NRF_POWER->GPREGRET2;                      // marca lasciata prima di System OFF (RESETREAS e' azzerato dal bootloader)
+  NRF_POWER->GPREGRET2 = 0;
+  bool vbusAvvio = NRF_POWER->USBREGSTATUS & POWER_USBREGSTATUS_VBUSDETECT_Msk;
+  if ((marca == MARCA_SLEEP || (marca & 0xF0) == MARCA_FALSO) && !vbusAvvio && causaReset != 7) causaReset = 1;   // risveglio da doppio tap
 
   bool quattroTap = false;
   if (causaReset == 1) quattroTap = risveglioQuattroTap();   // se non arrivano 4 tap non ritorna: torna a dormire
+  // 4 tocchi SENZA USB = modalita' vasca (BLE mai avviato, non ritorna). Con l'USB collegata: modalita' normale.
+  if (quattroTap && !vbusAvvio) modalitaVasca();
 
   Serial.begin(115200);
   uint32_t t0 = millis();
@@ -755,6 +1147,7 @@ void setup() {
 
   const char *nomi[] = {"accensione", "doppio tap", "?", "watchdog", "?", "software", "lockup", "USB", "pin reset"};
   logRiga("boot %s, causa %s (RESETREAS 0x%lX)", VERSIONE, nomi[causaReset], (unsigned long)rr);
+  logRiga("marca %02X vbus %d", marca, vbusAvvio);
   if (quattroTap) logRiga("risveglio 4 tap");
   if (*(volatile const char *)marcatoreVersione != 'S' || *(volatile const char *)marcatoreScheda != 'S') logRiga("?");   // tiene il marcatore nel binario (altrimenti il linker lo scarta)
 
@@ -879,12 +1272,13 @@ void loop() {
     if (!imuOk) {                          // riprova l'init e lo segnala
       imuOk = imuInit();
       logRiga(imuOk ? "IMU ok (ripristinato)" : "IMU NON risponde");
-    } else if (Serial) {
+    } else if (Serial && !dumpInCorso) {
       Serial.printf("acc %d %d %d | gyro %d %d %d\n", acc[0], acc[1], acc[2], gir[0], gir[1], gir[2]);
     }
     aggiornaStato(false);
   }
   eseguiComandi();
+  if (Serial) comandiSeriale();
   servizioOta();
   inviaLog();
   if (!Bluefruit.connected() && ora - ultimoLed >= 500) {   // blu lampeggiante = advertising

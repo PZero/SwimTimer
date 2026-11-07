@@ -51,7 +51,7 @@ Watch it on YouTube: **https://youtu.be/EVrdSybpnE4** (Italian version: https://
 | LilyGO T-RGB display (4-hand pace clock) | Working on the bench |
 | nRF52840 tag **v0.5 "economy"** | Ready: 21.59 x 28.0 mm, 2 layers, DRC 0, ERC 0 errors, `verifica_v05.py` 100/100 pins. JLCPCB files plus NextPCB files (single board and 3x1 / 2x1 panels); JLC placement preview checked, Q1 and U6 rotations fixed (commit `dea9744`) |
 | nRF52840 tag **v0.6 "Rev0"** (new) | 4 layers 0.8 mm, 21.59 x 28.5 mm, no BGA (NextPCB Rev0 rejects pitch below 0.45 mm). Files generated; JLC rotations of the new SOT-23 parts still to verify in a JLC preview |
-| XIAO nRF52840 Sense test tags | Bill of materials and procedure written ([`hardware/xiao/README.md`](hardware/xiao/README.md)); not yet ordered |
+| XIAO nRF52840 Sense test tags | Bill of materials and procedure written ([`hardware/xiao/README.md`](hardware/xiao/README.md)); not yet ordered. Streaming firmware 0.4.2 tested on a board; pool recording mode 0.5.0/0.5.1 written, not yet tested on hardware or in the pool |
 | Order | **Not placed yet**: preview, finish choice (HASL/ENIG), DFM ticket and cost decision pending |
 | nRF52840 tag firmware | To be written (Zephyr / nRF Connect SDK) |
 | Programmer HAT for Raspberry Pi 3/4 | Designed, regenerated on v0.5 (TP1-TP7 unchanged), DRC 0; **not built yet** |
@@ -321,16 +321,32 @@ A cheap path to test now, while the custom boards are in the making: two **Seeed
 - **Waterproofing for tests.** Vacuum bag for the first tests; potting (epoxy) is evaluated in the document and requires a dry run on a dummy sample first.
 - **Soldering.** Only the two cell wires to the BAT pads on the back.
 
-### XIAO streaming firmware 0.4.2 (`firmware/xiao-stream`)
+### XIAO firmware (`firmware/xiao-stream`): BLE streaming 0.4.2 and pool recording mode 0.5.x
 
 Arduino sketch (core Seeeduino:nrf52 + Bluefruit) that makes the XIAO speak the same **`SwimTag` BLE protocol** as the ESP32 tag, so the "XIAO" tab of [`tools/index.html`](tools/index.html) works over Web Bluetooth. Details (Italian): [`firmware/xiao-stream/LEGGIMI.md`](firmware/xiao-stream/LEGGIMI.md).
 
 - **Data.** 16-byte packets at 25 Hz; the IMU runs at 208 Hz and is averaged down. Gyroscope bias calibration reduces head drift.
 - **Status.** 12-byte extended status: charge state, VBUS, die temperature, battery divider. Commands, tag log and version are as on the ESP32 tag. The page has a "Tag log" panel over BLE and a rebuilt Battery panel (charge state, % from a LiPo curve, time to full / runtime, chart, VCAL calibration against a multimeter).
 - **OTA over BLE.** Own protocol on characteristic `0006`: staging in flash, CRC32, board signature check, installer running from RAM. Nordic legacy DFU cannot be used from the browser because it is on the Web Bluetooth blocklist. The binary `firmware/xiao-stream/release/xiao.bin` + `xiao.json` is published by GitHub Pages (workflow updated); the "Tag firmware" dialog of the page handles the XIAO too.
-- **Sleep.** "Sleep" command, and automatic sleep after 60 s of "still enough" (1 s averages: rotation < 3 dps and tilt < 3 deg). Never during an OTA or with the serial port open. Wake with 4 taps (two hardware double-taps of the IMU) or by USB. Forced sleep when the battery is low (< 3.3 V).
+- **Sleep.** "Sleep" command, and automatic sleep after 60 s of "still enough" (1 s averages: rotation < 3 dps and tilt < 3 deg). Never during an OTA or with the serial port open. Wake with 2 taps, blue LED, 2 taps (or by USB). Forced sleep when the battery is low (< 3.3 V).
 - **Verification status.** Tested on the board: double tap, OTA (0.4.0 -> 0.4.1 -> 0.4.2) and sleep. **Not yet tested:** 4-tap wake, low-battery sleep, the Battery panel with the board, VCAL calibration.
 - **Bench note.** One XIAO lost its 3.3 V regulator while the cell was being soldered; it is used on the bench through a silicon diode. Heat the BAT pads briefly and with care.
+
+#### Pool recording mode (firmware 0.5.0 / 0.5.1)
+
+BLE does not cross water, so for the first pool session the tag records the **raw IMU to its 2 MB QSPI flash** with BLE off, and the data is downloaded at home over USB. Purpose: collect real swimming data with video, hand-annotate every event, then develop and compare the detection filters. Details (Italian): [`firmware/xiao-stream/LEGGIMI.md`](firmware/xiao-stream/LEGGIMI.md).
+
+- **Start recording.** 2 taps, blue LED, 2 taps (from 0.5.1 the LED blinks off at each counted tap). Without USB the tag starts recording at once; if the memory already holds a recording, a new segment is appended (one session, several wake-ups). With USB connected the taps give the normal mode (BLE, OTA, log) and nothing is recorded.
+- **Erase.** 2 taps, blue LED, 6 taps, then 2 confirmation taps within 4 s (flashing red LED). Without confirmation nothing happens.
+- **Stop.** No tap-based stop. The tag stops after 180 s of rest, when the memory is full or when the battery drops below 3.3 V, then goes to sleep.
+- **Recorded data.** 208 Hz, accelerometer +-16 g, gyroscope +-1000 dps, about 25 minutes of capacity thanks to int8 delta compression. The gyroscope bias is not corrected (it is estimated at home from still segments). LED signals are listed in the firmware document.
+- **Robustness.** 256-byte pages written once, each with a CRC16 and decodable on its own; data survives battery loss (a segment without closing page is reported as such).
+- **Wake-up fix.** The 2-tap wake bug was caused by the Adafruit bootloader clearing `RESETREAS`; the firmware now writes a marker in `GPREGRET2` before every System OFF.
+- **Download over USB only.** [`scarica.py`](firmware/xiao-stream/scarica.py) (needs `pyserial`) or the "Recording" tab of the page (Web Serial). Output: a `.swr` file plus CSV.
+- **`.swr` format.** Specified in [`swr_formato.h`](firmware/xiao-stream/swr_formato.h); decoders [`swr.py`](firmware/xiao-stream/swr.py) and [`tools/swr.js`](tools/swr.js). 11 unit tests on invented data only (`python -m unittest test_swr`). The parity check [`tools/parita_swr.mjs`](tools/parita_swr.mjs) still has to be run on a real recording.
+- **Web page.** [`tools/index.html`](tools/index.html) has two new tabs. *Recording*: Web Serial download and erase, open a `.swr` file. *Annotation*: raw-data charts with zoom, video at 30 fps, synchronisation with key X on the 5th tap, events B/R/V/F/P/A saved in video time, project JSON and CSV export. The old tab is renamed "Reg. ESP32".
+- **Verification status.** 0.5.0 is **not yet tested on hardware**: FIFO order and burst reads, chip erase, QSPI without SoftDevice and power consumption (estimated 1.5-2 mA while recording) are unverified. 0.5.1 is compiled but not yet flashed. The C++ encoder has never been run on a PC: C++/Python parity holds by construction only. The page tabs were tested with simulated data only. `.swr` files and CSV are health data and are ignored by git.
+- **Next steps.** Dry run of 0.5.0 at home, first pool session with video, hand annotation of all events, then filter development and comparison.
 
 ## External reviews (v0.4)
 
@@ -421,9 +437,9 @@ SwimTimer/
 ├── docs/                         idea, state, decisions, open questions, requirements, design, lessons, algorithms (Italian)
 ├── firmware/
 │   ├── test-collegamenti/        ESP32-S3 tag: firmware 0.4.3
-│   ├── xiao-stream/              XIAO nRF52840 Sense: SwimTag BLE streaming + OTA 0.4.2 (release/ xiao.bin, xiao.json)
+│   ├── xiao-stream/              XIAO nRF52840 Sense: BLE streaming + OTA, pool recording 0.5.x, .swr tools (release/ xiao.bin, xiao.json = 0.4.2)
 │   └── display-prova/            T-RGB display
-├── tools/                        index.html (analysis page), display.html (poolside display mockup), assi.html (old)
+├── tools/                        index.html (analysis page with Recording and Annotation tabs), annotazione.js/.css, registrazione.js, swr.js, parita_swr.mjs, display.html (poolside display mockup), assi.html (old)
 ├── media/video/                  presentation video generator, thumbnail, music
 ├── hardware/
 │   ├── bom.md, schema.md         ESP32 prototype
@@ -496,7 +512,7 @@ The v0.5 board is verified (DRC/ERC, `verifica_v05.py`). **Do not order** before
 - Agree the reference test for the Effort 1-10 indicator.
 
 **XIAO test tags**
-- Order 2 boards and the 100 mAh cells, dry-run the waterproofing. Firmware ported (`firmware/xiao-stream` 0.4.2); still to test on the board: 4-tap wake, low-battery sleep, Battery panel and VCAL calibration.
+- Order 2 boards and the 100 mAh cells, dry-run the waterproofing. Firmware ported (`firmware/xiao-stream`): published release is 0.4.2; the 0.5.0 pool recording mode and 0.5.1 are not yet tested on the board. Still to do: dry run at home (2-taps-blue-2-taps wake and recording), low-battery sleep, Battery panel and VCAL calibration, then the first pool session with video and hand annotation of all events.
 
 **ESP32 prototype**
 - On battery only, the tag does not flash blue and is not visible over Bluetooth (red LED on, 3.87 V at the pads).

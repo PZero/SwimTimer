@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-11-07 (pool recording mode)
+- **XIAO firmware 0.5.0 "pool recording mode"** in `firmware/xiao-stream/`: records the raw IMU to the 2 MB QSPI flash (208 Hz, +-16 g, +-1000 dps, 256-byte pages with CRC16, int8 delta compression, about 25 min) with BLE off. Start: 2 taps, blue LED, 2 taps; new wake-ups append a segment; erase: 2 taps, blue LED, 6 taps, 2 confirmation taps. Stops after 180 s of rest, memory full or battery < 3.3 V. Data survives battery loss; download over USB only. New `flash_qspi.h` (direct `nrfx_qspi` driver) and `swr_formato.h`.
+- **Fix of the 2-tap wake bug**: the Adafruit bootloader clears `RESETREAS`, so the reset cause was lost; a marker is now written in `GPREGRET2` before every System OFF.
+- **0.5.1** (compiled, not yet flashed): the blue LED blinks off at each counted tap.
+- **`.swr` format** with decoders `swr.py` and `tools/swr.js`, download tool `scarica.py`, 11 unit tests (`test_swr.py`, invented data only) and `tools/parita_swr.mjs` (parity check, to be run on a real recording).
+- **Web page `tools/index.html`**: new "Recording" tab (Web Serial download/erase, open `.swr`) and "Annotation" tab (raw-data charts with zoom, video at 30 fps, sync with key X on the 5th tap, events B/R/V/F/P/A saved in video time, project JSON and CSV export). Old tab renamed "Reg. ESP32".
+- **Verification status**: nothing above is tested on hardware or with real video; the page was tested with simulated data only; the C++ encoder was never run on a PC.
+- **Next**: dry run of 0.5.0 at home, first pool session with video, hand annotation of all events, then filter development and comparison.
+- README: new "Pool recording mode" subsection, status table, folder tree and roadmap updated.
+
 ## 2026-11-07
 - **XIAO streaming firmware 0.4.2** in `firmware/xiao-stream/` (Seeed XIAO nRF52840 Sense, Arduino, core Seeeduino:nrf52 + Bluefruit, with `LEGGIMI.md`). Same `SwimTag` BLE protocol as the ESP32 tag: 16-byte data at 25 Hz from an IMU averaged at 208 Hz, 12-byte status (charge, VBUS, die temperature, divider), commands, log, version. The "XIAO" tab of `tools/index.html` now works over Web Bluetooth. Gyroscope bias calibration reduces head drift.
 - **BLE firmware update for the XIAO**: own OTA on characteristic `0006` (staging in flash, CRC32, board signature check, RAM installer), tested on the board 0.4.0 -> 0.4.1 -> 0.4.2. Nordic legacy DFU is not usable from the browser (Web Bluetooth blocklist). `firmware/xiao-stream/release/xiao.bin` and `xiao.json` published by GitHub Pages (workflow updated); the "Tag firmware" dialog handles the XIAO too.
