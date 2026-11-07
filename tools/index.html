@@ -518,6 +518,20 @@
         <canvas class="grafico xiao-graf" id="xiaoGrafGyro"></canvas>
         <div class="nota-reg" style="margin-top:6px">Tag fermo a faccia in su (lato componenti in alto): +1 g sull'asse atteso, cioè Z. Appoggiato sul lato corto con l'USB-C in alto: +1 g su Y. Se non corrisponde, correggi XIAO_ASSE_USB e il segno di Z nel codice.</div>
       </div>
+      <div class="xiao-assi">
+        <div class="etichetta">Tag via Bluetooth <span class="mono" id="xiaoVer" style="text-transform:none;letter-spacing:0;font-weight:500"></span></div>
+        <div class="comandi" style="margin-top:6px">
+          <button class="piccolo" id="xiaoSonno" disabled title="Il tag va in sospensione: si risveglia con un doppio tap o collegando l'USB">Sospendi</button>
+          <button class="piccolo" id="xiaoFw" disabled title="Carica un pacchetto .zip (arduino-cli o adafruit-nrfutil) via Bluetooth">Aggiorna firmware</button>
+          <input type="file" id="xiaoFwFile" accept=".zip" hidden>
+        </div>
+        <div class="xiao-barra" id="xiaoFwBarraBox" hidden style="margin-top:8px"><div id="xiaoFwBarra"></div></div>
+        <div class="xiao-mnt" id="xiaoFwNota"></div>
+      </div>
+      <div class="xiao-assi">
+        <div class="etichetta" style="display:flex;justify-content:space-between;align-items:center">Log tag <button class="piccolo" id="xiaoLogPulisci">Pulisci</button></div>
+        <div class="mono" id="xiaoLog" style="margin-top:6px;max-height:190px;overflow:auto;font-size:11.5px;line-height:1.5;border:1px solid var(--bordo);border-radius:8px;padding:6px 8px;background:var(--card-2);white-space:pre-wrap;word-break:break-word"><span style="color:var(--tenue)">Nessuna riga: collega la XIAO via Bluetooth.</span></div>
+      </div>
     </section>
   </div>
 </main>
@@ -574,6 +588,10 @@ const BLE_COMANDI = '7a1e0004-5b1d-4c8e-9f3a-1d2c3b4a5e60';
 const BLE_RISPOSTE = '7a1e0005-5b1d-4c8e-9f3a-1d2c3b4a5e60';
 const BLE_OTA = '7a1e0006-5b1d-4c8e-9f3a-1d2c3b4a5e60';
 const BLE_VERSIONE = '7a1e0007-5b1d-4c8e-9f3a-1d2c3b4a5e60';
+// Solo XIAO: servizio DFU Nordic legacy (aggiornamento firmware via BLE)
+const DFU_SERVIZIO = '00001530-1212-efde-1523-785feabcd123';
+const DFU_CP = '00001531-1212-efde-1523-785feabcd123';
+const DFU_PKT = '00001532-1212-efde-1523-785feabcd123';
 
 // ---------- Preferenze locali (facoltative) ----------
 const pref = {
@@ -1197,7 +1215,7 @@ function gestisciRiga(r) {
 $('collegaBt').addEventListener('click', async () => {
   let dispositivo;
   try {
-    dispositivo = await navigator.bluetooth.requestDevice({ filters: [{ name: 'SwimTag' }], optionalServices: [BLE_SERVIZIO] });
+    dispositivo = await navigator.bluetooth.requestDevice({ filters: [{ name: 'SwimTag' }], optionalServices: [BLE_SERVIZIO, DFU_SERVIZIO] });
     dispositivo.addEventListener('gattserverdisconnected', () => finisceSorgente());
     $('stato').textContent = 'Connessione…';
     $('pillola').className = 'pillola attesa';
@@ -1245,6 +1263,7 @@ $('collegaBt').addEventListener('click', async () => {
         else if (tipo === 'E' && d.byteLength >= 5) fineFile(d.getUint32(1, true));
         else if (tipo === 'K') conferma(testo());
         else if (tipo === 'X') errore(testo());
+        else if (tipo === 'G') xiaoLogRiga(testo()); // riga di log del tag (XIAO)
       });
       await carRisp.startNotifications();
       const cod = new TextEncoder();
@@ -1253,6 +1272,7 @@ $('collegaBt').addEventListener('click', async () => {
       aggiornaRegistrazioniUI();
       setTimeout(() => comando('LIST'), 300);
       try { sorgente.ota = await servizio.getCharacteristic(BLE_OTA); } catch {}
+      try { sorgente.dfuCp = await (await server.getPrimaryService(DFU_SERVIZIO)).getCharacteristic(DFU_CP); } catch { sorgente.dfuCp = null; } // solo XIAO
       try { versioneTag = new TextDecoder().decode(await (await servizio.getCharacteristic(BLE_VERSIONE)).readValue()); } catch { versioneTag = null; }
       aggiornaFw();
     } catch {
@@ -1759,6 +1779,7 @@ async function leggiUltimaFw() {
   aggiornaFw();
 }
 function aggiornaFw() {
+  xiaoAggiornaBt();
   const ble = !!(sorgente && sorgente.ota);
   $('fwTag').textContent = !sorgente ? 'tag non collegato' : versioneTag || (sorgente.nome === 'USB' ? 'in attesa…' : 'sconosciuta');
   $('fwUltima').textContent = ultimaFw ? ultimaFw.versione + (ultimaFw.build ? ` (${ultimaFw.build})` : '') : !/^https?:/.test(location.protocol) ? 'solo dalla pagina pubblicata' : 'non disponibile';
@@ -2342,6 +2363,173 @@ $('xiaoRicentra').addEventListener('click', xiaoRicentra);
 
 // Demo testa: testa sintetica con la basetta sul lato destro, inclinata di 20° e ruotata di 8° verso la nuca
 // (rispetto al montaggio ideale), con le impostazioni correnti di lato componenti e USB-C
+// ---------- XIAO via Bluetooth: log del tag, sospensione, aggiornamento firmware (DFU Nordic legacy) ----------
+var xiaoDfu = { fase: 'inattivo', pacchetto: null, tutti: false }; // fase: inattivo · attesa (zip pronto, tag nel bootloader) · invio
+function xiaoLogRiga(testo) {
+  const box = $('xiaoLog');
+  if (box.firstElementChild && box.firstElementChild.tagName === 'SPAN') box.textContent = '';
+  const vicino = box.scrollHeight - box.scrollTop - box.clientHeight < 30;
+  box.appendChild(document.createTextNode(new Date().toLocaleTimeString('it-IT') + '  ' + testo + '\n'));
+  while (box.childNodes.length > 300) box.removeChild(box.firstChild);
+  if (vicino) box.scrollTop = box.scrollHeight;
+}
+$('xiaoLogPulisci').addEventListener('click', () => { $('xiaoLog').textContent = ''; });
+function xiaoNotaFw(t, err) { $('xiaoFwNota').textContent = t; $('xiaoFwNota').style.color = err ? 'var(--errore)' : ''; }
+function xiaoAggiornaBt() {
+  if (!xiaoDfu) return; // chiamata prima che il blocco sia stato eseguito
+  const bt = !!(sorgente && sorgente.nome === 'Bluetooth' && sorgente.invia);
+  const f = xiaoDfu.fase;
+  $('xiaoSonno').disabled = !bt || f === 'invio';
+  $('xiaoFw').disabled = f === 'invio' || (f === 'inattivo' && !(sorgente && sorgente.dfuCp));
+  $('xiaoFw').textContent = f === 'attesa' ? (xiaoDfu.tutti ? 'Mostra tutti i dispositivi' : 'Scegli il tag in aggiornamento') : 'Aggiorna firmware';
+  $('xiaoVer').textContent = bt && versioneTag ? versioneTag : '';
+}
+$('xiaoSonno').addEventListener('click', () => {
+  if (comando('SLEEP')) xiaoNotaFw('Sospensione richiesta: il tag si scollega. Per riattivarlo: doppio tap sul tag oppure collega l’USB.');
+});
+
+// --- Lettura del pacchetto .zip (senza librerie: directory centrale + DecompressionStream) ---
+async function xiaoLeggiZip(buf) {
+  const dv = new DataView(buf.buffer, buf.byteOffset, buf.byteLength), file = new Map();
+  let fine = -1;
+  for (let i = buf.length - 22; i >= Math.max(0, buf.length - 70000); i--) if (dv.getUint32(i, true) === 0x06054b50) { fine = i; break; }
+  if (fine < 0) throw new Error('non è un file .zip');
+  const n = dv.getUint16(fine + 10, true);
+  let p = dv.getUint32(fine + 16, true);
+  for (let k = 0; k < n; k++) {
+    if (dv.getUint32(p, true) !== 0x02014b50) throw new Error('zip danneggiato');
+    const metodo = dv.getUint16(p + 10, true), comp = dv.getUint32(p + 20, true), lN = dv.getUint16(p + 28, true), lE = dv.getUint16(p + 30, true), lC = dv.getUint16(p + 32, true), off = dv.getUint32(p + 42, true);
+    const nome = new TextDecoder().decode(buf.subarray(p + 46, p + 46 + lN));
+    const dati0 = off + 30 + dv.getUint16(off + 26, true) + dv.getUint16(off + 28, true);
+    let dati = buf.subarray(dati0, dati0 + comp);
+    if (metodo === 8) dati = new Uint8Array(await new Response(new Blob([dati]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).arrayBuffer());
+    else if (metodo !== 0) throw new Error('compressione zip non supportata');
+    file.set(nome, dati);
+    p += 46 + lN + lE + lC;
+  }
+  return file;
+}
+async function xiaoLeggiPacchetto(buf) {
+  const file = await xiaoLeggiZip(buf);
+  const m = file.get('manifest.json');
+  if (!m) throw new Error('manifest.json mancante: non è un pacchetto DFU');
+  const app = JSON.parse(new TextDecoder().decode(m)).manifest.application;
+  if (!app) throw new Error('il pacchetto non contiene un’applicazione');
+  const bin = file.get(app.bin_file), dat = file.get(app.dat_file);
+  if (!bin || !dat) throw new Error('pacchetto incompleto (bin o dat mancante)');
+  return { bin, dat };
+}
+
+// --- Protocollo DFU legacy: control point (opcode 1 start, 2 init, 3 ricevi, 4 valida, 5 attiva, 8 PRN) e packet ---
+async function xiaoDfuInvia(cp, pkt, bin, dat, avanza) {
+  const coda = []; let sveglia = null;
+  cp.addEventListener('characteristicvaluechanged', e => {
+    const v = e.target.value; coda.push(new Uint8Array(v.buffer, v.byteOffset, v.byteLength).slice());
+    if (sveglia) sveglia();
+  });
+  const prossimo = ms => new Promise((ok, ko) => {
+    const t = setTimeout(() => { sveglia = null; ko(new Error('nessuna risposta dal tag')); }, ms);
+    const prova = () => { if (coda.length) { clearTimeout(t); sveglia = null; ok(coda.shift()); } };
+    sveglia = prova; prova();
+  });
+  const risposta = async (op, ms) => {
+    for (;;) {
+      const d = await prossimo(ms);
+      if (d[0] === 0x10 && d[1] === op) { if (d[2] !== 1) throw new Error(`il bootloader ha rifiutato il passo ${op} (codice ${d[2]})`); return; }
+    }
+  };
+  const cpScrivi = v => cp.writeValueWithResponse ? cp.writeValueWithResponse(new Uint8Array(v)) : cp.writeValue(new Uint8Array(v));
+  const pktScrivi = v => pkt.writeValueWithoutResponse ? pkt.writeValueWithoutResponse(v) : pkt.writeValue(v);
+  const PRN = 8, BLOCCO = 20;
+  await cp.startNotifications();
+  await cpScrivi([1, 4]);                                   // START_DFU, tipo applicazione
+  const misure = new Uint8Array(12); new DataView(misure.buffer).setUint32(8, bin.length, true); // softdevice 0, bootloader 0, app
+  await pktScrivi(misure);
+  await risposta(1, 60000);                                 // il bootloader cancella la flash: può volerci un po'
+  await cpScrivi([2, 0]);                                   // pacchetto di inizializzazione (.dat)
+  for (let o = 0; o < dat.length; o += BLOCCO) await pktScrivi(dat.subarray(o, o + BLOCCO));
+  await cpScrivi([2, 1]);
+  await risposta(2, 15000);
+  await cpScrivi([8, PRN & 255, PRN >> 8]);                 // conferma di ricezione ogni PRN pacchetti
+  await cpScrivi([3]);                                      // RECEIVE_FIRMWARE_IMAGE
+  let inviati = 0, conta = 0;
+  while (inviati < bin.length) {
+    const n = Math.min(BLOCCO, bin.length - inviati);
+    await pktScrivi(bin.subarray(inviati, inviati + n));
+    inviati += n;
+    if (++conta === PRN) {
+      conta = 0;
+      for (;;) { const d = await prossimo(15000); if (d[0] === 0x11) break; if (d[0] === 0x10 && d[2] !== 1) throw new Error('trasferimento rifiutato'); }
+    }
+    avanza(inviati);
+  }
+  await risposta(3, 30000);
+  await cpScrivi([4]);                                      // VALIDATE
+  await risposta(4, 30000);
+  try { await cpScrivi([5]); } catch {}                     // ACTIVATE_AND_RESET: il tag si riavvia da solo
+}
+
+async function xiaoFwPasso() {
+  if (xiaoDfu.fase === 'inattivo') { $('xiaoFwFile').value = ''; $('xiaoFwFile').click(); return; }
+  if (xiaoDfu.fase !== 'attesa') return;
+  // Passo 2 (serve un clic dell'utente): scegliere il tag, che ora annuncia il bootloader
+  let disp;
+  try {
+    const opz = { optionalServices: [DFU_SERVIZIO] };
+    disp = await navigator.bluetooth.requestDevice(xiaoDfu.tutti ? { ...opz, acceptAllDevices: true }
+      : { ...opz, filters: [{ services: [DFU_SERVIZIO] }, { namePrefix: 'Dfu' }, { namePrefix: 'XIAO' }] });
+  } catch (e) {
+    if (e.name === 'NotFoundError') { xiaoDfu.tutti = !xiaoDfu.tutti; xiaoNotaFw('Nessun tag scelto. Riprova' + (xiaoDfu.tutti ? ': ora l’elenco mostra tutti i dispositivi (cerca «DfuTarg» o simile).' : '.'), true); }
+    else xiaoNotaFw('Errore: ' + e.message, true);
+    xiaoAggiornaBt(); return;
+  }
+  xiaoDfu.fase = 'invio'; xiaoAggiornaBt();
+  $('xiaoFwBarraBox').hidden = false; $('xiaoFwBarra').style.width = '0';
+  const { bin, dat } = xiaoDfu.pacchetto, t0 = performance.now();
+  try {
+    xiaoNotaFw('Connessione al bootloader…');
+    const server = await disp.gatt.connect();
+    const sv = await server.getPrimaryService(DFU_SERVIZIO);
+    const cp = await sv.getCharacteristic(DFU_CP), pkt = await sv.getCharacteristic(DFU_PKT);
+    let ultimo = 0;
+    await xiaoDfuInvia(cp, pkt, bin, dat, n => {
+      const ora = performance.now();
+      if (ora - ultimo < 200 && n < bin.length) return;
+      ultimo = ora;
+      $('xiaoFwBarra').style.width = (n / bin.length * 100).toFixed(1) + '%';
+      const vel = n / Math.max(0.1, (ora - t0) / 1000);
+      xiaoNotaFw(`Invio ${(n / 1024).toFixed(0)} / ${(bin.length / 1024).toFixed(0)} KB · ${(vel / 1024).toFixed(1).replace('.', ',')} KB/s · ancora ${Math.ceil((bin.length - n) / Math.max(1, vel))} s`);
+    });
+    xiaoNotaFw('Aggiornamento completato: il tag si riavvia. Premi «Collega Bluetooth» tra qualche secondo e controlla la versione.');
+    xiaoDfu.pacchetto = null; xiaoDfu.tutti = false; xiaoDfu.fase = 'inattivo';
+  } catch (e) {
+    xiaoNotaFw('Aggiornamento non riuscito: ' + e.message + '. Puoi riprovare con il pulsante; se il tag non risponde, doppio tap su reset e carica via USB.', true);
+    xiaoDfu.fase = 'attesa';
+  } finally {
+    try { if (disp.gatt.connected) disp.gatt.disconnect(); } catch {}
+    setTimeout(() => { $('xiaoFwBarraBox').hidden = true; }, 3000);
+    xiaoAggiornaBt();
+  }
+}
+$('xiaoFw').addEventListener('click', xiaoFwPasso);
+$('xiaoFwFile').addEventListener('change', async e => {
+  const f = e.target.files[0];
+  if (!f || !sorgente || !sorgente.dfuCp) return;
+  try {
+    xiaoDfu.pacchetto = await xiaoLeggiPacchetto(new Uint8Array(await f.arrayBuffer()));
+    const cp = sorgente.dfuCp;
+    xiaoNotaFw(`Pacchetto «${f.name}» letto (${(xiaoDfu.pacchetto.bin.length / 1024).toFixed(0)} KB). Il tag entra in modalità aggiornamento…`);
+    await cp.startNotifications();                           // il tag lo richiede prima del comando
+    xiaoDfu.fase = 'attesa'; xiaoDfu.tutti = false;
+    try { await (cp.writeValueWithResponse ? cp.writeValueWithResponse(new Uint8Array([1])) : cp.writeValue(new Uint8Array([1]))); } catch {} // il tag si scollega subito
+    xiaoNotaFw('Il tag è nel bootloader (LED fisso). Premi «Scegli il tag in aggiornamento» e selezionalo nell’elenco.');
+  } catch (err) {
+    xiaoDfu.fase = 'inattivo'; xiaoDfu.pacchetto = null;
+    xiaoNotaFw('Pacchetto non valido: ' + err.message, true);
+  }
+  xiaoAggiornaBt();
+});
+
 let xiaoDemoId = null, xiaoDemoPasso = null; // xiaoDemoPasso: un passo del copione (40 ms simulati), richiamabile anche a mano per i test
 function xiaoFermaDemo() {
   if (xiaoDemoId) { clearInterval(xiaoDemoId); xiaoDemoId = null; }
