@@ -8,7 +8,7 @@
   - **Risveglio:** 2 tocchi, LED blu, 2 tocchi. Il bug dei 2 tocchi era il bootloader che azzera `RESETREAS`: ora marca in `GPREGRET2` prima di ogni System OFF.
   - **Registra:** QSPI 2 MB, pagine da 256 B con CRC, delta int8, 208 Hz, acc ±16 g, gyro ±1000 dps, ~25 min con dati regolari; BLE spento; nuovi risvegli accodano un segmento. **Azzera:** 2 tocchi, blu, 6 tocchi, poi 2 di conferma. Nessuno stop a tocchi; quiete 180 s, memoria piena, batteria < 3,3 V.
   - **Scarico:** solo USB (`DUMP`), dalla pagina (Web Serial) o con `scarica.py`; formato `.swr` (decodificatori `swr.py` e `tools/swr.js`, 11 test Python verdi).
-- **Pagina `tools/index.html`:** nuove schede **Registrazione** (USB, scarica, azzera, apri `.swr`) e **Annotazione** (grafici con zoom in alto, video sotto a 30 fps, sync con X sul 5° tocco, eventi B/R/V/F/P/A nel tempo del video, progetto JSON e CSV). La vecchia «Registrazioni» ora è «Reg. ESP32». Provata solo con dati simulati.
+- **Pagina `tools/index.html`:** nuove schede **Registrazione** (USB, scarica, azzera, apri `.swr`) e **Annotazione** (grafici con zoom in alto, video sotto a 30 fps, sync con X sul 5° tocco, eventi B/R/V/F/P/A nel tempo del video, progetto JSON e CSV). La vecchia «Registrazioni» ora è «Reg. ESP32». Provata solo con dati simulati e con un MP4 H.264 1080p. **Corretto il 2026-11-07:** su schermo ampio il riquadro video aveva altezza 0 (CSS a schermata unica); CSS/JS ora versionati (`?v=2`) contro la cache e avviso se il video ha solo audio (HEVC).
 - **Display a bordo vasca** (da confermare): Raspberry Pi 4 + dongle nRF52840 + monitor 15,6" + power bank; mockup `tools/display.html`.
 - Riquadro Batteria, tab XIAO, OTA via BLE (0.4.x) funzionano; il DFU Nordic legacy non è raggiungibile dal browser.
 - **Scheda XIAO di prova guasta in parte:** regolatore 3,3 V morto, va con un diodo al silicio.
@@ -21,6 +21,7 @@
 5. Aspettare Viviane (NextPCB) fino a mercoledì 2026-11-11; poi decidere l'ordine. Display: confermare l'architettura Pi + dongle.
 
 ## Problemi aperti
+- **Annotazione a 25 fps:** il file di prova `file.mp4` è a 25 fps, ma la pagina assume 30 fps (±1f, numero fotogramma, «±1 fotogramma» di sync sbagliati; gli eventi in secondi restano giusti). Da rendere il frame rate configurabile o letto dal video.
 - 0.5.0/0.5.1: non verificati su hardware l'ordine FIFO gyro/acc, la cancellazione chip della flash (5–15 s), il QSPI senza SoftDevice, i consumi, la parità C++/Python del formato.
 - Durata reale della registrazione con dati veri (compressione); 180 s di quiete contano anche prima di entrare in acqua.
 - Nessun BLE/OTA durante la registrazione: aggiornare richiede l'USB. LED poco visibile sotto la cuffia.

@@ -41,3 +41,4 @@ Risolte: modulo E73 (Raytac a stock 0), IMU LSM6DSV16X, flash 16 MB, interruttor
 42. Compressione: quanti minuti entrano davvero nei dati veri (prevista ~25 min con dati regolari)? Dipende dai tratti con movimenti bruschi.
 43. LED sotto la cuffia: se non si vede, serve un altro segnale (cicalino fuori dal tag) oppure basta controllare da PC?
 44. Caricare la 0.5.1 (lampo blu a ogni tocco): serve la tag in modalità normale (USB collegata).
+45. Il video di prova è a 25 fps: adattiamo l'Annotazione al frame rate reale del video o giri a 30 fps (telefono)? Per ora i tasti ±1f e il numero del fotogramma sono sbagliati con 25 fps.

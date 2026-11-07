@@ -111,3 +111,6 @@
 | 2026-11-07 | Niente stop a tocchi durante la registrazione; quiete di **180 s** (60 s fuori dalla registrazione), memoria piena o batteria < 3,3 V | I 5 colpi di sincronizzazione non devono fermare né azzerare niente |
 | 2026-11-07 | Scarico dei dati solo via USB (a registrazione finita la tag in modalità normale con USB non registra); niente file inventati nel repo: la parità `swr.js`/`swr.py` si verifica su una registrazione reale fuori dal repo (`tools/parita_swr.mjs`) | Nessun BLE in registrazione per risparmiare energia; dati reali = dati di salute, restano sul PC |
 | 2026-11-07 | Vecchia scheda «Registrazioni» rinominata «Reg. ESP32»; la nuova è «Registrazione» | Evitare confusione tra prototipo ESP32 e nuova registrazione XIAO |
+| 2026-11-07 | Le schede Registrazione e Annotazione non usano il layout «tutto in una schermata» (`min-height: auto`, scorrono); `annotazione.css/js` caricati con `?v=2` | Il layout a schermata unica schiacciava il riquadro video a 0 px; la cache mostrava il vecchio CSS |
+| 2026-11-07 | Avviso in pagina se il video ha solo audio (`videoWidth` 0), tipico di HEVC da telefono | Evitare di scambiare un codec non supportato per un bug |
+| 2026-11-07 | Adattamento dello strumento ai video a 25 fps rimandato | Decisione dell'utente («non ora»); i tempi degli eventi restano corretti |

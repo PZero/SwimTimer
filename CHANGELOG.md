@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-11-07 (annotation tab fix)
+- **Fix:** the Annotation tab collapsed its cards on large screens (single-screen layout forced `min-height: 0`), so the video box had height 0; the Recording/Annotation cards now scroll normally.
+- `annotazione.css` and `annotazione.js` are loaded with a version query (`?v=2`) so browsers do not keep stale copies.
+- New warning when the opened video plays audio only (no video track decoded, typically HEVC/H.265 from phones), with conversion hints.
+- **Known issue:** the page assumes 30 fps; a 25 fps video gives wrong frame stepping and frame numbers (event times in seconds stay correct).
+
 ## 2026-11-07 (pool recording mode)
 - **README:** new section "Test methodology: raw data, video and hand annotation" (XIAO tag, 5-tap sync, USB download, X alignment, B/R/V/F/P/A annotation, then filters and comparison); stale lines on the XIAO fixed (Arduino firmware, USB download, board in use).
 - **Release binary:** rebuilt the published `firmware/xiao-stream/release/xiao.bin` (still 0.4.2, same source) with `-fmacro-prefix-map`, removing a local build path that contained the Windows user name; `xiao.json` updated (144916 bytes, CRC32 `740823a6`).

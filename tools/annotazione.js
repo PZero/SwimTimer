@@ -316,7 +316,10 @@
     parti.push('Dati: ' + (SD.es ? '<b>' + esc(SD.nome) + '</b>' + (S.D ? ' · segmento ' + SD.seg + ' · ' + S.D.tMax.toFixed(1) + ' s · ' + S.D.fs.toFixed(1) + ' Hz' : ' · nessun dato nel segmento') : 'nessun .swr aperto'));
     parti.push('Video: ' + (S.video.nome ? '<b>' + esc(S.video.nome) + '</b> · ' + S.video.durata.toFixed(1) + ' s' : 'nessun video'));
     const c = coerenza();
-    $('anInfo').innerHTML = parti.join(' &nbsp;·&nbsp; ') + (msgInfo ? '<div class="' + (msgErr ? 'err' : 'ok') + '">' + esc(msgInfo) + '</div>' : '') + (c ? '<div class="err">' + esc(c) + '</div>' : '');
+    // solo audio (videoWidth 0): tipico di un MP4 HEVC/H.265 da telefono che il browser non decodifica
+    const soloAudio = haVideo() && el.readyState >= 1 && !el.videoWidth
+      ? '<div class="err">Il browser riproduce solo l\'audio di questo video: probabilmente è HEVC/H.265. Convertilo in H.264 (es. HandBrake, preset «Fast 1080p30») o registra con il telefono in «Più compatibile».</div>' : '';
+    $('anInfo').innerHTML = parti.join(' &nbsp;·&nbsp; ') + soloAudio + (msgInfo ? '<div class="' + (msgErr ? 'err' : 'ok') + '">' + esc(msgInfo) + '</div>' : '') + (c ? '<div class="err">' + esc(c) + '</div>' : '');
   }
   function aggiornaSegmenti() {
     const sel = $('anSeg');
