@@ -137,6 +137,7 @@
   .grafico-bat { width: 100%; height: 90px; display: block; }
   .target-bat { font-size: 11px; color: var(--tenue); display: flex; align-items: center; gap: 4px; }
   .target-bat input { width: 52px; font: inherit; font-family: "JetBrains Mono", monospace; padding: 2px 4px; border: 1px solid var(--bordo); border-radius: 6px; background: var(--card-2); color: var(--testo); }
+  .legenda-bat[hidden], .target-bat[hidden] { display: none; }
   .legenda-bat { display: flex; flex-wrap: wrap; gap: 2px 10px; font-size: 10.5px; color: var(--tenue); }
   .legenda-bat i { display: inline-block; width: 10px; height: 3px; border-radius: 2px; margin-right: 4px; vertical-align: middle; }
   .legenda-bat i.tratteggio { background: repeating-linear-gradient(90deg, var(--attenzione) 0 3px, transparent 3px 5px); }
@@ -307,9 +308,15 @@
       <div class="riga"><span class="etichetta">Batteria</span><span class="mono" style="color:var(--tenue)"><small>misurata </small><span id="batV">– V</span></span></div>
       <div class="riga"><div class="valore mono" id="batPerc">–</div>
         <label class="target-bat">Target <input id="batTarget" type="number" min="5" max="100" step="5" value="100">%</label></div>
+      <div class="mono" id="batStatoX" hidden style="font-size:12.5px;font-weight:600"></div>
       <div class="nota mono" id="batMancante" style="font-size:11px;min-height:0"></div>
-      <canvas class="grafico-bat" id="graficoBat" aria-label="Andamento dei partitori e della batteria stimata"></canvas>
-      <div class="legenda-bat mono">
+      <label class="target-bat" id="batFinRiga" hidden>Finestra del grafico <select id="batFinestra" style="font:inherit;padding:2px 4px;border:1px solid var(--bordo);border-radius:6px;background:var(--card-2);color:var(--testo)"><option value="30">30 min</option><option value="60">60 min</option><option value="90">90 min</option><option value="120">120 min</option></select></label>
+      <canvas class="grafico-bat" id="graficoBat" aria-label="Andamento della tensione e della batteria stimata"></canvas>
+      <div class="legenda-bat mono" id="legBatX" hidden>
+        <span><i style="background:var(--z)"></i>Tensione <b id="legXV">–</b></span>
+        <span><i style="background:var(--ok);opacity:.35"></i>Tratti in carica</span>
+      </div>
+      <div class="legenda-bat mono" id="legBatEsp">
         <span><i style="background:var(--ok)"></i>A riposo (stima) <b id="legBat">–</b></span>
         <span><i style="background:var(--z)"></i>GPIO 1 <b id="legG1">–</b></span>
         <span><i style="background:var(--tenue)"></i>GPIO 2 <b id="legG2">–</b></span>
@@ -317,6 +324,7 @@
       </div>
       <div class="nota" id="batNota">In attesa dei dati del tag</div>
       <div class="nota mono" id="partitori" style="font-size:11px;color:var(--debole);min-height:0"></div>
+      <div class="target-bat" id="batTaratura" hidden style="flex-wrap:wrap">Taratura: tensione misurata col tester <input id="batTester" type="number" min="2.5" max="4.5" step="0.001" placeholder="4,05" style="width:70px"> V <button class="piccolo" id="batTara" title="Manda al tag la tensione vera: corregge il fattore del partitore e lo salva in flash">Tara</button> <button class="piccolo" id="batTaraReset" title="Torna al fattore nominale 2,96">Ripristina</button></div>
     </section>
     <section class="scheda indicatore" aria-label="Collegamento">
       <div class="riga"><span class="etichetta">Collegamento</span><span class="mono" id="frequenza" style="color:var(--tenue)">– Hz</span></div>
@@ -522,12 +530,8 @@
         <div class="etichetta">Tag via Bluetooth <span class="mono" id="xiaoVer" style="text-transform:none;letter-spacing:0;font-weight:500"></span></div>
         <div class="comandi" style="margin-top:6px">
           <button class="piccolo" id="xiaoSonno" disabled title="Il tag va in sospensione: si risveglia con un doppio tap o collegando l'USB">Sospendi</button>
-          <!-- Nascosto: Chrome/Edge bloccano in Web Bluetooth il servizio DFU Nordic legacy (00001530-...) usato dal
-               bootloader Adafruit della XIAO. Per ora l'aggiornamento via BLE si fa con l'app nRF Connect for Mobile. -->
-          <button class="piccolo" id="xiaoFw" disabled hidden title="Carica un pacchetto .zip (arduino-cli o adafruit-nrfutil) via Bluetooth">Aggiorna firmware</button>
-          <input type="file" id="xiaoFwFile" accept=".zip" hidden>
+          <button class="piccolo" id="xiaoFw" disabled title="Apre la finestra «Firmware del tag»: aggiornamento via Bluetooth">Aggiorna firmware…</button>
         </div>
-        <div class="xiao-barra" id="xiaoFwBarraBox" hidden style="margin-top:8px"><div id="xiaoFwBarra"></div></div>
         <div class="xiao-mnt" id="xiaoFwNota"></div>
       </div>
       <div class="xiao-assi">
@@ -590,10 +594,6 @@ const BLE_COMANDI = '7a1e0004-5b1d-4c8e-9f3a-1d2c3b4a5e60';
 const BLE_RISPOSTE = '7a1e0005-5b1d-4c8e-9f3a-1d2c3b4a5e60';
 const BLE_OTA = '7a1e0006-5b1d-4c8e-9f3a-1d2c3b4a5e60';
 const BLE_VERSIONE = '7a1e0007-5b1d-4c8e-9f3a-1d2c3b4a5e60';
-// Solo XIAO: servizio DFU Nordic legacy (aggiornamento firmware via BLE)
-const DFU_SERVIZIO = '00001530-1212-efde-1523-785feabcd123';
-const DFU_CP = '00001531-1212-efde-1523-785feabcd123';
-const DFU_PKT = '00001532-1212-efde-1523-785feabcd123';
 
 // ---------- Preferenze locali (facoltative) ----------
 const pref = {
@@ -980,6 +980,7 @@ const vRiposo = s => s.usb ? s.v - 0.05 : s.v;
 // Storico per il grafico della batteria: [ms, GPIO 1 (V), GPIO 2 (V o null), batteria stimata (V)]
 const FINESTRA_BAT_MS = 10 * 60 * 1000;
 let storiaBat = [];
+let modoXiaoBat = false;   // lo stato del tag e' quello della XIAO (12 byte): grafico e testi della batteria diversi
 let targetBat = Number(pref.get('targetBat', 100)) || 100;
 $('batTarget').value = targetBat;
 $('batTarget').addEventListener('change', () => {
@@ -989,6 +990,7 @@ $('batTarget').addEventListener('change', () => {
   aggiornaStato(); disegnaBat();
 });
 function disegnaBat() {
+  if (modoXiaoBat) return disegnaBatXiao();
   const { ctx, w, h } = preparaCanvas($('graficoBat'));
   const sx = 30, dx = w - 4, alto = 4, basso = h - 14, vt = tensionePer(targetBat);
   const fine = storiaBat.length ? storiaBat[storiaBat.length - 1][0] : performance.now();
@@ -1029,14 +1031,16 @@ let statoTag = null, vbatFilt = null;
 // Unità per g dei valori grezzi: il firmware a ±16 g lo segnala con il bit4 dello stato
 const lsbAcc = () => statoTag && statoTag.g16 ? 2048 : 16384;
 const fondoScala = () => statoTag && statoTag.g16 ? 16 : 2;
-function nuovoStato(mv, flag, causa, millis, liberi = null, nfile = null, secReg = 0, mvVbus = null) {
+function nuovoStato(mv, flag, causa, millis, liberi = null, nfile = null, secReg = 0, mvVbus = null, xiao = null) {
   const v = mv / 1000;
   vbatFilt = vbatFilt === null || Math.abs(v - vbatFilt) > 0.3 ? v : vbatFilt + 0.2 * (v - vbatFilt);
   const registrava = statoTag && statoTag.reg, segnalata = statoTag && statoTag.causaSegnalata && statoTag.causa === causa;
   const vbus = mvVbus === null ? null : mvVbus / 1000;
-  statoTag = { v: vbatFilt, vbus, pc: !!(flag & 1), usb: vbus === null ? !!(flag & 1) : vbus > 4, sensore: !!(flag & 2), reg: !!(flag & 4), g16: !!(flag & 16), causa, causaSegnalata: segnalata, millis, liberi, nfile, secReg, ricevuto: performance.now() };
+  statoTag = { v: vbatFilt, vbus, pc: !!(flag & 1), usb: vbus === null ? !!(flag & 1) : vbus > 4, sensore: !!(flag & 2), reg: !!(flag & 4), g16: !!(flag & 16), causa, causaSegnalata: segnalata, millis, liberi, nfile, secReg, ricevuto: performance.now(), xiao };
   const ora = statoTag.ricevuto;
-  storiaBat.push([ora, v / 2, vbus === null ? null : vbus / 2, vRiposo(statoTag)]);
+  modoXiaoBat = !!xiao;
+  if (xiao) xiaoBatteriaAgg(statoTag);
+  else storiaBat.push([ora, v / 2, vbus === null ? null : vbus / 2, vRiposo(statoTag)]);
   while (storiaBat.length && storiaBat[0][0] < ora - FINESTRA_BAT_MS) storiaBat.shift();
   aggiornaStato();
   disegnaBat();
@@ -1065,6 +1069,9 @@ function verificaPartitori(s) {
 function aggiornaStato() {
   const s = statoTag;
   if (!s) return;
+  batModoXiao(!!s.xiao);
+  if (s.xiao) xiaoBatteriaUI(s);
+  else {
   $('batNota').title = verificaPartitori(s);
   const f = v => v.toFixed(2).replace('.', ',') + ' V', vt = tensionePer(targetBat);
   $('legG1').textContent = f(s.v / 2);
@@ -1092,6 +1099,7 @@ function aggiornaStato() {
       : s.v < 3.4 ? 'Batteria quasi scarica: ricaricare' : 'Lettura dal partitore su GPIO 1') + (s.vbus === null ? '' : ` · USB ${s.vbus.toFixed(2).replace('.', ',')} V`);
     $('partitori').textContent = verificaPartitori(s);
   }
+  }
   const durata = sec => `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
   $('statoTag').textContent = !s.sensore ? 'Sensore assente' : s.reg ? `● Registra ${durata(s.secReg)}` : 'Attivo';
   $('statoTag').style.color = !s.sensore || s.reg ? 'var(--errore)' : 'var(--ok)';
@@ -1112,7 +1120,7 @@ function iniziaSorgente(nome, hz, chiudi, invia) {
   sorgente = { nome, chiudi, invia };
   xiaoFermaDemo(); XI = nuovoXiao();
   nuovaAnalisi(hz);
-  statoTag = null; vbatFilt = null; storiaBat = []; disegnaBat();
+  statoTag = null; vbatFilt = null; storiaBat = []; storiaXiao = []; modoXiaoBat = false; disegnaBat();
   $('pillola').className = 'pillola attivo';
   $('stato').textContent = 'Collegato · ' + nome;
   $('sorgente').textContent = nome;
@@ -1217,7 +1225,7 @@ function gestisciRiga(r) {
 $('collegaBt').addEventListener('click', async () => {
   let dispositivo;
   try {
-    dispositivo = await navigator.bluetooth.requestDevice({ filters: [{ name: 'SwimTag' }], optionalServices: [BLE_SERVIZIO, DFU_SERVIZIO] });
+    dispositivo = await navigator.bluetooth.requestDevice({ filters: [{ name: 'SwimTag' }], optionalServices: [BLE_SERVIZIO] });
     dispositivo.addEventListener('gattserverdisconnected', () => finisceSorgente());
     $('stato').textContent = 'Connessione…';
     $('pillola').className = 'pillola attesa';
@@ -1239,9 +1247,12 @@ $('collegaBt').addEventListener('click', async () => {
       const leggiStato = d => {
         if (!d || d.byteLength < 8) return;
         const esteso = d.byteLength >= 16;
+        // XIAO: stato da 12 byte = i primi 8 + flag2 (bit0 VBUS, bit1 carica completata, bit2 in carica, bit3 batteria bassa), temperatura del die, fattore del partitore x1000
+        const f2 = d.byteLength === 12 ? d.getUint8(8) : 0;
+        const xiao = d.byteLength === 12 ? { vbus: !!(f2 & 1), completata: !!(f2 & 2), carica: !!(f2 & 4), bassa: !!(f2 & 8), temp: d.getInt8(9), k: d.getUint16(10, true) / 1000 } : null;
         nuovoStato(d.getUint16(0, true), d.getUint8(2), d.getUint8(3), d.getUint32(4, true),
           esteso ? d.getUint32(8, true) : null, esteso ? d.getUint16(12, true) : null, esteso ? d.getUint16(14, true) : 0,
-          d.byteLength >= 18 ? d.getUint16(16, true) : null);
+          d.byteLength >= 18 ? d.getUint16(16, true) : null, xiao);
       };
       stato.addEventListener('characteristicvaluechanged', e => leggiStato(e.target.value));
       await stato.startNotifications();
@@ -1274,7 +1285,6 @@ $('collegaBt').addEventListener('click', async () => {
       aggiornaRegistrazioniUI();
       setTimeout(() => comando('LIST'), 300);
       try { sorgente.ota = await servizio.getCharacteristic(BLE_OTA); } catch {}
-      try { sorgente.dfuCp = await (await server.getPrimaryService(DFU_SERVIZIO)).getCharacteristic(DFU_CP); } catch { sorgente.dfuCp = null; } // solo XIAO
       try { versioneTag = new TextDecoder().decode(await (await servizio.getCharacteristic(BLE_VERSIONE)).readValue()); } catch { versioneTag = null; }
       aggiornaFw();
     } catch {
@@ -1404,12 +1414,14 @@ function fineElenco() {
 }
 function conferma(t) {
   if (t.startsWith('ota')) return rispostaOta(t, false);
+  if (t.startsWith('vcal')) { $('batNota').textContent = 'Taratura: fattore del partitore ' + t.slice(5) + ' (salvato nel tag)'; return; }
   if (t.startsWith('tap,')) return eventoTag(`Sequenza di ${t.slice(4)} tap`);
   const testi = { rec: 'Registrazione avviata', stop: 'Registrazione fermata' };
   notaReg(testi[t] || (t.startsWith('del') ? 'Eliminata: ' + t.slice(4) : t));
   if (t.startsWith('del')) comando('LIST');
 }
 function errore(t) {
+  if (t.startsWith('vcal')) { $('batNota').textContent = 'Taratura non riuscita: ' + t.slice(5); return; }
   if (t.startsWith('ota') || ota) return rispostaOta(t, true);
   notaReg('Errore: ' + t, true);
 }
@@ -1743,7 +1755,10 @@ let versioneTag = null, ultimaFw = null, ota = null;
 const TABELLA_CRC = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
 function crc32(d) { let c = 0xffffffff; for (let i = 0; i < d.length; i++) c = TABELLA_CRC[(c ^ d[i]) & 0xff] ^ (c >>> 8); return ((c ^ 0xffffffff) >>> 0).toString(16).padStart(8, '0'); }
 // Versioni numeriche "0.4.0" (eventuale "+build" ignorato nel confronto)
-const versioneNum = v => { const m = /^(\d+(?:\.\d+){0,3})(?:\+.*)?$/.exec(String(v || '').trim()); return m ? m[1].split('.').map(Number) : null; };
+const versioneNum = v => { const m = /^(?:xiao-)?(\d+(?:\.\d+){0,3})(?:\+.*)?$/.exec(String(v || '').trim()); return m ? m[1].split('.').map(Number) : null; };
+const eXiao = () => String(versioneTag || '').startsWith('xiao');  // il tag collegato è la XIAO: canale di aggiornamento separato
+const FIRMA_XIAO = 'SWIMTAG_BOARD=xiao-nrf52840;';
+const contiene = (bin, testo) => { const t = [...testo].map(c => c.charCodeAt(0)); outer: for (let i = 0; i + t.length <= bin.length; i++) { for (let k = 0; k < t.length; k++) if (bin[i + k] !== t[k]) continue outer; return true; } return false; };
 function confrontaVersioni(a, b) {
   const x = versioneNum(a), y = versioneNum(b);
   if (!x || !y) return null;
@@ -1774,7 +1789,7 @@ function controllaVersione(vFile) {
 function notaFw(t, err) { $('fwNota').textContent = t; $('fwNota').classList.toggle('errore', !!err); }
 async function leggiUltimaFw() {
   try {
-    const r = await fetch('firmware/tag.json', { cache: 'no-store' });
+    const r = await fetch(eXiao() ? 'firmware/xiao.json' : 'firmware/tag.json', { cache: 'no-store' });
     if (!r.ok) throw new Error(r.status);
     ultimaFw = await r.json();
   } catch { ultimaFw = null; }
@@ -1792,8 +1807,8 @@ function aggiornaFw() {
   $('fwFileBtn').disabled = !ble || !!ota;
   $('fwChiudi').textContent = ota ? 'Annulla' : 'Chiudi';
   if (!ota) $('fwSpiega').textContent = !sorgente ? 'Collega il tag via Bluetooth per aggiornarlo.'
-    : !ble ? (sorgente.nome === 'Bluetooth' && String(versioneTag || '').startsWith('xiao') ? 'Questa finestra aggiorna il tag ESP32. La XIAO si aggiorna via cavo USB oppure via Bluetooth con l’app nRF Connect for Mobile (DFU con il pacchetto .zip): il browser blocca il servizio di aggiornamento Nordic.'
-      : sorgente.nome === 'Bluetooth' ? 'Il firmware del tag non supporta ancora l’aggiornamento via Bluetooth: va caricato una volta via cavo.' : 'L’aggiornamento avviene solo via Bluetooth: collega il tag con il pulsante Bluetooth.')
+    : !ble ? (sorgente.nome === 'Bluetooth' ? 'Il firmware del tag non supporta ancora l’aggiornamento via Bluetooth: va caricato una volta via cavo.' : 'L’aggiornamento avviene solo via Bluetooth: collega il tag con il pulsante Bluetooth.')
+    : eXiao() ? 'L’aggiornamento avviene via Bluetooth in 2–3 minuti. Dopo l’aggiornamento il tag si riavvia da solo: ricollegalo. Se qualcosa va storto resta il bootloader: doppio tap su reset e caricamento via USB. Tieni il tag vicino e la pagina aperta.'
     : 'L’aggiornamento avviene via Bluetooth in 1–2 minuti. Se la nuova versione non parte, il tag torna da solo a quella precedente. Tieni il tag vicino e la pagina aperta.';
   $('fwAvanz').hidden = !ota;
 }
@@ -1865,10 +1880,12 @@ $('fwChiudi').addEventListener('click', () => { if (ota) ota.annullato = true; e
 $('dlgFw').addEventListener('cancel', e => { if (ota) { e.preventDefault(); ota.annullato = true; } });
 $('fwAggiorna').addEventListener('click', async () => {
   try {
-    const r = await fetch('firmware/tag.bin', { cache: 'no-store' });
+    if (!ultimaFw) throw new Error('versione pubblicata non disponibile');
+    const r = await fetch(eXiao() ? 'firmware/xiao.bin' : 'firmware/tag.bin', { cache: 'no-store' });
     if (!r.ok) throw new Error('scaricamento non riuscito (' + r.status + ')');
     const bin = new Uint8Array(await r.arrayBuffer());
     if (ultimaFw && (bin.length !== ultimaFw.byte || crc32(bin) !== ultimaFw.crc32)) throw new Error('il file scaricato non corrisponde a tag.json');
+    if (eXiao() !== contiene(bin, FIRMA_XIAO)) throw new Error('il file pubblicato non è per questa scheda');
     const v = versioneDaBin(bin), ok = controllaVersione(v);
     if (ok) aggiornaFirmware(bin, 'versione ' + versioneBreve(v), v, ok.forza);
   } catch (e) { notaFw(e.message, true); }
@@ -1878,7 +1895,10 @@ $('fwFile').addEventListener('change', async e => {
   e.target.value = '';
   if (!f) return;
   const bin = new Uint8Array(await f.arrayBuffer());
-  if (bin[0] !== 0xe9) return notaFw('Il file non sembra un firmware ESP32 (.bin dell’applicazione).', true);
+  if (eXiao()) {
+    const sp = bin[0] | bin[1] << 8 | bin[2] << 16 | bin[3] * 16777216;
+    if ((sp >>> 24) !== 0x20 || !contiene(bin, FIRMA_XIAO)) return notaFw('Il file non è un firmware della XIAO (.bin dell’applicazione, da objcopy dell’elf).', true);
+  } else if (bin[0] !== 0xe9 || contiene(bin, FIRMA_XIAO)) return notaFw('Il file non sembra un firmware ESP32 (.bin dell’applicazione).', true);
   const v = versioneDaBin(bin), ok = controllaVersione(v);
   if (!ok) return;
   if (confirm(`Caricare ${f.name}, versione ${versioneBreve(v)} (${(bin.length / 1024).toFixed(0)} KB), sul tag?`)) aggiornaFirmware(bin, `${f.name} (${versioneBreve(v)})`, v, ok.forza);
@@ -2366,8 +2386,7 @@ $('xiaoRicentra').addEventListener('click', xiaoRicentra);
 
 // Demo testa: testa sintetica con la basetta sul lato destro, inclinata di 20° e ruotata di 8° verso la nuca
 // (rispetto al montaggio ideale), con le impostazioni correnti di lato componenti e USB-C
-// ---------- XIAO via Bluetooth: log del tag, sospensione, aggiornamento firmware (DFU Nordic legacy) ----------
-var xiaoDfu = { fase: 'inattivo', pacchetto: null, tutti: false }; // fase: inattivo · attesa (zip pronto, tag nel bootloader) · invio
+// ---------- XIAO via Bluetooth: log del tag, sospensione; l'aggiornamento usa la finestra «Firmware» (OTA 0006) ----------
 function xiaoLogRiga(testo) {
   const box = $('xiaoLog');
   if (box.firstElementChild && box.firstElementChild.tagName === 'SPAN') box.textContent = '';
@@ -2379,159 +2398,109 @@ function xiaoLogRiga(testo) {
 $('xiaoLogPulisci').addEventListener('click', () => { $('xiaoLog').textContent = ''; });
 function xiaoNotaFw(t, err) { $('xiaoFwNota').textContent = t; $('xiaoFwNota').style.color = err ? 'var(--errore)' : ''; }
 function xiaoAggiornaBt() {
-  if (!xiaoDfu) return; // chiamata prima che il blocco sia stato eseguito
   const bt = !!(sorgente && sorgente.nome === 'Bluetooth' && sorgente.invia);
-  const f = xiaoDfu.fase;
-  $('xiaoSonno').disabled = !bt || f === 'invio';
-  $('xiaoFw').disabled = f === 'invio' || (f === 'inattivo' && !(sorgente && sorgente.dfuCp));
-  $('xiaoFw').textContent = f === 'attesa' ? (xiaoDfu.tutti ? 'Mostra tutti i dispositivi' : 'Scegli il tag in aggiornamento') : 'Aggiorna firmware';
+  $('xiaoSonno').disabled = !bt || !!ota;
+  $('xiaoFw').disabled = !bt;
   $('xiaoVer').textContent = bt && versioneTag ? versioneTag : '';
 }
+$('xiaoFw').addEventListener('click', () => $('apriFw').click());
 $('xiaoSonno').addEventListener('click', () => {
   if (comando('SLEEP')) xiaoNotaFw('Sospensione richiesta: il tag si scollega. Per riattivarlo: doppio tap sul tag oppure collega l’USB.');
 });
 
-// --- Lettura del pacchetto .zip (senza librerie: directory centrale + DecompressionStream) ---
-async function xiaoLeggiZip(buf) {
-  const dv = new DataView(buf.buffer, buf.byteOffset, buf.byteLength), file = new Map();
-  let fine = -1;
-  for (let i = buf.length - 22; i >= Math.max(0, buf.length - 70000); i--) if (dv.getUint32(i, true) === 0x06054b50) { fine = i; break; }
-  if (fine < 0) throw new Error('non è un file .zip');
-  const n = dv.getUint16(fine + 10, true);
-  let p = dv.getUint32(fine + 16, true);
-  for (let k = 0; k < n; k++) {
-    if (dv.getUint32(p, true) !== 0x02014b50) throw new Error('zip danneggiato');
-    const metodo = dv.getUint16(p + 10, true), comp = dv.getUint32(p + 20, true), lN = dv.getUint16(p + 28, true), lE = dv.getUint16(p + 30, true), lC = dv.getUint16(p + 32, true), off = dv.getUint32(p + 42, true);
-    const nome = new TextDecoder().decode(buf.subarray(p + 46, p + 46 + lN));
-    const dati0 = off + 30 + dv.getUint16(off + 26, true) + dv.getUint16(off + 28, true);
-    let dati = buf.subarray(dati0, dati0 + comp);
-    if (metodo === 8) dati = new Uint8Array(await new Response(new Blob([dati]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).arrayBuffer());
-    else if (metodo !== 0) throw new Error('compressione zip non supportata');
-    file.set(nome, dati);
-    p += 46 + lN + lE + lC;
-  }
-  return file;
+// ---------- Batteria della XIAO: stato di carica, %, tempo a fine carica / autonomia, grafico con tratti in carica ----------
+const CAPACITA_MAH = 100, CORRENTE_CARICA_MA = 50;   // cella e caricatore BQ25101 (P0.13 in ingresso = 50 mA)
+let storiaXiao = [];                                  // [ms, V, in carica 0/1, VBUS 0/1]
+let finestraBatMin = Number(pref.get('finBat', 60)) || 60;
+$('batFinestra').value = String(finestraBatMin);
+$('batFinestra').addEventListener('change', () => { finestraBatMin = Number($('batFinestra').value) || 60; pref.set('finBat', finestraBatMin); disegnaBat(); });
+function batModoXiao(on) {
+  [['batStatoX', on], ['batFinRiga', on], ['legBatX', on], ['batTaratura', on], ['legBatEsp', !on], ['partitori', !on]].forEach(([id, v]) => { $(id).hidden = !v; });
+  $('batTarget').closest('label').hidden = on;
 }
-async function xiaoLeggiPacchetto(buf) {
-  const file = await xiaoLeggiZip(buf);
-  const m = file.get('manifest.json');
-  if (!m) throw new Error('manifest.json mancante: non è un pacchetto DFU');
-  const app = JSON.parse(new TextDecoder().decode(m)).manifest.application;
-  if (!app) throw new Error('il pacchetto non contiene un’applicazione');
-  const bin = file.get(app.bin_file), dat = file.get(app.dat_file);
-  if (!bin || !dat) throw new Error('pacchetto incompleto (bin o dat mancante)');
-  return { bin, dat };
+function xiaoBatteriaAgg(s) {
+  storiaXiao.push([s.ricevuto, s.v, s.xiao.carica ? 1 : 0, s.xiao.vbus ? 1 : 0]);
+  while (storiaXiao.length && storiaXiao[0][0] < s.ricevuto - 120 * 60000) storiaXiao.shift();
 }
-
-// --- Protocollo DFU legacy: control point (opcode 1 start, 2 init, 3 ricevi, 4 valida, 5 attiva, 8 PRN) e packet ---
-async function xiaoDfuInvia(cp, pkt, bin, dat, avanza) {
-  const coda = []; let sveglia = null;
-  cp.addEventListener('characteristicvaluechanged', e => {
-    const v = e.target.value; coda.push(new Uint8Array(v.buffer, v.byteOffset, v.byteLength).slice());
-    if (sveglia) sveglia();
-  });
-  const prossimo = ms => new Promise((ok, ko) => {
-    const t = setTimeout(() => { sveglia = null; ko(new Error('nessuna risposta dal tag')); }, ms);
-    const prova = () => { if (coda.length) { clearTimeout(t); sveglia = null; ok(coda.shift()); } };
-    sveglia = prova; prova();
-  });
-  const risposta = async (op, ms) => {
-    for (;;) {
-      const d = await prossimo(ms);
-      if (d[0] === 0x10 && d[1] === op) { if (d[2] !== 1) throw new Error(`il bootloader ha rifiutato il passo ${op} (codice ${d[2]})`); return; }
+const fmtMin = m => m < 90 ? `${Math.round(m)} min` : `${Math.floor(m / 60)} h ${String(Math.round(m % 60)).padStart(2, '0')} min`;
+function xiaoBatteriaUI(s) {
+  const x = s.xiao, cella = s.v > 2.0, virg = n => n.toFixed(2).replace('.', ',');
+  // In carica la tensione ai morsetti è gonfiata dalla corrente (circa +0,05 V): la % è solo una stima e arriva al 100% solo a carica completata
+  let p = percentuale(x.vbus ? s.v - 0.05 : s.v);
+  if (x.completata) p = 100; else if (x.vbus) p = Math.min(p, 99);
+  const stato = !cella ? 'Batteria non rilevata' : x.carica ? '⚡ In carica' : x.completata ? '✓ Carica completata' : !x.vbus ? 'A batteria' : 'USB collegata';
+  $('batStatoX').textContent = stato;
+  $('batStatoX').style.color = !cella ? 'var(--errore)' : x.carica ? 'var(--attenzione)' : x.completata ? 'var(--ok)' : '';
+  $('batV').textContent = cella ? virg(s.v) + ' V' : '– V';
+  $('batPerc').innerHTML = cella ? `${x.carica ? '~' : ''}${Math.round(p)}<small>%</small>` : '–';
+  $('batPerc').style.color = !cella ? '' : p < 15 ? 'var(--errore)' : p < 35 ? 'var(--attenzione)' : '';
+  $('legXV').textContent = cella ? virg(s.v) + ' V' : '–';
+  let stima = '';
+  if (cella && x.carica) stima = `Fine carica fra circa ${fmtMin((100 - p) / 100 * CAPACITA_MAH / CORRENTE_CARICA_MA * 60 * 1.15)} (stima a ${CORRENTE_CARICA_MA} mA su ${CAPACITA_MAH} mAh)`;
+  else if (cella && !x.vbus) {
+    // autonomia: pendenza della % negli ultimi minuti a batteria (regressione lineare sui campioni dall'ultima ricarica)
+    let i0 = storiaXiao.length;
+    while (i0 > 0 && !storiaXiao[i0 - 1][3]) i0--;
+    const pts = storiaXiao.slice(i0).filter(r => r[0] > s.ricevuto - 30 * 60000);
+    const span = pts.length > 1 ? (pts[pts.length - 1][0] - pts[0][0]) / 60000 : 0;
+    if (span < 5) stima = 'Autonomia: stima in corso (servono ~5 min a batteria)';
+    else {
+      const n = pts.length, xs = pts.map(r => (r[0] - pts[0][0]) / 60000), ys = pts.map(r => percentuale(r[1]));
+      const mx = xs.reduce((a, b) => a + b) / n, my = ys.reduce((a, b) => a + b) / n;
+      const pend = xs.reduce((a, v, i) => a + (v - mx) * (ys[i] - my), 0) / (xs.reduce((a, v) => a + (v - mx) ** 2, 0) || 1);
+      stima = pend < -0.01 ? `Autonomia residua circa ${fmtMin(p / -pend)} (dalla pendenza degli ultimi ${Math.round(span)} min)` : 'Autonomia: consumo molto basso, oltre molte ore';
     }
-  };
-  const cpScrivi = v => cp.writeValueWithResponse ? cp.writeValueWithResponse(new Uint8Array(v)) : cp.writeValue(new Uint8Array(v));
-  const pktScrivi = v => pkt.writeValueWithoutResponse ? pkt.writeValueWithoutResponse(v) : pkt.writeValue(v);
-  const PRN = 8, BLOCCO = 20;
-  await cp.startNotifications();
-  await cpScrivi([1, 4]);                                   // START_DFU, tipo applicazione
-  const misure = new Uint8Array(12); new DataView(misure.buffer).setUint32(8, bin.length, true); // softdevice 0, bootloader 0, app
-  await pktScrivi(misure);
-  await risposta(1, 60000);                                 // il bootloader cancella la flash: può volerci un po'
-  await cpScrivi([2, 0]);                                   // pacchetto di inizializzazione (.dat)
-  for (let o = 0; o < dat.length; o += BLOCCO) await pktScrivi(dat.subarray(o, o + BLOCCO));
-  await cpScrivi([2, 1]);
-  await risposta(2, 15000);
-  await cpScrivi([8, PRN & 255, PRN >> 8]);                 // conferma di ricezione ogni PRN pacchetti
-  await cpScrivi([3]);                                      // RECEIVE_FIRMWARE_IMAGE
-  let inviati = 0, conta = 0;
-  while (inviati < bin.length) {
-    const n = Math.min(BLOCCO, bin.length - inviati);
-    await pktScrivi(bin.subarray(inviati, inviati + n));
-    inviati += n;
-    if (++conta === PRN) {
-      conta = 0;
-      for (;;) { const d = await prossimo(15000); if (d[0] === 0x11) break; if (d[0] === 0x10 && d[2] !== 1) throw new Error('trasferimento rifiutato'); }
-    }
-    avanza(inviati);
   }
-  await risposta(3, 30000);
-  await cpScrivi([4]);                                      // VALIDATE
-  await risposta(4, 30000);
-  try { await cpScrivi([5]); } catch {}                     // ACTIVATE_AND_RESET: il tag si riavvia da solo
+  $('batMancante').textContent = stima;
+  $('batMancante').style.color = '';
+  const note = [];
+  if (x.bassa) note.push('⚠ batteria bassa: ricaricare');
+  note.push(`die ${x.temp} °C`, `partitore ×${virg(x.k)}`);
+  if (!$('batNota').dataset.tara || performance.now() - Number($('batNota').dataset.tara) > 8000) $('batNota').textContent = note.join(' · ');
+  $('batNota').title = '';
 }
-
-async function xiaoFwPasso() {
-  if (xiaoDfu.fase === 'inattivo') { $('xiaoFwFile').value = ''; $('xiaoFwFile').click(); return; }
-  if (xiaoDfu.fase !== 'attesa') return;
-  // Passo 2 (serve un clic dell'utente): scegliere il tag, che ora annuncia il bootloader
-  let disp;
-  try {
-    const opz = { optionalServices: [DFU_SERVIZIO] };
-    disp = await navigator.bluetooth.requestDevice(xiaoDfu.tutti ? { ...opz, acceptAllDevices: true }
-      : { ...opz, filters: [{ services: [DFU_SERVIZIO] }, { namePrefix: 'Dfu' }, { namePrefix: 'XIAO' }] });
-  } catch (e) {
-    if (e.name === 'NotFoundError') { xiaoDfu.tutti = !xiaoDfu.tutti; xiaoNotaFw('Nessun tag scelto. Riprova' + (xiaoDfu.tutti ? ': ora l’elenco mostra tutti i dispositivi (cerca «DfuTarg» o simile).' : '.'), true); }
-    else xiaoNotaFw('Errore: ' + e.message, true);
-    xiaoAggiornaBt(); return;
+function disegnaBatXiao() {
+  const { ctx, w, h } = preparaCanvas($('graficoBat'));
+  const sx = 30, dx = w - 4, alto = 4, basso = h - 14, lo = 3.2, hi = 4.3;
+  const fine = storiaXiao.length ? storiaXiao[storiaXiao.length - 1][0] : performance.now(), win = finestraBatMin * 60000;
+  const y = v => basso - (limita(v, lo, hi) - lo) / (hi - lo) * (basso - alto);
+  const x = t => sx + (t - (fine - win)) / win * (dx - sx);
+  ctx.font = '9.5px "JetBrains Mono", monospace'; ctx.textAlign = 'right';
+  for (const v of [3.3, 3.6, 3.9, 4.2]) {
+    const yy = Math.round(y(v)) + .5;
+    ctx.strokeStyle = C.griglia; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(sx, yy); ctx.lineTo(dx, yy); ctx.stroke();
+    ctx.fillStyle = C.debole; ctx.fillText(v.toFixed(1).replace('.', ',') + ' V', sx - 4, yy + 3);
   }
-  xiaoDfu.fase = 'invio'; xiaoAggiornaBt();
-  $('xiaoFwBarraBox').hidden = false; $('xiaoFwBarra').style.width = '0';
-  const { bin, dat } = xiaoDfu.pacchetto, t0 = performance.now();
-  try {
-    xiaoNotaFw('Connessione al bootloader…');
-    const server = await disp.gatt.connect();
-    const sv = await server.getPrimaryService(DFU_SERVIZIO);
-    const cp = await sv.getCharacteristic(DFU_CP), pkt = await sv.getCharacteristic(DFU_PKT);
-    let ultimo = 0;
-    await xiaoDfuInvia(cp, pkt, bin, dat, n => {
-      const ora = performance.now();
-      if (ora - ultimo < 200 && n < bin.length) return;
-      ultimo = ora;
-      $('xiaoFwBarra').style.width = (n / bin.length * 100).toFixed(1) + '%';
-      const vel = n / Math.max(0.1, (ora - t0) / 1000);
-      xiaoNotaFw(`Invio ${(n / 1024).toFixed(0)} / ${(bin.length / 1024).toFixed(0)} KB · ${(vel / 1024).toFixed(1).replace('.', ',')} KB/s · ancora ${Math.ceil((bin.length - n) / Math.max(1, vel))} s`);
-    });
-    xiaoNotaFw('Aggiornamento completato: il tag si riavvia. Premi «Collega Bluetooth» tra qualche secondo e controlla la versione.');
-    xiaoDfu.pacchetto = null; xiaoDfu.tutti = false; xiaoDfu.fase = 'inattivo';
-  } catch (e) {
-    xiaoNotaFw('Aggiornamento non riuscito: ' + e.message + '. Puoi riprovare con il pulsante; se il tag non risponde, doppio tap su reset e carica via USB.', true);
-    xiaoDfu.fase = 'attesa';
-  } finally {
-    try { if (disp.gatt.connected) disp.gatt.disconnect(); } catch {}
-    setTimeout(() => { $('xiaoFwBarraBox').hidden = true; }, 3000);
-    xiaoAggiornaBt();
+  ctx.textAlign = 'center';
+  const passo = finestraBatMin / 6;
+  for (let m = passo; m < finestraBatMin; m += passo) ctx.fillText(`−${Math.round(m)}′`, x(fine - m * 60000), h - 2);
+  ctx.textAlign = 'right'; ctx.fillText('ora', dx, h - 2);
+  // tratti in carica
+  ctx.fillStyle = conAlfa(C.ok, 0.18);
+  for (let i = 1; i < storiaXiao.length; i++) {
+    if (!storiaXiao[i][2]) continue;
+    const x0 = Math.max(sx, x(storiaXiao[i - 1][0])), x1 = x(storiaXiao[i][0]);
+    if (x1 > sx) ctx.fillRect(x0, alto, Math.max(1, x1 - x0), basso - alto);
   }
+  ctx.strokeStyle = C.z; ctx.lineWidth = 1.8; ctx.lineJoin = 'round'; ctx.beginPath();
+  let su = false;
+  for (const r of storiaXiao) {
+    if (r[1] < 2) { su = false; continue; }
+    su ? ctx.lineTo(x(r[0]), y(r[1])) : ctx.moveTo(x(r[0]), y(r[1]));
+    su = true;
+  }
+  ctx.stroke();
 }
-$('xiaoFw').addEventListener('click', xiaoFwPasso);
-$('xiaoFwFile').addEventListener('change', async e => {
-  const f = e.target.files[0];
-  if (!f || !sorgente || !sorgente.dfuCp) return;
-  try {
-    xiaoDfu.pacchetto = await xiaoLeggiPacchetto(new Uint8Array(await f.arrayBuffer()));
-    const cp = sorgente.dfuCp;
-    xiaoNotaFw(`Pacchetto «${f.name}» letto (${(xiaoDfu.pacchetto.bin.length / 1024).toFixed(0)} KB). Il tag entra in modalità aggiornamento…`);
-    await cp.startNotifications();                           // il tag lo richiede prima del comando
-    xiaoDfu.fase = 'attesa'; xiaoDfu.tutti = false;
-    try { await (cp.writeValueWithResponse ? cp.writeValueWithResponse(new Uint8Array([1])) : cp.writeValue(new Uint8Array([1]))); } catch {} // il tag si scollega subito
-    xiaoNotaFw('Il tag è nel bootloader (LED fisso). Premi «Scegli il tag in aggiornamento» e selezionalo nell’elenco.');
-  } catch (err) {
-    xiaoDfu.fase = 'inattivo'; xiaoDfu.pacchetto = null;
-    xiaoNotaFw('Pacchetto non valido: ' + err.message, true);
-  }
-  xiaoAggiornaBt();
-});
+function xiaoTara(valore) {
+  const v = parseFloat(String(valore).replace(',', '.'));
+  if (valore !== 0 && !(v > 2.5 && v < 4.5)) { $('batNota').textContent = 'Inserisci la tensione letta col tester (2,5–4,5 V)'; return; }
+  $('batNota').dataset.tara = String(performance.now());
+  $('batNota').textContent = 'Taratura inviata…';
+  comando('VCAL,' + (valore === 0 ? 0 : Math.round(v * 1000)));
+}
+$('batTara').addEventListener('click', () => xiaoTara($('batTester').value));
+$('batTaraReset').addEventListener('click', () => xiaoTara(0));
 
 let xiaoDemoId = null, xiaoDemoPasso = null; // xiaoDemoPasso: un passo del copione (40 ms simulati), richiamabile anche a mano per i test
 function xiaoFermaDemo() {

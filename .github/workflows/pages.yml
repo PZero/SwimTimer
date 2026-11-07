@@ -1,11 +1,11 @@
 # Compila il firmware del tag e pubblica su GitHub Pages la pagina di analisi (tools/)
-# insieme al firmware (firmware/tag.bin + firmware/tag.json) per l'aggiornamento via Bluetooth.
+# insieme al firmware (firmware/tag.bin + tag.json per l'ESP32, xiao.bin + xiao.json per la XIAO) per l'aggiornamento via Bluetooth.
 name: Pagina e firmware su GitHub Pages
 
 on:
   push:
     branches: [main]
-    paths: ['tools/**', 'firmware/test-collegamenti/**', '.github/workflows/pages.yml']
+    paths: ['tools/**', 'firmware/test-collegamenti/**', 'firmware/xiao-stream/release/**', '.github/workflows/pages.yml']
   workflow_dispatch:
 
 permissions:
@@ -70,6 +70,9 @@ jobs:
                     open('sito/firmware/tag.json', 'w'))
           PY
           cat sito/firmware/tag.json
+          # XIAO nRF52840: il .bin (e il suo json) si compila a mano con arduino-cli e si committa in firmware/xiao-stream/release/
+          cp firmware/xiao-stream/release/xiao.bin firmware/xiao-stream/release/xiao.json sito/firmware/
+          cat sito/firmware/xiao.json
 
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
