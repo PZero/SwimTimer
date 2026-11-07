@@ -6,7 +6,7 @@
 #include <stdarg.h>
 #include "nrf_gpio.h"
 
-#define VERSIONE "xiao-0.2.0"
+#define VERSIONE "xiao-0.3.0"
 
 // ---- Pin (numeri Arduino della variante Seeed, vedi variant.h) ----
 // LED RGB attivi bassi: LED_RED/LED_GREEN/LED_BLUE (P0.26/P0.30/P0.06)
@@ -19,6 +19,9 @@
 // ---- Parametri regolabili ----
 #define TAP_SOGLIA 12          // soglia del doppio tap (0..31), 1 LSB = 62,5 mg a +-2 g: 12 = 0,75 g. Piu' basso = piu' sensibile
 #define SOGLIA_BIAS_DPS 2.5f   // il giroscopio e' "fermo" se in 0,5 s ogni asse varia meno di cosi'
+#define INATTIVITA_MS 60000UL  // sospensione automatica dopo questo tempo senza movimento (0 = mai)
+#define MOTO_GYRO_DPS 8.0f     // movimento: un asse del giroscopio oltre questa velocita'...
+#define MOTO_ACC_G 0.08f       // ...oppure un asse dell'accelerometro che cambia piu' di cosi' tra due pacchetti
 #define LOG_RIGHE 50
 #define LOG_LEN 44
 
@@ -403,6 +406,27 @@ void setup() {
   aggiornaStato(true);
 }
 
+// Sospensione automatica: se per INATTIVITA_MS il tag non si muove (giroscopio quasi zero e
+// accelerometro costante) va in sospensione; si risveglia col doppio tap o con la USB.
+static void controllaInattivita(uint32_t ora) {
+  static uint32_t ultimoMoto = 0;
+  static int16_t accPrec[3];
+  static bool primo = true;
+  if (INATTIVITA_MS == 0) return;
+  const int16_t sogliaG = (int16_t)(MOTO_GYRO_DPS * 16.4f), sogliaA = (int16_t)(MOTO_ACC_G * 2048.0f);
+  bool moto = primo;
+  for (int i = 0; i < 3; i++) {
+    if (abs(gir[i]) > sogliaG || abs(acc[i] - accPrec[i]) > sogliaA) moto = true;
+    accPrec[i] = acc[i];
+  }
+  primo = false;
+  if (moto) { ultimoMoto = ora; return; }
+  if (ora - ultimoMoto >= INATTIVITA_MS) {
+    logRiga("fermo da %lu s: sospensione", (unsigned long)(INATTIVITA_MS / 1000));
+    vaInSospensione();
+  }
+}
+
 void loop() {
   static uint32_t ultimoDati = 0, ultimoStato = 0, ultimoLed = 0;
   uint32_t ora = millis();
@@ -415,6 +439,7 @@ void loop() {
       uint8_t p[16];
       preparaPacchetto(p, ora);
       if (Bluefruit.connected()) carDati.notify(p, 16);
+      controllaInattivita(ora);
     }
   }
   if (ora - ultimoStato >= 1000) {         // 1 Hz

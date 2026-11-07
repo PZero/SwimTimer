@@ -51,3 +51,6 @@ Comando `SLEEP` (pulsante «Sospendi») o nessun altro modo per ora. Il firmware
 ## Prove da fare
 - Misura da seriale (scheda ferma): `acc` ~2048 LSB di modulo, `gyro` vicino a 0 dopo la calibrazione.
 - Batteria: il partitore (2,96) va confermato con la cella reale e un multimetro.
+
+## Sospensione automatica (0.3.0)
+Se il tag resta fermo per `INATTIVITA_MS` (60 s) va in sospensione da solo, come col comando `SLEEP`, e nel log scrive `fermo da 60 s: sospensione`. "Fermo" significa: giroscopio sotto `MOTO_GYRO_DPS` (8 °/s) su tutti gli assi e accelerometro che non cambia più di `MOTO_ACC_G` (0,08 g) tra due pacchetti. Si riattiva col doppio tap o inserendo la USB. Al banco: se la scheda dorme non compare sulla USB, quindi per caricare un firmware via cavo prima svegliala con un doppio tap. `INATTIVITA_MS 0` disattiva la funzione.
