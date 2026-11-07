@@ -321,6 +321,17 @@ A cheap path to test now, while the custom boards are in the making: two **Seeed
 - **Waterproofing for tests.** Vacuum bag for the first tests; potting (epoxy) is evaluated in the document and requires a dry run on a dummy sample first.
 - **Soldering.** Only the two cell wires to the BAT pads on the back.
 
+### XIAO streaming firmware 0.4.2 (`firmware/xiao-stream`)
+
+Arduino sketch (core Seeeduino:nrf52 + Bluefruit) that makes the XIAO speak the same **`SwimTag` BLE protocol** as the ESP32 tag, so the "XIAO" tab of [`tools/index.html`](tools/index.html) works over Web Bluetooth. Details (Italian): [`firmware/xiao-stream/LEGGIMI.md`](firmware/xiao-stream/LEGGIMI.md).
+
+- **Data.** 16-byte packets at 25 Hz; the IMU runs at 208 Hz and is averaged down. Gyroscope bias calibration reduces head drift.
+- **Status.** 12-byte extended status: charge state, VBUS, die temperature, battery divider. Commands, tag log and version are as on the ESP32 tag. The page has a "Tag log" panel over BLE and a rebuilt Battery panel (charge state, % from a LiPo curve, time to full / runtime, chart, VCAL calibration against a multimeter).
+- **OTA over BLE.** Own protocol on characteristic `0006`: staging in flash, CRC32, board signature check, installer running from RAM. Nordic legacy DFU cannot be used from the browser because it is on the Web Bluetooth blocklist. The binary `firmware/xiao-stream/release/xiao.bin` + `xiao.json` is published by GitHub Pages (workflow updated); the "Tag firmware" dialog of the page handles the XIAO too.
+- **Sleep.** "Sleep" command, and automatic sleep after 60 s of "still enough" (1 s averages: rotation < 3 dps and tilt < 3 deg). Never during an OTA or with the serial port open. Wake with 4 taps (two hardware double-taps of the IMU) or by USB. Forced sleep when the battery is low (< 3.3 V).
+- **Verification status.** Tested on the board: double tap, OTA (0.4.0 -> 0.4.1 -> 0.4.2) and sleep. **Not yet tested:** 4-tap wake, low-battery sleep, the Battery panel with the board, VCAL calibration.
+- **Bench note.** One XIAO lost its 3.3 V regulator while the cell was being soldered; it is used on the bench through a silicon diode. Heat the BAT pads briefly and with care.
+
 ## External reviews (v0.4)
 
 The v0.4 design document was given to two external reviewers on 2026-11-04. Outcomes and actions: [`hardware/nrf52840/revisioni_esterne.md`](hardware/nrf52840/revisioni_esterne.md). The text that was sent: [`hardware/nrf52840/revisione_esterna_v0.4.md`](hardware/nrf52840/revisione_esterna_v0.4.md). The decided changes are in v0.5.
@@ -410,6 +421,7 @@ SwimTimer/
 ├── docs/                         idea, state, decisions, open questions, requirements, design, lessons, algorithms (Italian)
 ├── firmware/
 │   ├── test-collegamenti/        ESP32-S3 tag: firmware 0.4.3
+│   ├── xiao-stream/              XIAO nRF52840 Sense: SwimTag BLE streaming + OTA 0.4.2 (release/ xiao.bin, xiao.json)
 │   └── display-prova/            T-RGB display
 ├── tools/                        index.html (analysis page), display.html (poolside display mockup), assi.html (old)
 ├── media/video/                  presentation video generator, thumbnail, music
@@ -484,7 +496,7 @@ The v0.5 board is verified (DRC/ERC, `verifica_v05.py`). **Do not order** before
 - Agree the reference test for the Effort 1-10 indicator.
 
 **XIAO test tags**
-- Order 2 boards and the 100 mAh cells, dry-run the waterproofing, port the firmware to the XIAO.
+- Order 2 boards and the 100 mAh cells, dry-run the waterproofing. Firmware ported (`firmware/xiao-stream` 0.4.2); still to test on the board: 4-tap wake, low-battery sleep, Battery panel and VCAL calibration.
 
 **ESP32 prototype**
 - On battery only, the tag does not flash blue and is not visible over Bluetooth (red LED on, 3.87 V at the pads).

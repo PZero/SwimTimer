@@ -32,3 +32,7 @@ Risolte: modulo E73 (Raytac a stock 0), IMU LSM6DSV16X, flash 16 MB, interruttor
 33. Display a bordo vasca: confermi Raspberry Pi 4 + dongle nRF52840 + monitor portatile + power bank? Faccio fare a `elettronica` la distinta con modelli e prezzi (~180–220 €)?
 34. Quale test di riferimento (CSS 400+200 m o altro) per calcolare l'Effort di ogni nuotatore? Ora la scala 1–10 è provvisoria.
 35. Vasca da 50 m: il BLE non arriva al muro opposto al display. Secondo ricevitore a batteria sul muro lontano (~15–20 €) o consegna ritardata fino al ritorno?
+36. XIAO: compri una scheda di scorta (la attuale ha il regolatore 3,3 V guasto e va col diodo) e un multimetro (10–15 €, serve anche per le v0.6)?
+37. Taratura batteria: leggi col tester la tensione della cella e la inserisci in «Taratura» (il tag legge ~1% in meno).
+38. Soglie della sospensione automatica (rotazione 3 dps, inclinazione 3°, 60 s): da tarare con la scheda sotto la cuffia a riposo; poi provare i 4 tap e la sospensione a batteria bassa.
+39. Per il tag definitivo: firmware Zephyr con MCUboot e aggiornamento SMP (compatibile con Web Bluetooth) o proseguire con Arduino?

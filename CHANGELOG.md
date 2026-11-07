@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-11-07
+- **XIAO streaming firmware 0.4.2** in `firmware/xiao-stream/` (Seeed XIAO nRF52840 Sense, Arduino, core Seeeduino:nrf52 + Bluefruit, with `LEGGIMI.md`). Same `SwimTag` BLE protocol as the ESP32 tag: 16-byte data at 25 Hz from an IMU averaged at 208 Hz, 12-byte status (charge, VBUS, die temperature, divider), commands, log, version. The "XIAO" tab of `tools/index.html` now works over Web Bluetooth. Gyroscope bias calibration reduces head drift.
+- **BLE firmware update for the XIAO**: own OTA on characteristic `0006` (staging in flash, CRC32, board signature check, RAM installer), tested on the board 0.4.0 -> 0.4.1 -> 0.4.2. Nordic legacy DFU is not usable from the browser (Web Bluetooth blocklist). `firmware/xiao-stream/release/xiao.bin` and `xiao.json` published by GitHub Pages (workflow updated); the "Tag firmware" dialog handles the XIAO too.
+- **Sleep**: "Sleep" command and automatic sleep after 60 s of "still enough" (1 s averages: rotation < 3 dps, tilt < 3 deg), never during an OTA or with the serial port open. Wake with 4 taps (two IMU hardware double-taps) or USB. Sleep on low battery (< 3.3 V).
+- **"Tag log" panel** over BLE and rebuilt **Battery panel** for the XIAO (charge state, % from LiPo curve, time to full / runtime, chart, VCAL calibration with a multimeter).
+- **Verification status**: double tap, OTA and sleep tested on the board; 4-tap wake, low-battery sleep, Battery panel with the board and VCAL calibration **not yet tested**.
+- **Bench note**: one XIAO lost its 3.3 V regulator while soldering the cell; used on the bench with a silicon diode.
+- README: new "XIAO streaming firmware" subsection, folder tree and roadmap updated.
+
 ## 2026-11-06
 - **Board v0.6 "Rev0"** (nRF52840 tag, 4 layers, no BGA): MCP73831 charger, TPS22917 load switch, J1 left DNP, D4 + R2 added, D3 replaced by LC05CI. Design kept at 4 layers on purpose.
 - **NextPCB order files** in `hardware/nrf52840/kicad/nextpcb/v0.6/` (Gerber, BOM, CPL, `NOTE_ORDINE.md`). Quote for 20 boards: 216.39 USD after coupon.
