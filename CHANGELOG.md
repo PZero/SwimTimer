@@ -1,5 +1,8 @@
 # Changelog
 
+## 2026-11-08 (firmware 0.5.4)
+- **Firmware XIAO 0.5.4:** charge current raised to 100 mA (P0.13 driven low, kept in System OFF); the test board, powered from the cell through a diode because of its dead 3.3 V regulator, stayed at 3.57 V while charging at 50 mA. Flashed over BLE from the PC with the same OTA protocol as the page.
+
 ## 2026-11-08 (XIAO-only tools page, firmware 0.5.2/0.5.3)
 - **Firmware XIAO 0.5.3:** plugging USB in during a pool recording now closes the recording cleanly (new stop reason 4 "USB connected", also in `swr.py`/`swr.js`) and restarts the tag in normal mode, so it can be read from the page; before, the recording loop ignored serial commands and the page reported "MEM does not respond". Flashed and checked (`K mem 2204 8192`).
 - **Firmware XIAO 0.5.2:** no automatic sleep while USB power (VBUS) is present, even with no serial port open; before, the tag went to sleep after 60 s on the desk and disappeared from USB. Flashed over USB and checked (still on the port after 80 s at rest).

@@ -733,7 +733,7 @@ function xiaoLogRiga(testo) {
 $('xiaoLogPulisci').addEventListener('click', () => { $('xiaoLog').textContent = ''; });
 function xiaoNotaFw(t, err) { $('xiaoFwNota').textContent = t; $('xiaoFwNota').style.color = err ? 'var(--errore)' : ''; }
 // ---------- Batteria della XIAO: stato di carica, %, tempo a fine carica / autonomia, grafico con tratti in carica ----------
-const CAPACITA_MAH = 100, CORRENTE_CARICA_MA = 50;   // cella e caricatore BQ25101 (P0.13 in ingresso = 50 mA)
+const CAPACITA_MAH = 1000, CORRENTE_CARICA_MA = 100;   // cella attuale da 1000 mAh; BQ25101 a 100 mA (P0.13 basso, firmware 0.5.4)
 let storiaXiao = [];                                  // [ms, V, in carica 0/1, VBUS 0/1]
 let finestraBatMin = Number(pref.get('finBat', 60)) || 60;
 $('batFinestra').value = String(finestraBatMin);

@@ -10,7 +10,7 @@
 #include "swr_formato.h"
 #include <flash/flash_nrf5x.h>   // scrittura flash compatibile con il SoftDevice (sd_flash_*)
 
-#define VER_NUM "0.5.3"
+#define VER_NUM "0.5.4"
 #define VERSIONE "xiao-" VER_NUM
 // Marcatore cercato nel binario dalla pagina (come per l'ESP32) e dall'OTA del tag
 __attribute__((used)) static const char marcatoreVersione[] = "SWIMTAG_VER=" VER_NUM ";";
@@ -22,7 +22,7 @@ __attribute__((used)) static const char marcatoreScheda[] = FIRMA_SCHEDA;
 // LED RGB attivi bassi: LED_RED/LED_GREEN/LED_BLUE (P0.26/P0.30/P0.06)
 // IMU_PWR = P1.08 -> PIN_LSM6DS3TR_C_POWER (15); I2C interno su Wire1 (SDA P0.07, SCL P0.27)
 // INT1 dell'IMU = P0.11 (pin assoluto 11); partitore batteria: VBAT_ENABLE (P0.14, LOW = abilitato), PIN_VBAT
-// HICHG P0.13 (PIN_CHARGING_CURRENT): lasciato in ingresso = carica a 50 mA; ~CHG P0.17 = 23 (LOW in carica)
+// HICHG P0.13 (PIN_CHARGING_CURRENT): uscita bassa = carica a 100 mA (dalla 0.5.4; in ingresso sarebbe 50 mA); ~CHG P0.17 = 23 (LOW in carica)
 #define PIN_NCHG 23
 #define PIN_INT1_ASSOLUTO 11
 
@@ -1149,7 +1149,7 @@ void setup() {
   pinMode(LED_RED, OUTPUT); pinMode(LED_GREEN, OUTPUT); pinMode(LED_BLUE, OUTPUT);
   digitalWrite(LED_RED, HIGH); digitalWrite(LED_GREEN, HIGH); digitalWrite(LED_BLUE, HIGH);
   pinMode(PIN_NCHG, INPUT_PULLUP);
-  pinMode(PIN_CHARGING_CURRENT, INPUT);   // P0.13 in ingresso: carica a 50 mA
+  pinMode(PIN_CHARGING_CURRENT, OUTPUT); digitalWrite(PIN_CHARGING_CURRENT, LOW);   // P0.13 basso: carica a 100 mA (resta impostato anche in System OFF)
   pinMode(PIN_LSM6DS3TR_C_POWER, OUTPUT);
 
   const char *nomi[] = {"accensione", "doppio tap", "?", "watchdog", "?", "software", "lockup", "USB", "pin reset"};

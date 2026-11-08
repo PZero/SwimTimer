@@ -125,3 +125,4 @@
 | 2026-11-08 | Landing pubblica su `/`, area riservata su `/area/`; `versione.json` generato a ogni deploy e controllato dalle pagine per ricaricarsi da sole (non se ci sono modifiche non salvate) | Evitare che gli utenti restino con file vecchi in cache |
 | 2026-11-08 | Il controllo «sono admin» in sessione ricorda solo il sì, mai il no | Un no memorizzato bloccava l'admin dopo l'aggiornamento delle regole |
 | 2026-11-08 | Video di annotazione: camera ferma al muro, esercizi corti per virate/partenze/arrivi (giorni 1–3), allenamento vero solo per verifica (giorno 4); X360 al muro solo sott'acqua e lato corsia | Gli eventi rari sono il cuore del progetto; i giri in acqua servono come falsi positivi |
+| 2026-11-08 | Firmware 0.5.4: corrente di carica 100 mA (P0.13 uscita bassa) invece di 50 mA | Con il regolatore guasto la scheda si alimenta sempre dalla cella e a 50 mA la tensione restava ferma a 3,57 V |
