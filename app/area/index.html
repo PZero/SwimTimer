@@ -4,13 +4,14 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex">
-<title>SwimTimer · Area riservata</title>
+<title data-i18n="a.titolo">SwimTimer · Area riservata</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="../comune/stile.css">
 <link rel="stylesheet" href="area.css">
 <link rel="stylesheet" href="annotazione.css">
+<script src="/comune/i18n.js"></script>
 <script src="/comune/versione.js"></script>
 </head>
 <body>
@@ -20,21 +21,24 @@
     <b>SwimTimer</b>
   </a>
   <nav id="nav" hidden>
-    <a href="#sessioni" data-v="sessioni">Sessioni</a>
-    <a href="#admin" data-v="admin" id="navAdmin" hidden>Utenti</a>
+    <a href="#sessioni" data-v="sessioni" data-i18n="a.nav.sessioni">Sessioni</a>
+    <a href="#admin" data-v="admin" id="navAdmin" hidden data-i18n="a.nav.utenti">Utenti</a>
+    <a href="#messaggi" data-v="messaggi" id="navMsg" hidden><span data-i18n="a.nav.messaggi">Messaggi</span> <span class="badge" id="badgeMsg" hidden></span></a>
+    <a href="../strumenti/" data-i18n="c.strumenti">Strumenti</a>
   </nav>
+  <div class="lingua" data-selettore-lingua></div>
   <div class="utente" id="utente" hidden>
     <img id="foto" alt="" width="28" height="28" referrerpolicy="no-referrer">
     <span id="nomeUtente"></span>
-    <button class="piccolo" id="btnEsci">Esci</button>
+    <button class="piccolo" id="btnEsci" data-i18n="a.esci">Esci</button>
   </div>
 </header>
 
 <main id="main">
   <section class="scheda centro" id="vistaLogin" hidden>
-    <h1>Area riservata</h1>
-    <p class="tenue">Registrazioni, video e annotazioni condivise tra i membri approvati del progetto SwimTimer.</p>
-    <p><button class="primario" id="btnAccedi">Accedi con Google</button></p>
+    <h1 data-i18n="a.login.h">Area riservata</h1>
+    <p class="tenue" data-i18n="a.login.t">Registrazioni, video e annotazioni condivise tra i membri approvati del progetto SwimTimer.</p>
+    <p><button class="primario" id="btnAccedi" data-i18n="c.accedi">Accedi con Google</button></p>
     <p class="tenue piccolo-t" id="erroreLogin"></p>
   </section>
 
@@ -42,6 +46,7 @@
 
   <div id="vistaSessioni" hidden></div>
   <div id="vistaAdmin" hidden></div>
+  <div id="vistaMessaggi" hidden></div>
 
   <div id="vistaEditor" hidden>
     <div class="scheda editor-testa" id="intestaAnn"></div>

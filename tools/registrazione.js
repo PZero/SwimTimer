@@ -177,8 +177,9 @@
   </section>
   <section class="scheda s12 swr-scheda">
     <header><h2>File .swr <small>riassunto e scelta del segmento</small></h2>
-      <div class="swr-riga"><button id="rgApri">Apri .swr dal disco</button><button id="rgVaiAnn" disabled>Annota con un video →</button></div></header>
+      <div class="swr-riga"><button id="rgApri">Apri .swr dal disco</button><button id="rgOnline" disabled hidden title="Carica la registrazione nell'archivio condiviso (account approvato)">Carica online</button><button id="rgVaiAnn" disabled>Annota con un video →</button></div></header>
     <div id="rgRiass"></div>
+    <div id="rgOnlineBox"></div>
   </section>`;
   const $ = id => document.getElementById(id);
   const porta = new Seriale();
@@ -262,6 +263,8 @@
   $('rgVaiAnn').addEventListener('click', () => { if (typeof window.mostraVista === 'function') window.mostraVista('ann'); });
   if (!('serial' in navigator)) stato('Web Serial non è disponibile in questo browser: usa Chrome o Edge (https o localhost). Puoi comunque aprire un .swr dal disco.', 'err');
   pulsanti();
+  // «Carica online»: attivo solo sul sito Firebase (comune/online-strumenti.js, caricato da index.html); altrove un avviso
+  if (!window.SWT_ONLINE) $('rgOnlineBox').innerHTML = '<p class="ann-nota">Il caricamento online è disponibile su <a href="https://swimtimer-pzero.web.app/strumenti/">swimtimer-pzero.web.app/strumenti/</a>.</p>';
 
   // ---------------------------------------------------------------- riassunto del file
   const fmtDurata = s => s >= 60 ? Math.floor(s / 60) + ' min ' + (s % 60).toFixed(0) + ' s' : s.toFixed(1) + ' s';

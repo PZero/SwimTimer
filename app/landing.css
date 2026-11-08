@@ -61,3 +61,24 @@ button.grande { padding: 14px 22px; font-size: 15px; border-radius: 10px; }
 .piede { max-width: 1180px; margin: 24px auto 0; padding: 24px 20px 40px; border-top: 1px solid var(--bordo); display: flex; gap: 20px; align-items: center; font-size: 13.5px; }
 .piede img { width: 120px; height: auto; border-radius: 10px; border: 1px solid var(--bordo); flex: none; }
 .piede p { margin: 4px 0 0; }
+
+/* contatti */
+.contatti { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); gap: 16px; align-items: start; }
+.contatti label { display: flex; flex-direction: column; gap: 4px; font-size: 12.5px; color: var(--tenue); margin-bottom: 12px; }
+.contatti input, .contatti textarea { color: var(--testo); font-size: 14px; }
+.mail-grande { font-size: 18px; font-weight: 600; word-break: break-all; }
+.trappola { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+#cEsito { font-size: 13px; }
+@media (max-width: 860px) { .contatti { grid-template-columns: 1fr; } }
+
+/* display a bordo vasca */
+.display-col { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+.display-col figure { margin: 0; }
+.display-col img { width: 100%; height: auto; border-radius: 10px; display: block; }
+.display-col figcaption { color: var(--tenue); font-size: 12.5px; margin-top: 8px; }
+.zoomabile img { cursor: zoom-in; }
+.elenco { margin: 0 0 12px; padding-left: 20px; } .elenco li { margin: 3px 0; }
+#lightbox { border: 0; padding: 0; background: transparent; max-width: 96vw; max-height: 96vh; }
+#lightbox::backdrop { background: rgba(5, 10, 16, .85); }
+#lightbox img { max-width: 96vw; max-height: 92vh; display: block; border-radius: 8px; cursor: zoom-out; }
+@media (max-width: 860px) { .display-col { grid-template-columns: 1fr; } }

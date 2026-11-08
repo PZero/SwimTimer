@@ -56,3 +56,7 @@ eventi*.csv
 
 # Generato a ogni deploy (firebase/scrivi-versione.mjs)
 app/versione.json
+
+# Copiati dal predeploy (firebase/prepara-strumenti.mjs): non versionare
+app/strumenti/
+app/display/

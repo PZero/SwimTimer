@@ -6,7 +6,7 @@
  * Usa window.SWR (swr.js) e window.SwimDati. */
 (function () {
   'use strict';
-  const SWR = window.SWR, SD = window.SwimDati;
+  const SWR = window.SWR, SD = window.SwimDati, t = window.t, I18N = window.SwimI18n;
   const radice = document.getElementById('vistaAnn');
   if (!radice || !SWR || !SD) return;
 
@@ -14,19 +14,14 @@
   const BIAS = 0.25 / FPS;                       // per cadere dentro il fotogramma cercato
   const VEL = [0.1, 0.25, 0.5, 1, 2];
   const TIPI = {
-    B: { nome: 'Bracciata', desc: 'entrata della mano in acqua', col: '#38bdf8' },
-    R: { nome: 'Respirazione', desc: 'bocca fuori dall\'acqua', col: '#2dd4bf' },
-    V: { nome: 'Inizio virata', desc: '', col: '#f5b041' },
-    F: { nome: 'Fine virata', desc: '', col: '#fb923c' },
-    P: { nome: 'Partenza', desc: '', col: '#4cc38a' },
-    A: { nome: 'Arrivo', desc: '', col: '#ff6b6f' },
-    X: { nome: 'Sync', desc: '5° tocco', col: '#a78bfa' }
+    B: { col: '#38bdf8' }, R: { col: '#2dd4bf' }, V: { col: '#f5b041' }, F: { col: '#fb923c' }, P: { col: '#4cc38a' }, A: { col: '#ff6b6f' }, X: { col: '#a78bfa' }
   };
   const $ = id => document.getElementById(id);
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
   const r6 = v => Math.round(v * 1e6) / 1e6;
   const fmtT = s => (s < 0 ? '−' : '') + Math.abs(s).toFixed(3) + ' s';
+  const virgola = x => String(x).replace('.', I18N.lingua() === 'it' ? ',' : '.');
 
   // ---------------------------------------------------------------- stato
   const S = {
@@ -45,76 +40,78 @@
   // ---------------------------------------------------------------- struttura della scheda
   radice.innerHTML = `
   <section class="scheda s12 ann-sez">
-    <header><h2>Annotazione <small>video + dati grezzi della tag</small></h2>
+    <header><h2><span data-i18n="n.h">Annotazione</span> <small data-i18n="n.hs">video + dati grezzi della tag</small></h2>
       <div class="ann-riga">
-        <select id="anSeg" title="Segmento da analizzare" hidden></select>
-        <button id="anVideoBtn" class="primario">Apri video (file locale)</button>
-        <button id="anSalvaOnline" class="primario" disabled>Salva online</button>
-        <button id="anProgApri">Importa progetto .json</button><button id="anProgSalva">Scarica progetto .json</button><button id="anCsv">Esporta eventi.csv</button>
+        <select id="anSeg" data-i18n-attr="title:n.segTitle" hidden></select>
+        <button id="anVideoBtn" class="primario" data-i18n="n.apriVideo">Apri video (file locale)</button>
+        <button id="anSalvaOnline" class="primario" disabled data-i18n="n.salvaOnline">Salva online</button>
+        <button id="anProgApri" data-i18n="n.importa">Importa progetto .json</button><button id="anProgSalva" data-i18n="n.scarica">Scarica progetto .json</button><button id="anCsv" data-i18n="n.csv">Esporta eventi.csv</button>
       </div></header>
-    <p class="ann-nota">I dati grezzi arrivano dall'archivio condiviso. Il video non viene caricato: si apre dal tuo computer e se ne controlla l'impronta (sha256) rispetto al video registrato. Gli eventi si salvano online come tua annotazione: «Salva online» oppure autosalvataggio dopo 15 secondi senza modifiche (e copia di sicurezza nel browser).</p>
+    <p class="ann-nota" data-i18n="n.nota">x</p>
     <div class="ann-riga"><span id="anOnline" class="tenue"></span></div>
     <div class="ann-info" id="anInfo"></div>
   </section>
 
   <section class="scheda s12 ann-sez ann-graf">
-    <header><h2>Dati grezzi <small>rotella/pizzico = zoom · trascina = sposta · clic = marcatore di sync sul picco di |acc| · Maiusc+clic = vai lì nel video</small></h2>
+    <header><h2><span data-i18n="n.dati">Dati grezzi</span> <small data-i18n="n.datiS">x</small></h2>
       <div class="ann-riga">
-        <span class="segmentato" id="anZoom"><button data-z="1">1 s</button><button data-z="5">5 s</button><button data-z="30">30 s</button><button data-z="0">Tutto</button></span>
-        <label class="ann-chk"><input type="checkbox" id="anSegui" checked> Segui il video</label>
-        <button class="piccolo" id="anNascondi">Nascondi grafici</button>
+        <span class="segmentato" id="anZoom"><button data-z="1">1 s</button><button data-z="5">5 s</button><button data-z="30">30 s</button><button data-z="0" data-i18n="n.tutto">Tutto</button></span>
+        <label class="ann-chk"><input type="checkbox" id="anSegui" checked> <span data-i18n="n.segui">Segui il video</span></label>
+        <button class="piccolo" id="anNascondi">x</button>
       </div></header>
     <div id="anGrafBox">
-      <div class="ann-lane"><div class="ann-lane-tit"><span>|acc|</span><select id="anModoAcc"><option value="mod">modulo (g)</option><option value="assi">assi x y z (g)</option></select></div><canvas id="anAcc" class="ann-cv"></canvas></div>
-      <div class="ann-lane"><div class="ann-lane-tit"><span>|gyro|</span><select id="anModoGyr"><option value="mod">modulo (dps)</option><option value="assi">assi x y z (dps)</option></select></div><canvas id="anGyr" class="ann-cv"></canvas></div>
-      <div class="ann-lane ann-pan"><div class="ann-lane-tit"><span>Panoramica</span></div><canvas id="anPan" class="ann-cv"></canvas></div>
+      <div class="ann-lane"><div class="ann-lane-tit"><span>|acc|</span><select id="anModoAcc"><option value="mod" data-i18n="n.modG">modulo (g)</option><option value="assi" data-i18n="n.assiG">assi x y z (g)</option></select></div><canvas id="anAcc" class="ann-cv"></canvas></div>
+      <div class="ann-lane"><div class="ann-lane-tit"><span>|gyro|</span><select id="anModoGyr"><option value="mod" data-i18n="n.modD">modulo (dps)</option><option value="assi" data-i18n="n.assiD">assi x y z (dps)</option></select></div><canvas id="anGyr" class="ann-cv"></canvas></div>
+      <div class="ann-lane ann-pan"><div class="ann-lane-tit"><span data-i18n="n.pan">Panoramica</span></div><canvas id="anPan" class="ann-cv"></canvas></div>
     </div>
   </section>
 
   <section class="scheda s12 ann-sez ann-vid">
-    <header><h2>Video <small>frecce ±1 fotogramma (Maiusc ±10) · J/L ±5 s · Spazio play/pausa · , e . velocità</small></h2>
+    <header><h2><span data-i18n="n.video">Video</span> <small data-i18n="n.videoS">x</small></h2>
       <div class="ann-riga"><span class="mono" id="anTempo">–</span></div></header>
-    <div class="ann-video-wrap"><video id="anVideo" playsinline preload="auto"></video><div class="ann-vuoto" id="anVuoto">Apri un video MP4 (30 fps) con «Apri video»</div></div>
+    <div class="ann-video-wrap"><video id="anVideo" playsinline preload="auto"></video><div class="ann-vuoto" id="anVuoto" data-i18n="n.vuoto">x</div></div>
     <div class="ann-riga ann-comandi">
-      <button class="piccolo" data-p="-10" title="−10 fotogrammi (Maiusc+←)">−10f</button>
-      <button class="piccolo" data-p="-1" title="−1 fotogramma (←)">−1f</button>
-      <button class="piccolo primario" id="anPlay" title="Spazio">▶ Play</button>
-      <button class="piccolo" data-p="1" title="+1 fotogramma (→)">+1f</button>
-      <button class="piccolo" data-p="10" title="+10 fotogrammi (Maiusc+→)">+10f</button>
-      <button class="piccolo" data-s="-5" title="−5 s (J)">−5 s</button>
-      <button class="piccolo" data-s="5" title="+5 s (L)">+5 s</button>
-      <span class="ann-vel"><button class="piccolo" id="anVelMeno" title="Più lento (,)">−</button><b class="mono" id="anVel">1×</b><button class="piccolo" id="anVelPiu" title="Più veloce (.)">+</button></span>
+      <button class="piccolo" data-p="-10" data-i18n-attr="title:n.t.m10">−10f</button>
+      <button class="piccolo" data-p="-1" data-i18n-attr="title:n.t.m1">−1f</button>
+      <button class="piccolo primario" id="anPlay" data-i18n-attr="title:n.t.play">▶ Play</button>
+      <button class="piccolo" data-p="1" data-i18n-attr="title:n.t.p1">+1f</button>
+      <button class="piccolo" data-p="10" data-i18n-attr="title:n.t.p10">+10f</button>
+      <button class="piccolo" data-s="-5" data-i18n-attr="title:n.t.s5m">−5 s</button>
+      <button class="piccolo" data-s="5" data-i18n-attr="title:n.t.s5p">+5 s</button>
+      <span class="ann-vel"><button class="piccolo" id="anVelMeno" data-i18n-attr="title:n.t.lento">−</button><b class="mono" id="anVel">1×</b><button class="piccolo" id="anVelPiu" data-i18n-attr="title:n.t.veloce">+</button></span>
     </div>
     <div class="ann-striscia-box"><canvas id="anStr" class="ann-cv"></canvas></div>
-    <div class="ann-riga"><label>Striscia <select id="anStrSpan"><option value="20">20 s</option><option value="60" selected>60 s</option><option value="300">5 min</option><option value="0">tutto</option></select></label></div>
+    <div class="ann-riga"><label><span data-i18n="n.striscia">Striscia</span> <select id="anStrSpan"><option value="20">20 s</option><option value="60" selected>60 s</option><option value="300">5 min</option><option value="0" data-i18n="n.tuttoMin">tutto</option></select></label></div>
 
     <div class="ann-blocchi">
       <div class="ann-blocco">
-        <div class="etichetta">Sincronia</div>
-        <div class="ann-kv"><span>Sync video (X)</span><b class="mono" id="anSyV">–</b><span>Sync dati (picco)</span><b class="mono" id="anSyD">–</b>
-          <span>Offset t_dati − t_video</span><b><input type="number" id="anOff" step="1" class="ann-num" disabled> ms</b></div>
-        <div class="ann-riga"><button class="piccolo" data-o="-s" disabled>−1 campione</button><button class="piccolo" data-o="+s" disabled>+1 campione</button>
-          <button class="piccolo" data-o="-f" disabled>−1 fotogramma</button><button class="piccolo" data-o="+f" disabled>+1 fotogramma</button></div>
+        <div class="etichetta" data-i18n="n.sincronia">Sincronia</div>
+        <div class="ann-kv"><span data-i18n="n.syV">Sync video (X)</span><b class="mono" id="anSyV">–</b><span data-i18n="n.syD">Sync dati (picco)</span><b class="mono" id="anSyD">–</b>
+          <span data-i18n="n.off">Offset t_dati − t_video</span><b><input type="number" id="anOff" step="1" class="ann-num" disabled> ms</b></div>
+        <div class="ann-riga"><button class="piccolo" data-o="-s" disabled data-i18n="n.mCamp">−1 campione</button><button class="piccolo" data-o="+s" disabled data-i18n="n.pCamp">+1 campione</button>
+          <button class="piccolo" data-o="-f" disabled data-i18n="n.mFoto">−1 fotogramma</button><button class="piccolo" data-o="+f" disabled data-i18n="n.pFoto">+1 fotogramma</button></div>
         <p class="ann-nota" id="anAlinea"></p>
       </div>
       <div class="ann-blocco">
-        <div class="etichetta">Eventi</div>
+        <div class="etichetta" data-i18n="n.eventi">Eventi</div>
         <div class="ann-riga" id="anTipi"></div>
-        <div class="ann-riga"><label>Anticipo <input type="number" id="anAnt" class="ann-num" min="0" max="2000" step="10" value="0"> ms</label>
-          <button class="piccolo" id="anUndo" title="Z">Annulla</button><button class="piccolo" id="anRedo" title="Maiusc+Z">Ripristina</button><button class="piccolo" id="anElimina" title="Canc">Elimina</button></div>
-        <div class="ann-riga"><label class="ann-nota-lbl">Nota <input type="text" id="anNota" placeholder="nota dell'evento selezionato" disabled></label></div>
+        <div class="ann-riga"><label><span data-i18n="n.anticipo">Anticipo</span> <input type="number" id="anAnt" class="ann-num" min="0" max="2000" step="10" value="0"> ms</label>
+          <button class="piccolo" id="anUndo" title="Z" data-i18n="n.annulla">Annulla</button><button class="piccolo" id="anRedo" title="Shift+Z" data-i18n="n.ripristina">Ripristina</button><button class="piccolo" id="anElimina" title="Del" data-i18n="n.elimina">Elimina</button></div>
+        <div class="ann-riga"><label class="ann-nota-lbl"><span data-i18n="n.notaEv">Nota</span> <input type="text" id="anNota" data-i18n-attr="placeholder:n.notaPh" disabled></label></div>
         <div class="ann-cont" id="anCont"></div>
       </div>
-      <div class="ann-blocco ann-lista-box"><div class="etichetta">Elenco <span id="anNEv"></span></div><ol class="ann-lista" id="anLista"></ol></div>
+      <div class="ann-blocco ann-lista-box"><div class="etichetta"><span data-i18n="n.elenco">Elenco</span> <span id="anNEv"></span></div><ol class="ann-lista" id="anLista"></ol></div>
     </div>
-    <details class="ann-tasti"><summary>Scorciatoie</summary>
-      <p><b>B</b> bracciata (entrata della mano in acqua) · <b>R</b> respirazione (bocca fuori dall'acqua) · <b>V</b> inizio virata · <b>F</b> fine virata · <b>P</b> partenza · <b>A</b> arrivo · <b>X</b> sync (5° tocco, senza anticipo)<br>
-      <b>Z</b> annulla · <b>Maiusc+Z</b> ripristina · <b>Canc</b> elimina il selezionato · <b>Alt+←/→</b> sposta il selezionato di un fotogramma · clic su un evento: salta lì e lo seleziona<br>
-      <b>←/→</b> ±1 fotogramma · <b>Maiusc+←/→</b> ±10 · <b>J/L</b> ±5 s · <b>Spazio</b> play/pausa · <b>,</b> / <b>.</b> velocità 0,1 / 0,25 / 0,5 / 1 / 2×.
-      I tasti sono disattivi mentre si scrive in un campo di testo.</p></details>
+    <details class="ann-tasti"><summary data-i18n="n.scorc">Scorciatoie</summary>
+      <p data-i18n-html="n.scorcT">x</p></details>
   </section>`;
   const el = $('anVideo');
-  $('anTipi').innerHTML = Object.keys(TIPI).map(k => `<button class="piccolo ann-tipo" data-t="${k}" title="${TIPI[k].nome}${TIPI[k].desc ? ' (' + TIPI[k].desc + ')' : ''}" style="--c:${TIPI[k].col}"><b>${k}</b> ${TIPI[k].nome}</button>`).join('');
+  const nomeTipo = k => t('n.tipo.' + k), descTipo = k => { const d = t('n.tipo.' + k + '.d'); return d.startsWith('n.tipo.') ? '' : d; };
+  function disegnaTipi() {
+    $('anTipi').innerHTML = Object.keys(TIPI).map(k => `<button class="piccolo ann-tipo" data-t="${k}" title="${nomeTipo(k)}${descTipo(k) ? ' (' + descTipo(k) + ')' : ''}" style="--c:${TIPI[k].col}"><b>${k}</b> ${nomeTipo(k)}</button>`).join('');
+  }
+  disegnaTipi();
+  I18N.applica(radice);
 
   const ingressoVideo = Object.assign(document.createElement('input'), { type: 'file', accept: 'video/mp4,video/quicktime,video/*' });
   const ingressoProg = Object.assign(document.createElement('input'), { type: 'file', accept: '.json,application/json' });
@@ -143,10 +140,11 @@
     S.video.durata = el.duration; S.video.t = 0; S.video.nominale = 0;
     aggiornaTutto();
   });
-  el.addEventListener('error', () => { $('anInfo').textContent = 'Video non riproducibile in questo browser (prova un MP4 H.264).'; });
-  el.addEventListener('play', () => { $('anPlay').textContent = '❚❚ Pausa'; });
-  el.addEventListener('pause', () => { $('anPlay').textContent = '▶ Play'; });
-  function velocita(d) { S.velIdx = clamp(S.velIdx + d, 0, VEL.length - 1); el.playbackRate = VEL[S.velIdx]; $('anVel').textContent = String(VEL[S.velIdx]).replace('.', ',') + '×'; }
+  el.addEventListener('error', () => { $('anInfo').textContent = t('n.videoErr'); });
+  const etichettaPlay = () => { $('anPlay').textContent = el.paused ? '▶ ' + t('n.play') : '❚❚ ' + t('n.pausa'); };
+  el.addEventListener('play', etichettaPlay);
+  el.addEventListener('pause', etichettaPlay);
+  function velocita(d) { S.velIdx = clamp(S.velIdx + d, 0, VEL.length - 1); el.playbackRate = VEL[S.velIdx]; $('anVel').textContent = virgola(VEL[S.velIdx]) + '×'; }
 
   // ---------------------------------------------------------------- dati
   function preparaDati() {
@@ -271,7 +269,7 @@
     const k = chiaveAuto(); if (!k) return;
     let a = null; try { a = JSON.parse(localStorage.getItem(k)); } catch (e) { /* ignora */ }
     if (a && a.sporco && a.v === 2 && a.t > (aggiornatoMs || 0) && Array.isArray(a.eventi) &&
-        confirm('Trovata una copia locale non ancora salvata online (' + a.eventi.length + ' eventi). Ripristinarla?')) {
+        confirm(t('n.copiaLocale', { n: a.eventi.length }))) {
       S.eventi = a.eventi; S.offset = a.offset_s ?? null; S.syncDati = a.sync_dati_s ?? null; S.anticipo = a.anticipo_ms || 0;
       $('anAnt').value = S.anticipo;
       S.nextId = Math.max(1, ...S.eventi.map(e => e.id + 1)); ordina(); dopo();
@@ -283,14 +281,14 @@
     if (!OL() || !OL().salva || salvando) return;
     if (auto && !S.sporco) return;
     salvando = true; ultimoErrore = false; aggiornaOnline();
-    $('anOnline').textContent = 'Salvataggio in corso…'; $('anOnline').className = 'tenue';
+    $('anOnline').textContent = t('n.salvando'); $('anOnline').className = 'tenue';
     try {
       await OL().salva(costruisciAnnotazione());
       S.sporco = false; pulisciLocale();
-      $('anOnline').textContent = 'Salvato online alle ' + new Date().toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit', second: '2-digit' }); $('anOnline').className = 'ok';
+      $('anOnline').textContent = t('n.salvato', { ora: new Date().toLocaleTimeString(I18N.locale(), { hour: '2-digit', minute: '2-digit', second: '2-digit' }) }); $('anOnline').className = 'ok';
     } catch (e) {
       ultimoErrore = true;
-      $('anOnline').textContent = 'Salvataggio online non riuscito: ' + (e && e.message ? e.message : e) + ' (copia locale conservata)'; $('anOnline').className = 'err';
+      $('anOnline').textContent = t('n.salvErr', { e: e && e.message ? e.message : e }); $('anOnline').className = 'err';
       if (auto) timerOnline = setTimeout(() => salvaOnline(true), DEBOUNCE_ONLINE_MS * 2);
     }
     salvando = false; aggiornaOnline();
@@ -301,7 +299,7 @@
     b.disabled = salvando || !puoSalvare();
     if (salvando || ultimoErrore) return;
     if (!puoSalvare()) { o.textContent = OL() && OL().motivo ? OL().motivo() : ''; o.className = 'tenue'; }
-    else if (S.sporco) { o.textContent = 'Modifiche non ancora salvate online'; o.className = 'tenue'; }
+    else if (S.sporco) { o.textContent = t('n.nonSalvate'); o.className = 'tenue'; }
   }
   /** Annotazione nel formato Firestore (docs/MODELLO-DATI.md): eventi senza id interno, tempi nel tempo del video. */
   function costruisciAnnotazione() {
@@ -347,21 +345,21 @@
     };
   }
   async function salvaProgetto() {
-    const n = await SD.salva(nomeBase() + '.swimproj.json', [JSON.stringify(costruisciProgetto(), null, 2)], 'Progetto di annotazione SwimTimer', '.json', 'application/json');
-    if (n) info('Progetto salvato: ' + n);
+    const n = await SD.salva(nomeBase() + '.swimproj.json', [JSON.stringify(costruisciProgetto(), null, 2)], t('n.descProgetto'), '.json', 'application/json');
+    if (n) info(t('n.progSalvato', { n }));
   }
   const csvCampo = s => /[",\n\r]/.test(s) ? '"' + String(s).replace(/"/g, '""') + '"' : String(s);
   async function esportaCsv() {
     const righe = ['t_video_s,t_dati_s,tipo,nota'];
     for (const e of S.eventi) righe.push([e.t_video_s.toFixed(6), S.offset === null ? '' : (e.t_video_s + S.offset).toFixed(6), e.tipo, csvCampo(e.nota || '')].join(','));
-    const n = await SD.salva('eventi.csv', [righe.join('\n') + '\n'], 'Eventi (CSV)', '.csv', 'text/csv');
-    if (n) info('Esportati ' + S.eventi.length + ' eventi in ' + n + (S.offset === null ? ' (t_dati_s vuoto: non allineato)' : ''));
+    const n = await SD.salva('eventi.csv', [righe.join('\n') + '\n'], t('n.descCsv'), '.csv', 'text/csv');
+    if (n) info(t('n.esportati', { c: S.eventi.length, n }) + (S.offset === null ? ' ' + t('n.nonAllineatoCsv') : ''));
   }
   async function apriProgetto(f) {
     let p;
-    try { p = JSON.parse(await f.text()); } catch (e) { return info('File di progetto non valido (JSON).', true); }
-    if (!p || p.versione !== 1 || !Array.isArray(p.eventi)) return info('Progetto non riconosciuto (versione o eventi mancanti).', true);
-    if ((S.eventi.length) && !confirm('Sostituire i ' + S.eventi.length + ' eventi attuali con quelli del progetto?')) return;
+    try { p = JSON.parse(await f.text()); } catch (e) { return info(t('n.progJson'), true); }
+    if (!p || p.versione !== 1 || !Array.isArray(p.eventi)) return info(t('n.progNonRic'), true);
+    if ((S.eventi.length) && !confirm(t('n.sostituire', { n: S.eventi.length }))) return;
     snapshot();
     S.eventi = p.eventi.filter(e => e && TIPI[e.tipo] && Number.isFinite(e.t_video_s)).map(e => ({ id: e.id | 0, t_video_s: e.t_video_s, tipo: e.tipo, nota: e.nota || '' }));
     const visti = new Set(); S.eventi.forEach(e => { if (visti.has(e.id)) e.id = 0; visti.add(e.id); });
@@ -372,17 +370,17 @@
     S.sel = null; S.progetto = p;
     if (SD.es && p.dati && Number.isFinite(p.dati.segmento) && p.dati.segmento in SD.es.segmenti && SD.seg !== p.dati.segmento) SD.scegliSegmento(p.dati.segmento);
     dopo();
-    info('Progetto caricato: ' + S.eventi.length + ' eventi.' + coerenza());
+    info(t('n.progCaricato', { n: S.eventi.length }) + coerenza());
   }
   function coerenza() {                           // avvisi se video/dati aperti non coincidono con quelli del progetto
     const p = S.progetto; if (!p) return '';
     const av = [];
-    if (S.video.nome && p.video && (p.video.nome !== S.video.nome || p.video.dimensione !== S.video.dimensione)) av.push('il video aperto (' + S.video.nome + ') non coincide con quello del progetto (' + p.video.nome + ')');
+    if (S.video.nome && p.video && (p.video.nome !== S.video.nome || p.video.dimensione !== S.video.dimensione)) av.push(t('n.coe.video', { a: S.video.nome, b: p.video.nome }));
     if (SD.es && p.dati) {
-      if (p.dati.sha256_primi_mb && SD.impronta && p.dati.sha256_primi_mb !== SD.impronta) av.push('il file .swr aperto ha un\'impronta diversa da quella del progetto (' + p.dati.nome + ')');
-      if (p.dati.segmento !== null && p.dati.segmento !== undefined && p.dati.segmento !== SD.seg) av.push('segmento diverso (progetto: ' + p.dati.segmento + ')');
+      if (p.dati.sha256_primi_mb && SD.impronta && p.dati.sha256_primi_mb !== SD.impronta) av.push(t('n.coe.swr', { n: p.dati.nome }));
+      if (p.dati.segmento !== null && p.dati.segmento !== undefined && p.dati.segmento !== SD.seg) av.push(t('n.coe.seg', { s: p.dati.segmento }));
     }
-    return av.length ? ' ATTENZIONE: ' + av.join('; ') + '.' : '';
+    return av.length ? ' ' + t('n.coe.attenzione') + ' ' + av.join('; ') + '.' : '';
   }
 
   // ---------------------------------------------------------------- interfaccia: testi
@@ -390,12 +388,12 @@
   function info(t, err) { msgInfo = t; msgErr = !!err; aggiornaInfo(); }
   function aggiornaInfo() {
     const parti = [];
-    parti.push('Dati: ' + (SD.es ? '<b>' + esc(SD.nome) + '</b>' + (S.D ? ' · segmento ' + SD.seg + ' · ' + S.D.tMax.toFixed(1) + ' s · ' + S.D.fs.toFixed(1) + ' Hz' : ' · nessun dato nel segmento') : 'nessun .swr aperto'));
-    parti.push('Video: ' + (S.video.nome ? '<b>' + esc(S.video.nome) + '</b> · ' + S.video.durata.toFixed(1) + ' s' : 'nessun video'));
+    parti.push(t('n.info.dati') + ': ' + (SD.es ? '<b>' + esc(SD.nome) + '</b>' + (S.D ? ' · ' + t('n.info.segmento') + ' ' + SD.seg + ' · ' + S.D.tMax.toFixed(1) + ' s · ' + S.D.fs.toFixed(1) + ' Hz' : ' · ' + t('n.info.nessunDato')) : t('n.info.nessunSwr')));
+    parti.push(t('n.video') + ': ' + (S.video.nome ? '<b>' + esc(S.video.nome) + '</b> · ' + S.video.durata.toFixed(1) + ' s' : t('n.info.nessunVideo')));
     const c = coerenza();
     // solo audio (videoWidth 0): tipico di un MP4 HEVC/H.265 da telefono che il browser non decodifica
     const soloAudio = haVideo() && el.readyState >= 1 && !el.videoWidth
-      ? '<div class="err">Il browser riproduce solo l\'audio di questo video: probabilmente è HEVC/H.265. Convertilo in H.264 (es. HandBrake, preset «Fast 1080p30») o registra con il telefono in «Più compatibile».</div>' : '';
+      ? '<div class="err">' + t('n.soloAudio') + '</div>' : '';
     $('anInfo').innerHTML = parti.join(' &nbsp;·&nbsp; ') + soloAudio + (msgInfo ? '<div class="' + (msgErr ? 'err' : 'ok') + '">' + esc(msgInfo) + '</div>' : '') + (c ? '<div class="err">' + esc(c) + '</div>' : '') + (S.avviso ? '<div class="err">' + esc(S.avviso) + '</div>' : '');
   }
   function aggiornaSegmenti() {
@@ -403,11 +401,12 @@
     if (!SD.es) { sel.hidden = true; return; }
     const segs = SWR.segmentiConDati(SD.es);
     sel.hidden = segs.length < 2;
-    sel.innerHTML = segs.map(s => `<option value="${s}"${s === SD.seg ? ' selected' : ''}>Segmento ${s} · ${SD.durata(s).toFixed(1)} s</option>`).join('');
+    sel.innerHTML = segs.map(s => `<option value="${s}"${s === SD.seg ? ' selected' : ''}>${t('n.info.segmentoCap')} ${s} · ${SD.durata(s).toFixed(1)} s</option>`).join('');
   }
   function aggiornaTesti() {
-    const t = haVideo() ? tFrame() : 0;
-    $('anTempo').textContent = haVideo() ? `${t.toFixed(3)} s · fotogramma ${Math.round(t * FPS)}` + (S.offset !== null ? ` · dati ${tDati(t).toFixed(3)} s` : '') : '–';
+    const tt = haVideo() ? tFrame() : 0;
+    etichettaPlay();
+    $('anTempo').textContent = haVideo() ? `${tt.toFixed(3)} s · ${t('n.fotogramma')} ${Math.round(tt * FPS)}` + (S.offset !== null ? ` · ${t('n.datiMin')} ${tDati(tt).toFixed(3)} s` : '') : '–';
     const v = syncVideo();
     $('anSyV').textContent = v === null ? '–' : fmtT(v);
     $('anSyD').textContent = S.syncDati === null ? '–' : fmtT(S.syncDati);
@@ -415,8 +414,8 @@
     if (document.activeElement !== off) off.value = S.offset === null ? '' : (S.offset * 1000).toFixed(1);
     off.disabled = !S.D;
     radice.querySelectorAll('[data-o]').forEach(b => { b.disabled = S.offset === null; });
-    $('anAlinea').textContent = S.offset !== null ? 'Allineato: i grafici seguono il video e gli eventi compaiono anche sui dati.'
-      : 'Non allineato: nel video, sul fotogramma del 5° tocco, premi X; nei grafici clicca il 5° picco.' + (v !== null && S.syncDati === null ? ' (X messo: manca il picco)' : v === null && S.syncDati !== null ? ' (picco messo: manca X)' : '');
+    $('anAlinea').textContent = S.offset !== null ? t('n.allineato')
+      : t('n.nonAllineato') + (v !== null && S.syncDati === null ? ' ' + t('n.manca.picco') : v === null && S.syncDati !== null ? ' ' + t('n.manca.x') : '');
   }
   function aggiornaEventi() {
     const cont = {}; S.eventi.forEach(e => cont[e.tipo] = (cont[e.tipo] || 0) + 1);
@@ -459,7 +458,7 @@
     const g = preparaCanvas(cv); if (!g) return;
     const { ctx, w, h } = g, { L, R, T, B } = LANE, pw = w - L - R, ph = h - T - B;
     ctx.font = FONT; ctx.textBaseline = 'middle';
-    if (!S.D) { ctx.fillStyle = C.tenue; ctx.textAlign = 'center'; ctx.fillText('Apri un .swr per vedere i dati', w / 2, h / 2); return; }
+    if (!S.D) { ctx.fillStyle = C.tenue; ctx.textAlign = 'center'; ctx.fillText(t('n.canvasVuoto'), w / 2, h / 2); return; }
     const { t0, t1 } = S.vista, span = t1 - t0, D = S.D;
     const i0 = Math.max(0, idxT(t0) - 1), i1 = Math.min(D.n - 1, idxT(t1) + 1);
     let lo = Infinity, hi = -Infinity;
@@ -512,7 +511,7 @@
     ctx.lineWidth = 1;
     if (S.syncDati !== null && S.syncDati >= t0 && S.syncDati <= t1) {
       ctx.strokeStyle = TIPI.X.col; ctx.setLineDash([4, 3]); ctx.beginPath(); const xx = Math.round(x(S.syncDati)) + 0.5; ctx.moveTo(xx, T); ctx.lineTo(xx, T + ph); ctx.stroke(); ctx.setLineDash([]);
-      ctx.fillStyle = TIPI.X.col; ctx.textAlign = 'left'; ctx.fillText('sync', xx + 3, T + ph - 6);
+      ctx.fillStyle = TIPI.X.col; ctx.textAlign = 'left'; ctx.fillText(t('n.sync'), xx + 3, T + ph - 6);
     }
     if (S.offset === null) return;
     for (const e of S.eventi) {
@@ -653,24 +652,26 @@
     S.avviso = '';
     info(''); aggiornaTutto();
     if (OL() && OL().verificaVideo) {
-      const per = (fatti, tot) => info('Verifica impronta del video: ' + Math.round(100 * fatti / tot) + '%');
+      const per = (fatti, tot) => info(t('n.verifica', { p: Math.round(100 * fatti / tot) }));
       Promise.resolve(OL().verificaVideo(f, per)).then(r => {
         S.avviso = r && r.avviso ? r.avviso : '';
-        info(r && r.ok ? 'Video verificato: coincide con quello registrato (sha256 uguale).' : '', false);
-      }).catch(e => { S.avviso = 'Verifica del video non riuscita: ' + e.message; info(''); });
+        info(r && r.ok ? t('n.verificato') : '', false);
+      }).catch(e => { S.avviso = t('n.verificaErr', { e: e.message }); info(''); });
     }
   });
   $('anProgApri').addEventListener('click', () => ingressoProg.click());
   ingressoProg.addEventListener('change', () => { const f = ingressoProg.files[0]; ingressoProg.value = ''; if (f) apriProgetto(f); });
-  $('anProgSalva').addEventListener('click', () => salvaProgetto().catch(e => info('Salvataggio non riuscito: ' + e.message, true)));
-  $('anCsv').addEventListener('click', () => esportaCsv().catch(e => info('Esportazione non riuscita: ' + e.message, true)));
+  $('anProgSalva').addEventListener('click', () => salvaProgetto().catch(e => info(t('n.salvaErr', { e: e.message }), true)));
+  $('anCsv').addEventListener('click', () => esportaCsv().catch(e => info(t('n.esportaErr', { e: e.message }), true)));
   $('anZoom').addEventListener('click', e => {
     const b = e.target.closest('button'); if (!b || !S.D) return;
     const z = Number(b.dataset.z), c = S.offset !== null && haVideo() ? tFrame() + S.offset : (S.vista.t0 + S.vista.t1) / 2;
     if (!z) impostaVista(0, S.D.tMax); else impostaVista(c - z / 2, c + z / 2);
   });
   $('anSegui').addEventListener('change', e => { S.segui = e.target.checked; });
-  $('anNascondi').addEventListener('click', e => { const n = $('anGrafBox').classList.toggle('nascosto'); e.currentTarget.textContent = n ? 'Mostra grafici' : 'Nascondi grafici'; rich(); });
+  $('anNascondi').addEventListener('click', e => { $('anGrafBox').classList.toggle('nascosto'); etichettaNascondi(); rich(); });
+  function etichettaNascondi() { $('anNascondi').textContent = $('anGrafBox').classList.contains('nascosto') ? t('n.mostraGraf') : t('n.nascondiGraf'); }
+  etichettaNascondi();
   $('anModoAcc').addEventListener('change', e => { S.modoAcc = e.target.value; rich(); });
   $('anModoGyr').addEventListener('change', e => { S.modoGyr = e.target.value; rich(); });
   $('anStrSpan').addEventListener('change', e => { S.passoStriscia = Number(e.target.value); rich(); });
@@ -735,6 +736,7 @@
   matchMedia('(prefers-color-scheme: dark)').addEventListener('change', rich);
   SD.su(() => { preparaDati(); aggiornaTutto(); });
   velocita(0);
+  document.addEventListener('swt-lingua', () => { disegnaTipi(); I18N.applica(radice); etichettaNascondi(); velocita(0); aggiornaTutto(); aggiornaOnline(); });
   preparaDati(); aggiornaTutto();
   requestAnimationFrame(ciclo);
   // visibilita' della scheda: ridisegna quando torna visibile

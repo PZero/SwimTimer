@@ -3,16 +3,17 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>SwimTimer · Tempi in vasca, senza pulsanti</title>
-<meta name="description" content="SwimTimer: un piccolo tag sotto la cuffia e un display a bordo vasca prendono i tempi di partenza, virate e arrivo mentre nuoti, senza fermarti e senza premere pulsanti.">
-<meta property="og:title" content="SwimTimer · Tempi in vasca, senza pulsanti">
-<meta property="og:description" content="Un tag sotto la cuffia e un display a bordo vasca: partenza, virate e arrivo riconosciuti da soli.">
+<title data-i18n="l.titolo">SwimTimer · Tempi in vasca, senza pulsanti</title>
+<meta name="description" data-i18n-attr="content:l.desc" content="SwimTimer: un piccolo tag sotto la cuffia e un display a bordo vasca prendono i tempi di partenza, virate e arrivo mentre nuoti, senza fermarti e senza premere pulsanti.">
+<meta property="og:title" data-i18n-attr="content:l.titolo" content="SwimTimer · Tempi in vasca, senza pulsanti">
+<meta property="og:description" data-i18n-attr="content:l.ogdesc" content="Un tag sotto la cuffia e un display a bordo vasca: partenza, virate e arrivo riconosciuti da soli.">
 <meta property="og:image" content="img/hero.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="comune/stile.css">
 <link rel="stylesheet" href="landing.css">
+<script src="/comune/i18n.js"></script>
 <script src="/comune/versione.js"></script>
 </head>
 <body>
@@ -22,96 +23,140 @@
     <b>SwimTimer</b>
   </a>
   <nav>
-    <a href="#come-funziona">Come funziona</a>
-    <a href="#stato">Stato</a>
-    <a href="#dati">Dati</a>
-    <a href="#video">Video</a>
+    <a href="#come-funziona" data-i18n="l.nav.come">Come funziona</a>
+    <a href="#stato" data-i18n="l.nav.stato">Stato</a>
+    <a href="#dati" data-i18n="l.nav.dati">Dati</a>
+    <a href="#video" data-i18n="l.nav.video">Video</a>
+    <a href="#display" data-i18n="l.nav.display">Display</a>
+    <a href="#contatti" data-i18n="l.nav.contatti">Contatti</a>
+    <a href="strumenti/" data-i18n="c.strumenti">Strumenti</a>
   </nav>
-  <button class="primario btn-accedi" data-accedi>Accedi con Google</button>
+  <div class="lingua" data-selettore-lingua></div>
+  <button class="primario btn-accedi" data-accedi data-i18n="c.accedi">Accedi con Google</button>
 </header>
 
 <main id="in-alto">
   <section class="hero">
     <div class="hero-testo">
-      <p class="etichetta">Progetto aperto · prototipo in sviluppo</p>
-      <h1>Tempi in vasca.<br><span>Senza pulsanti.</span></h1>
-      <p class="lead">Un piccolo tag sotto la cuffia e un display a bordo vasca riconoscono da soli partenza, virate e arrivo. Tu nuoti: i tempi si prendono da soli, senza fermarti e senza guardare l'orologio.</p>
+      <p class="etichetta" data-i18n="l.hero.etich">Progetto aperto · prototipo in sviluppo</p>
+      <h1 data-i18n-html="l.hero.h1">Tempi in vasca.<br><span>Senza pulsanti.</span></h1>
+      <p class="lead" data-i18n="l.hero.lead">Un piccolo tag sotto la cuffia e un display a bordo vasca riconoscono da soli partenza, virate e arrivo. Tu nuoti: i tempi si prendono da soli, senza fermarti e senza guardare l'orologio.</p>
       <div class="riga">
-        <button class="primario grande btn-accedi" data-accedi>Accedi con Google</button>
-        <a class="btn-link" href="#video">Guarda il video</a>
+        <button class="primario grande btn-accedi" data-accedi data-i18n="c.accedi">Accedi con Google</button>
+        <a class="btn-link" href="#video" data-i18n="l.hero.video">Guarda il video</a>
       </div>
-      <p class="piccolo-t tenue" id="msgAccesso">L'area riservata è per i membri approvati del progetto: dopo l'accesso, l'amministratore approva l'account.</p>
+      <p class="piccolo-t tenue" id="msgAccesso" data-i18n="l.hero.nota">L'area riservata è per i membri approvati del progetto: dopo l'accesso, l'amministratore approva l'account.</p>
     </div>
-    <figure class="hero-img"><img src="img/hero.png" alt="Titolo SwimTimer con il rendering della scheda del tag e il suo schema" width="1280" height="720" fetchpriority="high"></figure>
+    <figure class="hero-img"><img src="img/hero.png" data-i18n-attr="alt:l.hero.imgAlt" alt="Titolo SwimTimer con il rendering della scheda del tag e il suo schema" width="1280" height="720" fetchpriority="high"></figure>
   </section>
 
   <section id="come-funziona" class="sezione">
-    <h2>Come funziona</h2>
-    <p class="sotto-titolo">Il sensore decide, non la radio: il Bluetooth a 2,4 GHz non attraversa l'acqua, quindi i tempi nascono dal movimento e il Bluetooth serve solo fuori dall'acqua.</p>
+    <h2 data-i18n="l.come.h">Come funziona</h2>
+    <p class="sotto-titolo" data-i18n="l.come.sub">Il sensore decide, non la radio: il Bluetooth a 2,4 GHz non attraversa l'acqua, quindi i tempi nascono dal movimento e il Bluetooth serve solo fuori dall'acqua.</p>
     <div class="passi">
       <article class="scheda passo">
         <span class="num">1</span>
-        <h3>Il tag sotto la cuffia</h3>
-        <p>Una scheda grande poco più di un francobollo, con accelerometro e giroscopio a sei assi e un microcontrollore Bluetooth a basso consumo. Sta sotto la cuffia, resiste all'acqua e si ricarica in una custodia.</p>
+        <h3 data-i18n="l.p1.h">Il tag sotto la cuffia</h3>
+        <p data-i18n="l.p1.t">Una scheda grande poco più di un francobollo, con accelerometro e giroscopio a sei assi e un microcontrollore Bluetooth a basso consumo. Sta sotto la cuffia, resiste all'acqua e si ricarica in una custodia.</p>
       </article>
       <article class="scheda passo">
         <span class="num">2</span>
-        <h3>Il movimento racconta la vasca</h3>
-        <p>La spinta sul muro, la rotazione della virata, la bracciata regolare e la quiete finale hanno firme riconoscibili nei dati grezzi. Il tag le individua e memorizza partenza, virate e arrivo.</p>
+        <h3 data-i18n="l.p2.h">Il movimento racconta la vasca</h3>
+        <p data-i18n="l.p2.t">La spinta sul muro, la rotazione della virata, la bracciata regolare e la quiete finale hanno firme riconoscibili nei dati grezzi. Il tag le individua e memorizza partenza, virate e arrivo.</p>
       </article>
       <article class="scheda passo">
         <span class="num">3</span>
-        <h3>Il display a bordo vasca</h3>
-        <p>Quando esci dall'acqua il tag si riconosce con il display, scarica i tempi e li mostra: tempi per vasca, riposi, ritmo. Nessun pulsante da premere nuotando.</p>
+        <h3 data-i18n="l.p3.h">Il display a bordo vasca</h3>
+        <p data-i18n="l.p3.t">Quando esci dall'acqua il tag si riconosce con il display, scarica i tempi e li mostra: tempi per vasca, riposi, ritmo. Nessun pulsante da premere nuotando.</p>
       </article>
     </div>
   </section>
 
   <section id="stato" class="sezione">
-    <h2>A che punto siamo</h2>
+    <h2 data-i18n="l.stato.h">A che punto siamo</h2>
     <div class="stato">
-      <div class="scheda"><span class="chip ok">funziona al banco</span><h3>Prototipo ESP32 + display</h3><p>Prototipo con sensore inerziale e display a lancette per il ritmo: funziona sul banco, non ancora in vasca.</p></div>
-      <div class="scheda"><span class="chip ok">in uso</span><h3>Tag di prova XIAO nRF52840</h3><p>Una scheda commerciale registra i dati grezzi a 208 Hz nella memoria interna, con avvio dal doppio tocco e scarico via USB.</p></div>
-      <div class="scheda"><span class="chip att">in preparazione</span><h3>Tag dedicato nRF52840</h3><p>Scheda su misura a quattro strati, completa di file di produzione. Ordine non ancora effettuato.</p></div>
-      <div class="scheda"><span class="chip att">fase attuale</span><h3>Dati veri in piscina</h3><p>Prima dei filtri servono dati veri annotati a mano: il nuotatore viene ripreso con il telefono e ogni evento viene marcato sul video, fotogramma per fotogramma.</p></div>
+      <div class="scheda"><span class="chip ok" data-i18n="l.s1.c">funziona al banco</span><h3 data-i18n="l.s1.h">Prototipo ESP32 + display</h3><p data-i18n="l.s1.t">Prototipo con sensore inerziale e display a lancette per il ritmo: funziona sul banco, non ancora in vasca.</p></div>
+      <div class="scheda"><span class="chip ok" data-i18n="l.s2.c">in uso</span><h3 data-i18n="l.s2.h">Tag di prova XIAO nRF52840</h3><p data-i18n="l.s2.t">Una scheda commerciale registra i dati grezzi a 208 Hz nella memoria interna, con avvio dal doppio tocco e scarico via USB.</p></div>
+      <div class="scheda"><span class="chip att" data-i18n="l.s3.c">in preparazione</span><h3 data-i18n="l.s3.h">Tag dedicato nRF52840</h3><p data-i18n="l.s3.t">Scheda su misura a quattro strati, completa di file di produzione. Ordine non ancora effettuato.</p></div>
+      <div class="scheda"><span class="chip att" data-i18n="l.s4.c">fase attuale</span><h3 data-i18n="l.s4.h">Dati veri in piscina</h3><p data-i18n="l.s4.t">Prima dei filtri servono dati veri annotati a mano: il nuotatore viene ripreso con il telefono e ogni evento viene marcato sul video, fotogramma per fotogramma.</p></div>
     </div>
-    <p class="tenue piccolo-t">Il codice, i file della scheda e la documentazione sono pubblici su <a href="https://github.com/PZero/SwimTimer" target="_blank" rel="noopener noreferrer">GitHub</a>.</p>
+    <p class="tenue piccolo-t" data-i18n-html="l.stato.gh">Il codice, i file della scheda e la documentazione sono pubblici su <a href="https://github.com/PZero/SwimTimer" target="_blank" rel="noopener noreferrer">GitHub</a>.</p>
   </section>
 
   <section id="dati" class="sezione">
-    <h2>Che cosa vede il tag</h2>
-    <p class="sotto-titolo">Grafici dimostrativi costruiti con <b>dati inventati</b> (nessuna registrazione reale): servono a mostrare che cosa si cerca nei dati grezzi.</p>
+    <h2 data-i18n="l.dati.h">Che cosa vede il tag</h2>
+    <p class="sotto-titolo" data-i18n-html="l.dati.sub">Grafici dimostrativi costruiti con <b>dati inventati</b> (nessuna registrazione reale): servono a mostrare che cosa si cerca nei dati grezzi.</p>
     <div class="grafici">
-      <figure class="scheda grafico"><figcaption><b>Accelerazione durante una virata</b><span>|acc| in g, 14 s, dati dimostrativi</span></figcaption><div id="gAcc" role="img" aria-label="Grafico dimostrativo: accelerazione con bracciate regolari, picco alla spinta sul muro e planata"></div></figure>
-      <figure class="scheda grafico"><figcaption><b>Rotazione durante la virata</b><span>|giroscopio| in gradi/s, dati dimostrativi</span></figcaption><div id="gGir" role="img" aria-label="Grafico dimostrativo: velocità di rotazione con un picco durante la capriola"></div></figure>
-      <figure class="scheda grafico largo"><figcaption><b>Tempi per vasca</b><span>secondi su 25 m, dati dimostrativi</span></figcaption><div id="gTempi" role="img" aria-label="Grafico a barre dimostrativo dei tempi per vasca"></div></figure>
+      <figure class="scheda grafico"><figcaption><b data-i18n="l.g1.h">Accelerazione durante una virata</b><span data-i18n="l.g1.s">|acc| in g, 14 s, dati dimostrativi</span></figcaption><div id="gAcc" role="img" data-i18n-attr="aria-label:l.g1.a" aria-label="Grafico dimostrativo: accelerazione con bracciate regolari, picco alla spinta sul muro e planata"></div></figure>
+      <figure class="scheda grafico"><figcaption><b data-i18n="l.g2.h">Rotazione durante la virata</b><span data-i18n="l.g2.s">|giroscopio| in gradi/s, dati dimostrativi</span></figcaption><div id="gGir" role="img" data-i18n-attr="aria-label:l.g2.a" aria-label="Grafico dimostrativo: velocità di rotazione con un picco durante la capriola"></div></figure>
+      <figure class="scheda grafico largo"><figcaption><b data-i18n="l.g3.h">Tempi per vasca</b><span data-i18n="l.g3.s">secondi su 25 m, dati dimostrativi</span></figcaption><div id="gTempi" role="img" data-i18n-attr="aria-label:l.g3.a" aria-label="Grafico a barre dimostrativo dei tempi per vasca"></div></figure>
     </div>
   </section>
 
   <section id="video" class="sezione">
-    <h2>Il progetto in due minuti</h2>
+    <h2 data-i18n="l.video.h">Il progetto in due minuti</h2>
     <div class="video-coppia">
-      <figure class="scheda"><div class="video"><iframe src="https://www.youtube-nocookie.com/embed/_2UzpOqblVI" title="SwimTimer: video di presentazione in italiano" loading="lazy" allow="accelerometer; encrypted-media; picture-in-picture" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe></div><figcaption>Italiano</figcaption></figure>
-      <figure class="scheda"><div class="video"><iframe src="https://www.youtube-nocookie.com/embed/EVrdSybpnE4" title="SwimTimer: presentation video in English" loading="lazy" allow="accelerometer; encrypted-media; picture-in-picture" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe></div><figcaption>English</figcaption></figure>
+      <figure class="scheda"><div class="video"><iframe src="https://www.youtube-nocookie.com/embed/_Htx2DawnF8" data-i18n-attr="title:l.video.tit1" title="SwimTimer: aggiornamento di novembre 2026 in italiano" loading="lazy" allow="accelerometer; encrypted-media; picture-in-picture" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe></div><figcaption>Italiano</figcaption></figure>
+      <figure class="scheda"><div class="video"><iframe src="https://www.youtube-nocookie.com/embed/JLs5JJG4JG8" data-i18n-attr="title:l.video.tit2" title="SwimTimer: November 2026 update in English" loading="lazy" allow="accelerometer; encrypted-media; picture-in-picture" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe></div><figcaption>English</figcaption></figure>
+    </div>
+    <h3 data-i18n="l.video.h2">Prima presentazione (prototipo v0.5)</h3>
+    <div class="video-coppia">
+      <figure class="scheda"><div class="video"><iframe src="https://www.youtube-nocookie.com/embed/_2UzpOqblVI" data-i18n-attr="title:l.video.tit3" title="SwimTimer: video di presentazione in italiano" loading="lazy" allow="accelerometer; encrypted-media; picture-in-picture" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe></div><figcaption>Italiano</figcaption></figure>
+      <figure class="scheda"><div class="video"><iframe src="https://www.youtube-nocookie.com/embed/EVrdSybpnE4" data-i18n-attr="title:l.video.tit4" title="SwimTimer: presentation video in English" loading="lazy" allow="accelerometer; encrypted-media; picture-in-picture" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe></div><figcaption>English</figcaption></figure>
+    </div>
+  </section>
+
+    <section id="display" class="sezione">
+    <h2 data-i18n="d.h">Il display a bordo vasca</h2>
+    <p class="sotto-titolo" data-i18n="d.sub">Uno schermo grande a bordo vasca riceve via Bluetooth i tempi di ogni nuotatore: da lontano si legge subito chi sta nuotando, chi riposa e come va l'allenamento. Prototipo: per ora è un mockup con dati inventati.</p>
+    <div class="display-col">
+      <figure class="scheda zoomabile"><img src="img/display_demo.png" data-i18n-attr="alt:d.img1.alt" alt="Mockup del display a bordo vasca con i nuotatori in vasca" width="1280" height="720" loading="lazy"><figcaption data-i18n="d.mockup">Mockup con dati inventati</figcaption></figure>
+      <div class="scheda">
+        <h3 data-i18n="d.cosa.h">Che cosa mostra</h3>
+        <ul class="elenco" data-i18n-html="d.cosa.l"><li>Cronometro grande, leggibile da bordo vasca</li></ul>
+        <h3 data-i18n="d.arch.h">Architettura proposta</h3>
+        <p class="tenue" data-i18n="d.arch.t">Raspberry Pi 4 con un dongle Bluetooth nRF52840, un monitor portatile da 15,6" e un power bank; fino a circa 10 tag insieme. Scelta ancora da confermare.</p>
+        <div class="riga"><a class="btn-link" href="display/?demo&amp;vel=10" target="_blank" rel="noopener" data-i18n="d.demo">Prova la demo dal vivo →</a></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="contatti" class="sezione">
+    <h2 data-i18n="k.h">Contatti</h2>
+    <p class="sotto-titolo" data-i18n="k.sub">Domande, idee, voglia di provare il tag o di collaborare? Scrivici.</p>
+    <div class="contatti">
+      <div class="scheda">
+        <h3 data-i18n="k.mail.h">Scrivici per email</h3>
+        <p><a class="mail-grande" href="mailto:SmartSwimTimer@gmail.com?subject=SwimTimer">SmartSwimTimer@gmail.com</a></p>
+        <p class="tenue piccolo-t" data-i18n="k.mail.t">Oppure compila il modulo: il messaggio arriva ai gestori del progetto, che ti rispondono all'indirizzo email che indichi.</p>
+      </div>
+      <form class="scheda" id="fContatti" novalidate>
+        <label><span data-i18n="k.nome">Nome (facoltativo)</span><input type="text" id="cNome" maxlength="100" autocomplete="name"></label>
+        <label><span data-i18n="k.email">Email per la risposta *</span><input type="email" id="cEmail" maxlength="200" autocomplete="email" required></label>
+        <label><span data-i18n="k.msg">Messaggio *</span><textarea id="cMsg" rows="6" maxlength="2000" required></textarea></label>
+        <div class="trappola" aria-hidden="true"><label>Website<input type="text" id="cSito" tabindex="-1" autocomplete="off"></label></div>
+        <p class="tenue piccolo-t" data-i18n="k.privacy">Privacy: nome ed email servono solo per risponderti e non vengono condivisi né usati per altri scopi. Il messaggio viene salvato nell'archivio del progetto e letto solo dai gestori.</p>
+        <div class="riga"><button class="primario" id="cInvia" type="submit" data-i18n="k.invia">Invia il messaggio</button><span id="cEsito" role="status" aria-live="polite"></span></div>
+      </form>
     </div>
   </section>
 
   <section class="sezione">
     <div class="scheda cta">
       <div>
-        <h2>Annotazione collaborativa</h2>
-        <p>Chi partecipa alle prove può caricare le registrazioni del tag, collegare i video (che restano su Drive o YouTube) e annotare insieme bracciate, respirazioni, virate, partenze e arrivi. Si vede sempre chi ha fatto che cosa. L'accesso è su approvazione.</p>
+        <h2 data-i18n="l.cta.h">Annotazione collaborativa</h2>
+        <p data-i18n="l.cta.t">Chi partecipa alle prove può caricare le registrazioni del tag, collegare i video (che restano su Drive o YouTube) e annotare insieme bracciate, respirazioni, virate, partenze e arrivi. Si vede sempre chi ha fatto che cosa. L'accesso è su approvazione.</p>
       </div>
-      <div class="riga"><button class="primario grande btn-accedi" data-accedi>Accedi con Google</button></div>
+      <div class="riga"><button class="primario grande btn-accedi" data-accedi data-i18n="c.accedi">Accedi con Google</button><a class="btn-link" href="strumenti/" data-i18n="l.cta.strumenti">Strumenti del tag</a></div>
     </div>
   </section>
 </main>
 
 <footer class="piede">
-  <img src="img/tag.png" alt="Rendering della scheda del tag, vista dall'alto" width="120" height="auto" loading="lazy">
+  <img src="img/tag.png" data-i18n-attr="alt:l.tag.alt" alt="Rendering della scheda del tag, vista dall'alto" width="120" height="auto" loading="lazy">
   <div>
-    <b>SwimTimer</b> · progetto aperto, <a href="https://github.com/PZero/SwimTimer" target="_blank" rel="noopener noreferrer">codice e documenti su GitHub</a>.
-    <p class="tenue piccolo-t">Le sessioni di nuoto sono dati di salute: l'archivio è privato, accessibile solo ai membri approvati, e nel repository pubblico non c'è alcun dato reale.</p>
+    <span data-i18n-html="l.foot.a"><b>SwimTimer</b> · progetto aperto, <a href="https://github.com/PZero/SwimTimer" target="_blank" rel="noopener noreferrer">codice e documenti su GitHub</a>.</span>
+    <p class="tenue piccolo-t" data-i18n="l.foot.b">Le sessioni di nuoto sono dati di salute: l'archivio è privato, accessibile solo ai membri approvati, e nel repository pubblico non c'è alcun dato reale.</p>
   </div>
 </footer>
 

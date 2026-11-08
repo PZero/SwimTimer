@@ -2,17 +2,16 @@
  * Letture parsimoniose (piano Spark): niente listener in tempo reale; 3 query all'apertura dell'elenco (sessioni, video,
  * annotazioni), tenute in memoria finche' non si preme «Aggiorna»; i chunk .swr (immutabili) prima dalla cache locale. */
 import { auth, db, osserva, accedi, esci, assicuraUtente, collection, doc, getDocs, getDoc, getDocFromCache, setDoc, addDoc, updateDoc,
-  deleteDoc, query, where, limit, serverTimestamp, Bytes } from '../comune/fb.js';
+  deleteDoc, query, where, limit, serverTimestamp, Bytes, getCountFromServer } from '../comune/fb.js';
 import { sha256Bytes, sha256File } from '../comune/sha256.js';
+import { caricaSessione as caricaBytes, fmtByte, controllaSwr } from '../comune/sessioni.js';
 
 const SWR = window.SWR, SD = window.SwimDati;
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const CHUNK = 800 * 1024;                       // <= 900000 consentiti dalle regole (limite documento 1 MiB)
-const MAX_SWR = 4 * 1024 * 1024;
+const t = window.t, loc = () => window.SwimI18n.locale();
 const RE_LINK = /^https:\/\/(drive\.google\.com|docs\.google\.com|youtu\.be|www\.youtube\.com|youtube\.com)\/.*/;
-const fmtByte = n => n >= 1048576 ? (n / 1048576).toFixed(1) + ' MiB' : (n / 1024).toFixed(0) + ' KiB';
-const fmtData = ts => ts && ts.toDate ? ts.toDate().toLocaleString('it-IT', { dateStyle: 'short', timeStyle: 'short' }) : '–';
+const fmtData = ts => ts && ts.toDate ? ts.toDate().toLocaleString(loc(), { dateStyle: 'short', timeStyle: 'short' }) : '–';
 const fmtDur = s => { s = Math.round(s); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
 
 let utente = null;          // utente Firebase
@@ -21,14 +20,15 @@ let admin = false;
 let D = { sessioni: [], video: [], annot: [], caricato: false };
 let ctx = null;             // contesto dell'editor aperto
 
-function toast(t) { const e = $('toast'); e.textContent = t; e.classList.add('on'); clearTimeout(toast.t); toast.t = setTimeout(() => e.classList.remove('on'), 3500); }
-const mostra = id => ['vistaLogin', 'vistaStato', 'vistaSessioni', 'vistaAdmin', 'vistaEditor'].forEach(v => { $(v).hidden = v !== id; });
+function toast(msg) { const e = $('toast'); e.textContent = msg; e.classList.add('on'); clearTimeout(toast.t); toast.t = setTimeout(() => e.classList.remove('on'), 3500); }
+let vistaCorrente = null;
+const mostra = id => (vistaCorrente = id, ['vistaLogin', 'vistaStato', 'vistaSessioni', 'vistaAdmin', 'vistaMessaggi', 'vistaEditor']).forEach(v => { $(v).hidden = v !== id; });
 const approvato = () => admin || (profilo && profilo.stato === 'approvato');
 
 // ------------------------------------------------------------------ accesso
 $('btnAccedi').onclick = async () => {
   $('erroreLogin').textContent = '';
-  try { await accedi(); } catch (e) { $('erroreLogin').textContent = 'Accesso non riuscito: ' + (e.code || e.message); }
+  try { await accedi(); } catch (e) { $('erroreLogin').textContent = t('a.accessoErr', { e: e.code || e.message }); }
 };
 $('btnEsci').onclick = () => esci();
 
@@ -42,10 +42,11 @@ osserva(async u => {
     profilo = await assicuraUtente(u);
     admin = await sonoAdmin(u);
   } catch (e) {
-    $('vistaStato').innerHTML = `<h1>Errore</h1><p class="err">${esc(e.code || e.message)}</p><p class="tenue">Controlla la connessione e ricarica la pagina.</p>`;
+    $('vistaStato').innerHTML = `<h1>${t('a.errore')}</h1><p class="err">${esc(e.code || e.message)}</p><p class="tenue">${t('a.erroreT')}</p>`;
     mostra('vistaStato'); return;
   }
-  $('navAdmin').hidden = !admin;
+  $('navAdmin').hidden = $('navMsg').hidden = !admin;
+  if (admin) aggiornaBadge();
   instrada();
 });
 
@@ -63,12 +64,12 @@ async function sonoAdmin(u) {
 function schermataStato() {
   const st = profilo.stato;
   const testi = {
-    in_attesa: ['Account in attesa di approvazione', 'Hai effettuato l\'accesso come <b>' + esc(profilo.email) + '</b>. L\'amministratore deve approvare il tuo account prima che tu possa vedere sessioni, video e annotazioni. Riprova più tardi.'],
-    rifiutato: ['Richiesta di accesso rifiutata', 'L\'amministratore non ha approvato questo account. Se pensi sia un errore, contatta chi gestisce il progetto.'],
-    revocato: ['Accesso revocato', 'L\'accesso di questo account è stato revocato dall\'amministratore.']
-  }[st] || ['Stato account non riconosciuto', esc(st)];
-  $('vistaStato').innerHTML = `<h1>${testi[0]}</h1><p class="tenue">${testi[1]}</p><p><button id="btnRiprova">Ricontrolla</button> <button id="btnEsci2">Esci</button></p>`;
-  $('btnRiprova').onclick = async () => { admin = await sonoAdmin(utente); $('navAdmin').hidden = !admin; profilo = await assicuraUtente(utente); instrada(); };
+    in_attesa: [t('a.att.h'), t('a.att.t', { email: '<b>' + esc(profilo.email) + '</b>' })],
+    rifiutato: [t('a.rif.h'), t('a.rif.t')],
+    revocato: [t('a.rev.h'), t('a.rev.t')]
+  }[st] || [t('a.sconosciuto'), esc(st)];
+  $('vistaStato').innerHTML = `<h1>${testi[0]}</h1><p class="tenue">${testi[1]}</p><p><button id="btnRiprova">${t('a.ricontrolla')}</button> <button id="btnEsci2">${t('a.esci')}</button></p>`;
+  $('btnRiprova').onclick = async () => { admin = await sonoAdmin(utente); $('navAdmin').hidden = $('navMsg').hidden = !admin; profilo = await assicuraUtente(utente); instrada(); };
   $('btnEsci2').onclick = () => esci();
   mostra('vistaStato');
 }
@@ -84,9 +85,10 @@ async function instrada() {
   if (p[0] !== 'annota' && ctx) chiudiEditor();
   try {
     if (p[0] === 'admin' && admin) return await vistaAdmin();
+    if (p[0] === 'messaggi' && admin) return await vistaMessaggi();
     if (p[0] === 'annota' && p.length >= 4) return await apriEditor(p[1], p[2], p[3]);
     return await vistaSessioni();
-  } catch (e) { console.error(e); toast('Errore: ' + (e.code || e.message)); }
+  } catch (e) { console.error(e); toast(t('a.erroreToast', { e: e.code || e.message })); }
 }
 
 // ------------------------------------------------------------------ dati (letture una tantum)
@@ -96,58 +98,66 @@ async function carica(forza) {
   const [s, v, a] = await Promise.all([getDocs(collection(d, 'sessioni')), getDocs(collection(d, 'video')), getDocs(collection(d, 'annotazioni'))]);
   const m = x => ({ id: x.id, ...x.data() });
   D = { sessioni: s.docs.map(m), video: v.docs.map(m), annot: a.docs.map(m), caricato: true };
-  const t = x => (x && x.toMillis ? x.toMillis() : 0);
-  D.sessioni.sort((x, y) => String(y.data).localeCompare(String(x.data)) || t(y.caricatoIl) - t(x.caricatoIl));
-  D.video.sort((x, y) => t(x.caricatoIl) - t(y.caricatoIl));
-  D.annot.sort((x, y) => t(y.aggiornato) - t(x.aggiornato));
+  const ms = x => (x && x.toMillis ? x.toMillis() : 0);
+  D.sessioni.sort((x, y) => String(y.data).localeCompare(String(x.data)) || ms(y.caricatoIl) - ms(x.caricatoIl));
+  D.video.sort((x, y) => ms(x.caricatoIl) - ms(y.caricatoIl));
+  D.annot.sort((x, y) => ms(y.aggiornato) - ms(x.aggiornato));
 }
 const puoGestire = x => admin || (x.caricatoDa && x.caricatoDa.uid === utente.uid);
 
 // ------------------------------------------------------------------ elenco sessioni
 async function vistaSessioni() {
   mostra('vistaSessioni');
-  if (!D.caricato) $('vistaSessioni').innerHTML = '<div class="scheda vuoto">Caricamento…</div>';
+  if (!D.caricato) $('vistaSessioni').innerHTML = '<div class="scheda vuoto">' + t('a.caricamento') + '</div>';
   await carica(false);
   disegnaSessioni();
+  evidenziaSessione();
+}
+/** #sessioni/<id> (link dalla pagina Strumenti): porta alla sessione e la evidenzia. */
+function evidenziaSessione() {
+  const id = location.hash.replace(/^#/, '').split('/')[1];
+  if (!id || !/^[A-Za-z0-9]+$/.test(id)) return;
+  const e = document.querySelector(`[data-sid="${id}"]`);
+  if (e && e.tagName === 'ARTICLE') { e.scrollIntoView({ block: 'center' }); e.classList.add('sess-evid'); }
 }
 function disegnaSessioni() {
   const el = $('vistaSessioni');
-  let h = `<div class="barra-titolo"><h1>Sessioni</h1><div class="riga"><button id="bAgg" class="piccolo">Aggiorna</button><button id="bNuova" class="primario">Carica registrazione .swr</button></div></div>`;
-  if (!D.sessioni.length) h += '<div class="scheda vuoto">Nessuna sessione. Carica la prima registrazione .swr scaricata dal tag.</div>';
+  let h = `<div class="barra-titolo"><h1>${t('a.nav.sessioni')}</h1><div class="riga"><button id="bAgg" class="piccolo">${t('a.aggiorna')}</button><button id="bNuova" class="primario">${t('a.caricaSwr')}</button></div></div>`;
+  if (!D.sessioni.length) h += '<div class="scheda vuoto">' + t('a.nessunaSess') + '</div>';
   h += '<div class="pila">' + D.sessioni.map(sessioneHtml).join('') + '</div>';
   el.innerHTML = h;
   $('bNuova').onclick = () => dialogoSessione();
-  $('bAgg').onclick = async () => { await carica(true); disegnaSessioni(); toast('Elenco aggiornato'); };
+  $('bAgg').onclick = async () => { await carica(true); disegnaSessioni(); toast(t('a.elencoAgg')); };
 }
 function sessioneHtml(s) {
   const mie = puoGestire(s);
   const videos = D.video.filter(v => v.sessioneId === s.id);
   return `<article class="scheda" data-sid="${esc(s.id)}">
     <div class="sess-testa"><div>
-      <h3>${esc(s.titolo)} ${s.completa ? '' : '<span class="chip att">caricamento incompleto</span>'}</h3>
-      <div class="meta"><b>${esc(s.data)}</b> · caricata da <b>${esc(s.caricatoDa.nome)}</b> il ${fmtData(s.caricatoIl)} · ${fmtByte(s.byte)} · <span class="mono" title="sha256 ${esc(s.sha256)}">${esc(s.sha256.slice(0, 10))}…</span></div>
+      <h3>${esc(s.titolo)} ${s.completa ? '' : '<span class="chip att">' + t('a.incompleto') + '</span>'}</h3>
+      <div class="meta"><b>${esc(s.data)}</b> · ${t('a.caricataDa')} <b>${esc(s.caricatoDa.nome)}</b> ${t('a.il')} ${fmtData(s.caricatoIl)} · ${fmtByte(s.byte)} · <span class="mono" title="sha256 ${esc(s.sha256)}">${esc(s.sha256.slice(0, 10))}…</span></div>
       ${s.nota ? `<p class="nota-sess">${esc(s.nota)}</p>` : ''}</div>
-      <div class="riga"><button class="piccolo" data-act="nuovo-video" data-sid="${esc(s.id)}" ${s.completa ? '' : 'disabled'}>Aggiungi video</button>
-        ${mie ? `<button class="piccolo" data-act="mod-sess" data-sid="${esc(s.id)}">Modifica</button><button class="piccolo pericolo" data-act="del-sess" data-sid="${esc(s.id)}">Elimina</button>` : ''}</div></div>
-    <div class="sotto">${videos.length ? videos.map(v => videoHtml(v)).join('') : '<div class="meta">Nessun video collegato. I video non si caricano qui: si registra il link (Google Drive o YouTube non in elenco) e l\'impronta del file.</div>'}</div>
+      <div class="riga"><button class="piccolo" data-act="nuovo-video" data-sid="${esc(s.id)}" ${s.completa ? '' : 'disabled'}>${t('a.aggVideo')}</button>
+        ${mie ? `<button class="piccolo" data-act="mod-sess" data-sid="${esc(s.id)}">${t('a.modifica')}</button><button class="piccolo pericolo" data-act="del-sess" data-sid="${esc(s.id)}">${t('a.elimina')}</button>` : ''}</div></div>
+    <div class="sotto">${videos.length ? videos.map(v => videoHtml(v)).join('') : '<div class="meta">' + t('a.nessunVideo') + '</div>'}</div>
   </article>`;
 }
 function videoHtml(v) {
   const ann = D.annot.filter(a => a.videoId === v.id);
   const mie = puoGestire(v);
   return `<div class="video-riga">
-    <div class="titolo"><div><b>${esc(v.nome)}</b> <span class="meta">${fmtByte(v.byte)} · ${fmtDur(v.durata_s)} · ${esc(v.fps)} fps · da ${esc(v.caricatoDa.nome)} · <a href="${esc(v.link)}" target="_blank" rel="noopener noreferrer">apri il video</a></span></div>
-      <div class="riga"><button class="piccolo primario" data-act="nuova-ann" data-sid="${esc(v.sessioneId)}" data-vid="${esc(v.id)}">Nuova annotazione</button>
-      ${mie ? `<button class="piccolo pericolo" data-act="del-video" data-vid="${esc(v.id)}">Elimina video</button>` : ''}</div></div>
+    <div class="titolo"><div><b>${esc(v.nome)}</b> <span class="meta">${fmtByte(v.byte)} · ${fmtDur(v.durata_s)} · ${esc(v.fps)} fps · ${t('a.da')} ${esc(v.caricatoDa.nome)} · <a href="${esc(v.link)}" target="_blank" rel="noopener noreferrer">${t('a.apriVideo')}</a></span></div>
+      <div class="riga"><button class="piccolo primario" data-act="nuova-ann" data-sid="${esc(v.sessioneId)}" data-vid="${esc(v.id)}">${t('a.nuovaAnn')}</button>
+      ${mie ? `<button class="piccolo pericolo" data-act="del-video" data-vid="${esc(v.id)}">${t('a.eliminaVideo')}</button>` : ''}</div></div>
     ${ann.map(a => annotHtml(a)).join('')}
   </div>`;
 }
 function annotHtml(a) {
   const mia = a.autore.uid === utente.uid;
-  return `<div class="annot ${mia ? 'mia' : ''}"><div><b>${esc(a.autore.nome)}</b>${mia ? ' <span class="chip ok">tua</span>' : ''} · <span class="meta">${a.eventi.length} eventi · aggiornata ${fmtData(a.aggiornato)}</span></div>
-    <div class="azioni"><button class="piccolo" data-act="apri-ann" data-sid="${esc(a.sessioneId)}" data-vid="${esc(a.videoId)}" data-aid="${esc(a.id)}">Apri</button>
-    ${mia ? '' : `<button class="piccolo" data-act="dup-ann" data-aid="${esc(a.id)}">Duplica come mia</button>`}
-    ${mia || admin ? `<button class="piccolo pericolo" data-act="del-ann" data-aid="${esc(a.id)}">Elimina</button>` : ''}</div></div>`;
+  return `<div class="annot ${mia ? 'mia' : ''}"><div><b>${esc(a.autore.nome)}</b>${mia ? ' <span class="chip ok">' + t('a.tua') + '</span>' : ''} · <span class="meta">${t('a.nEventi', { n: a.eventi.length })} · ${t('a.aggiornata')} ${fmtData(a.aggiornato)}</span></div>
+    <div class="azioni"><button class="piccolo" data-act="apri-ann" data-sid="${esc(a.sessioneId)}" data-vid="${esc(a.videoId)}" data-aid="${esc(a.id)}">${t('a.apri')}</button>
+    ${mia ? '' : `<button class="piccolo" data-act="dup-ann" data-aid="${esc(a.id)}">${t('a.duplica')}</button>`}
+    ${mia || admin ? `<button class="piccolo pericolo" data-act="del-ann" data-aid="${esc(a.id)}">${t('a.elimina')}</button>` : ''}</div></div>`;
 }
 
 $('vistaSessioni').addEventListener('click', async e => {
@@ -162,7 +172,7 @@ $('vistaSessioni').addEventListener('click', async e => {
     else if (act === 'apri-ann') location.hash = `#annota/${sid}/${vid}/${aid}`;
     else if (act === 'dup-ann') { const n = await duplica(aid); location.hash = `#annota/${n.sessioneId}/${n.videoId}/${n.id}`; }
     else if (act === 'del-ann') await eliminaAnnotazione(aid);
-  } catch (err) { console.error(err); toast('Operazione non riuscita: ' + (err.code || err.message)); }
+  } catch (err) { console.error(err); toast(t('a.opErr', { e: err.code || err.message })); }
 });
 
 // ------------------------------------------------------------------ dialoghi
@@ -174,14 +184,14 @@ function chiudiDialogo() { dlg.dataset.occupato = '0'; dlg.close(); }
 function dialogoSessione(s) {
   const nuova = !s;
   const oggi = new Date().toISOString().slice(0, 10);
-  apriDialogo(`<form method="dialog" id="fSess"><h3>${nuova ? 'Carica registrazione .swr' : 'Modifica sessione'}</h3>
-    ${nuova ? '<label>File .swr (scaricato dal tag)<input type="file" id="fFile" accept=".swr,application/octet-stream" required></label>' : ''}
-    <label>Titolo<input type="text" id="fTit" maxlength="120" required value="${esc(s ? s.titolo : '')}" placeholder="es. Prova vasca 25 m, 5 min"></label>
-    <label>Data della prova<input type="date" id="fData" required value="${esc(s ? s.data : oggi)}"></label>
-    <label>Nota (facoltativa)<textarea id="fNota" rows="3" maxlength="1000">${esc(s ? s.nota || '' : '')}</textarea></label>
-    <div class="meta">${nuova ? 'Il file viene controllato (formato .swr), ne viene calcolato lo sha256 e viene caricato a pezzi nell\'archivio condiviso. Nessun dato reale nel repository: qui solo nell\'archivio privato.' : ''}</div>
+  apriDialogo(`<form method="dialog" id="fSess"><h3>${nuova ? t('a.ds.hNuova') : t('a.ds.hMod')}</h3>
+    ${nuova ? '<label>' + t('a.ds.file') + '<input type="file" id="fFile" accept=".swr,application/octet-stream" required></label>' : ''}
+    <label>${t('a.ds.titolo')}<input type="text" id="fTit" maxlength="120" required value="${esc(s ? s.titolo : '')}" placeholder="${esc(t('a.ds.phTitolo'))}"></label>
+    <label>${t('a.ds.data')}<input type="date" id="fData" required value="${esc(s ? s.data : oggi)}"></label>
+    <label>${t('a.ds.nota')}<textarea id="fNota" rows="3" maxlength="1000">${esc(s ? s.nota || '' : '')}</textarea></label>
+    <div class="meta">${nuova ? t('a.ds.info') : ''}</div>
     <div class="barra" id="fBarra" hidden><div></div></div><div class="meta" id="fMsg"></div>
-    <div class="azioni"><button type="button" id="fAnnulla">Annulla</button><button class="primario" id="fOk">${nuova ? 'Carica' : 'Salva'}</button></div></form>`);
+    <div class="azioni"><button type="button" id="fAnnulla">${t('a.annulla')}</button><button class="primario" id="fOk">${nuova ? t('a.carica') : t('a.salva')}</button></div></form>`);
   $('fAnnulla').onclick = chiudiDialogo;
   $('fSess').onsubmit = async ev => {
     ev.preventDefault();
@@ -190,53 +200,28 @@ function dialogoSessione(s) {
     try {
       if (nuova) await caricaSessione($('fFile').files[0], tit, data, nota, (f, t, m) => { $('fBarra').hidden = false; $('fBarra').firstElementChild.style.width = (100 * f / t) + '%'; $('fMsg').textContent = m; });
       else { const dati = { titolo: tit, data, completa: s.completa }; if (nota) dati.nota = nota; else if (s.nota) dati.nota = ''; await updateDoc(doc(db(), 'sessioni', s.id), dati); await carica(true); }
-      chiudiDialogo(); disegnaSessioni(); toast(nuova ? 'Sessione caricata' : 'Sessione aggiornata');
+      chiudiDialogo(); disegnaSessioni(); toast(nuova ? t('a.sessCaricata') : t('a.sessAgg'));
     } catch (err) { console.error(err); $('fMsg').className = 'meta err'; $('fMsg').textContent = err.message || err.code; $('fOk').disabled = false; dlg.dataset.occupato = '0'; }
   };
 }
 
 async function caricaSessione(file, titolo, data, nota, prog) {
-  if (!file) throw new Error('Scegli un file .swr');
-  if (file.size > MAX_SWR) throw new Error('File troppo grande (massimo ' + fmtByte(MAX_SWR) + ')');
-  prog(0, 1, 'Lettura e controllo del file…');
+  if (!file) throw new Error(t('a.scegliSwr'));
   const bytes = new Uint8Array(await file.arrayBuffer());
-  let es;
-  try { es = SWR.decodifica(bytes); } catch (e) { throw new Error('File non valido (non è una registrazione .swr): ' + e.message); }
-  if (!SWR.segmentiConDati(es).length) throw new Error('Il file non contiene campioni di movimento.');
-  const sha = await sha256Bytes(bytes);
-  await carica(false);
-  const dup = D.sessioni.find(s => s.sha256 === sha);
-  if (dup) throw new Error('Questa registrazione è già stata caricata: «' + dup.titolo + '» (' + dup.caricatoDa.nome + ').');
-  const n = Math.ceil(bytes.length / CHUNK);
-  const ref = doc(collection(db(), 'sessioni'));
-  const dati = { titolo, data, caricatoDa: { uid: utente.uid, nome: (utente.displayName || utente.email || 'Utente').slice(0, 100) }, caricatoIl: serverTimestamp(), sha256: sha, byte: bytes.length, nChunk: n, completa: false };
-  if (nota) dati.nota = nota;
-  await setDoc(ref, dati);
-  try {
-    for (let i = 0; i < n; i++) {
-      prog(i, n, `Caricamento del pezzo ${i + 1} di ${n}…`);
-      await setDoc(doc(ref, 'chunk', String(i)), { n: i, data: Bytes.fromUint8Array(bytes.slice(i * CHUNK, (i + 1) * CHUNK)) });
-    }
-    await updateDoc(ref, { completa: true });
-  } catch (e) {                                  // caricamento interrotto: ripulisce quel che c'e'
-    for (let i = 0; i < n; i++) { try { await deleteDoc(doc(ref, 'chunk', String(i))); } catch (x) { /* ignora */ } }
-    try { await deleteDoc(ref); } catch (x) { /* ignora */ }
-    throw e;
-  }
-  prog(n, n, 'Fatto.');
+  await caricaBytes(bytes, { titolo, data, nota, utente, prog });
   await carica(true);
 }
 
 function dialogoVideo(sid) {
   const s = D.sessioni.find(x => x.id === sid);
-  apriDialogo(`<form method="dialog" id="fVid"><h3>Aggiungi video a «${esc(s.titolo)}»</h3>
-    <p class="meta">Il video <b>non</b> viene caricato qui. Scegli il file locale (ne calcoliamo impronta, dimensione e durata nel browser), caricalo tu su Google Drive o YouTube (non in elenco) e incolla il link.</p>
-    <label>File video locale (MP4 H.264, 30 fps)<input type="file" id="vFile" accept="video/*" required></label>
+  apriDialogo(`<form method="dialog" id="fVid"><h3>${t('a.dv.h', { titolo: esc(s.titolo) })}</h3>
+    <p class="meta">${t('a.dv.info')}</p>
+    <label>${t('a.dv.file')}<input type="file" id="vFile" accept="video/*" required></label>
     <div class="barra" id="vBarra" hidden><div></div></div><div class="meta" id="vInfo"></div>
-    <label>Link Google Drive o YouTube<input type="url" id="vLink" required maxlength="500" placeholder="https://drive.google.com/file/d/…"></label>
-    <label>Fotogrammi al secondo<input type="number" id="vFps" min="1" max="240" step="0.001" value="30"></label>
+    <label>${t('a.dv.link')}<input type="url" id="vLink" required maxlength="500" placeholder="https://drive.google.com/file/d/…"></label>
+    <label>${t('a.dv.fps')}<input type="number" id="vFps" min="1" max="240" step="0.001" value="30"></label>
     <div class="meta" id="vMsg"></div>
-    <div class="azioni"><button type="button" id="vAnnulla">Annulla</button><button class="primario" id="vOk" disabled>Salva video</button></div></form>`);
+    <div class="azioni"><button type="button" id="vAnnulla">${t('a.annulla')}</button><button class="primario" id="vOk" disabled>${t('a.dv.salva')}</button></div></form>`);
   let info = null;
   $('vAnnulla').onclick = chiudiDialogo;
   $('vFile').onchange = async () => {
@@ -244,24 +229,24 @@ function dialogoVideo(sid) {
     dlg.dataset.occupato = '1'; $('vBarra').hidden = false;
     try {
       const durata = await durataVideo(f);
-      const sha = await sha256File(f, (a, t) => { $('vBarra').firstElementChild.style.width = (100 * a / t) + '%'; $('vInfo').textContent = 'Calcolo impronta sha256: ' + Math.round(100 * a / t) + '%'; });
+      const sha = await sha256File(f, (a, tot) => { $('vBarra').firstElementChild.style.width = (100 * a / tot) + '%'; $('vInfo').textContent = t('a.dv.sha', { p: Math.round(100 * a / tot) }); });
       info = { nome: f.name.slice(0, 200), byte: f.size, sha256: sha, durata_s: durata };
       $('vInfo').innerHTML = `${esc(f.name)} · ${fmtByte(f.size)} · ${fmtDur(durata)} · <span class="mono">${sha.slice(0, 12)}…</span>`;
       const dup = D.video.find(v => v.sessioneId === sid && v.sha256 === sha);
-      $('vMsg').textContent = dup ? 'Attenzione: questo stesso file è già registrato per la sessione («' + dup.nome + '»).' : '';
+      $('vMsg').textContent = dup ? t('a.dv.dup', { nome: dup.nome }) : '';
       $('vOk').disabled = false;
-    } catch (e) { $('vInfo').textContent = 'Impossibile leggere il video: ' + e.message; }
+    } catch (e) { $('vInfo').textContent = t('a.dv.illeggibile', { e: e.message }); }
     dlg.dataset.occupato = '0';
   };
   $('fVid') && ($('fVid').onsubmit = async ev => {
     ev.preventDefault();
     const link = $('vLink').value.trim(), fps = Number($('vFps').value);
-    if (!RE_LINK.test(link)) { $('vMsg').className = 'meta err'; $('vMsg').textContent = 'Il link deve iniziare con https:// e puntare a Google Drive o YouTube.'; return; }
-    if (!(fps > 0 && fps <= 240)) { $('vMsg').className = 'meta err'; $('vMsg').textContent = 'Fotogrammi al secondo non validi.'; return; }
+    if (!RE_LINK.test(link)) { $('vMsg').className = 'meta err'; $('vMsg').textContent = t('a.dv.linkErr'); return; }
+    if (!(fps > 0 && fps <= 240)) { $('vMsg').className = 'meta err'; $('vMsg').textContent = t('a.dv.fpsErr'); return; }
     $('vOk').disabled = true;
     try {
       await addDoc(collection(db(), 'video'), { sessioneId: sid, link, ...info, fps, caricatoDa: { uid: utente.uid, nome: (utente.displayName || utente.email || 'Utente').slice(0, 100) }, caricatoIl: serverTimestamp() });
-      await carica(true); chiudiDialogo(); disegnaSessioni(); toast('Video registrato');
+      await carica(true); chiudiDialogo(); disegnaSessioni(); toast(t('a.dv.ok'));
     } catch (err) { console.error(err); $('vMsg').className = 'meta err'; $('vMsg').textContent = err.message || err.code; $('vOk').disabled = false; }
   });
 }
@@ -269,8 +254,8 @@ function durataVideo(file) {
   return new Promise((ok, ko) => {
     const v = document.createElement('video'), url = URL.createObjectURL(file);
     v.preload = 'metadata';
-    v.onloadedmetadata = () => { const d = v.duration; URL.revokeObjectURL(url); isFinite(d) && d > 0 ? ok(d) : ko(new Error('durata non leggibile')); };
-    v.onerror = () => { URL.revokeObjectURL(url); ko(new Error('formato non riconosciuto dal browser (prova un MP4 H.264)')); };
+    v.onloadedmetadata = () => { const d = v.duration; URL.revokeObjectURL(url); isFinite(d) && d > 0 ? ok(d) : ko(new Error(t('a.dv.durErr'))); };
+    v.onerror = () => { URL.revokeObjectURL(url); ko(new Error(t('a.dv.fmtErr'))); };
     v.src = url;
   });
 }
@@ -280,30 +265,30 @@ async function eliminaSessione(sid) {
   const s = D.sessioni.find(x => x.id === sid);
   const video = D.video.filter(v => v.sessioneId === sid), ann = D.annot.filter(a => a.sessioneId === sid);
   const altrui = [...video.filter(v => v.caricatoDa.uid !== utente.uid), ...ann.filter(a => a.autore.uid !== utente.uid)];
-  if (altrui.length && !admin) { toast('Non puoi eliminarla: ci sono video o annotazioni di altri utenti collegati.'); return; }
-  if (!confirm(`Eliminare definitivamente «${s.titolo}» con ${video.length} video e ${ann.length} annotazioni collegati? L'operazione non si può annullare.`)) return;
+  if (altrui.length && !admin) { toast(t('a.del.sessAltrui')); return; }
+  if (!confirm(t('a.del.sessConf', { titolo: s.titolo, v: video.length, a: ann.length }))) return;
   for (const a of ann) await deleteDoc(doc(db(), 'annotazioni', a.id));
   for (const v of video) await deleteDoc(doc(db(), 'video', v.id));
   for (let i = 0; i < (s.nChunk || 6); i++) { try { await deleteDoc(doc(db(), 'sessioni', sid, 'chunk', String(i))); } catch (e) { /* assente */ } }
   await deleteDoc(doc(db(), 'sessioni', sid));
-  await carica(true); disegnaSessioni(); toast('Sessione eliminata');
+  await carica(true); disegnaSessioni(); toast(t('a.del.sessOk'));
 }
 async function eliminaVideo(vid) {
   const ann = D.annot.filter(a => a.videoId === vid);
-  if (ann.some(a => a.autore.uid !== utente.uid) && !admin) { toast('Non puoi eliminarlo: ci sono annotazioni di altri utenti.'); return; }
-  if (!confirm(`Eliminare il riferimento al video e le ${ann.length} annotazioni collegate? (Il file su Drive/YouTube non viene toccato.)`)) return;
+  if (ann.some(a => a.autore.uid !== utente.uid) && !admin) { toast(t('a.del.videoAltrui')); return; }
+  if (!confirm(t('a.del.videoConf', { a: ann.length }))) return;
   for (const a of ann) await deleteDoc(doc(db(), 'annotazioni', a.id));
   await deleteDoc(doc(db(), 'video', vid));
-  await carica(true); disegnaSessioni(); toast('Video eliminato');
+  await carica(true); disegnaSessioni(); toast(t('a.del.videoOk'));
 }
 async function eliminaAnnotazione(aid) {
-  if (!confirm('Eliminare questa annotazione?')) return;
+  if (!confirm(t('a.del.annConf'))) return;
   await deleteDoc(doc(db(), 'annotazioni', aid));
-  await carica(true); disegnaSessioni(); toast('Annotazione eliminata');
+  await carica(true); disegnaSessioni(); toast(t('a.del.annOk'));
 }
 async function duplica(aid) {
   let a = D.annot.find(x => x.id === aid);
-  if (!a) { const sn = await getDoc(doc(db(), 'annotazioni', aid)); if (!sn.exists()) throw new Error('annotazione non trovata'); a = { id: sn.id, ...sn.data() }; }
+  if (!a) { const sn = await getDoc(doc(db(), 'annotazioni', aid)); if (!sn.exists()) throw new Error(t('a.annNonTrovata')); a = { id: sn.id, ...sn.data() }; }
   const copia = {
     sessioneId: a.sessioneId, videoId: a.videoId, autore: { uid: utente.uid, nome: (utente.displayName || utente.email || 'Utente').slice(0, 100) },
     eventi: a.eventi, offset_s: a.offset_s ?? null, sync: a.sync ?? null, anticipo_ms: a.anticipo_ms || 0,
@@ -311,7 +296,7 @@ async function duplica(aid) {
   };
   if (Number.isInteger(a.segmento)) copia.segmento = a.segmento;
   const r = await addDoc(collection(db(), 'annotazioni'), copia);
-  await carica(true); toast('Copia creata: ora è tua');
+  await carica(true); toast(t('a.copiaOk'));
   return { id: r.id, sessioneId: a.sessioneId, videoId: a.videoId };
 }
 
@@ -322,7 +307,7 @@ async function leggiSessioneBytes(s) {
     const rif = doc(db(), 'sessioni', s.id, 'chunk', String(i));
     let snap;
     try { snap = await getDocFromCache(rif); } catch (e) { snap = await getDoc(rif); }   // i chunk non cambiano: prima la cache locale
-    if (!snap.exists()) throw new Error('pezzo ' + (i + 1) + ' della registrazione mancante');
+    if (!snap.exists()) throw new Error(t('a.pezzoMancante', { i: i + 1 }));
     parti.push(snap.data().data.toUint8Array());
   }
   const tot = parti.reduce((a, p) => a + p.length, 0), out = new Uint8Array(tot);
@@ -335,15 +320,15 @@ async function apriEditor(sid, vid, aid) {
   if (ctx) chiudiEditor();
   mostra('vistaEditor');
   $('vistaAnn').hidden = true;
-  $('intestaAnn').innerHTML = '<span class="tenue">Caricamento dei dati dall\'archivio…</span>';
+  $('intestaAnn').innerHTML = '<span class="tenue">' + t('a.ed.caricamento') + '</span>';
   await carica(false);
   let s = D.sessioni.find(x => x.id === sid), v = D.video.find(x => x.id === vid);
   if (!s || !v) { await carica(true); s = D.sessioni.find(x => x.id === sid); v = D.video.find(x => x.id === vid); }
-  if (!s || !v) { $('intestaAnn').innerHTML = '<span class="err">Sessione o video non trovati.</span> <a href="#sessioni">Torna all\'elenco</a>'; return; }
+  if (!s || !v) { $('intestaAnn').innerHTML = '<span class="err">' + t('a.ed.nonTrovati') + '</span> <a href="#sessioni">' + t('a.ed.tornaElenco') + '</a>'; return; }
   let ann = null;
   if (aid !== 'nuova') {
     const sn = await getDoc(doc(db(), 'annotazioni', aid));
-    if (!sn.exists()) { $('intestaAnn').innerHTML = '<span class="err">Annotazione non trovata.</span> <a href="#sessioni">Torna all\'elenco</a>'; return; }
+    if (!sn.exists()) { $('intestaAnn').innerHTML = '<span class="err">' + t('a.annNonTrovata') + '</span> <a href="#sessioni">' + t('a.ed.tornaElenco') + '</a>'; return; }
     ann = { id: sn.id, ...sn.data() };
   }
   const bytes = await leggiSessioneBytes(s);
@@ -352,8 +337,8 @@ async function apriEditor(sid, vid, aid) {
   window.SwimAnnotazione.azzera();
   await SD.carica(s.titolo + '.swr', bytes);
   window.SwimAnnotazione.carica(ann);
-  window.SwimAnnotazione.stato.avviso = (sha !== s.sha256 ? 'ATTENZIONE: i dati scaricati non corrispondono all\'impronta registrata della sessione. ' : '')
-    + (Number(v.fps) !== 30 ? `Il video è registrato a ${v.fps} fps ma lo strumento lavora a 30 fps: i tempi per fotogramma potrebbero non essere esatti.` : '');
+  window.SwimAnnotazione.stato.avviso = (sha !== s.sha256 ? t('a.ed.shaDiverso') + ' ' : '')
+    + (Number(v.fps) !== 30 ? t('a.ed.fps', { fps: v.fps }) : '');
   intestaEditor();
   $('vistaAnn').hidden = false;
   window.SwimAnnotazione.aggiorna();
@@ -362,15 +347,15 @@ async function apriEditor(sid, vid, aid) {
 function intestaEditor() {
   const { s, v, ann, mia } = ctx;
   $('intestaAnn').innerHTML = `<div><h2>${esc(s.titolo)} <span class="tenue">· ${esc(s.data)}</span></h2>
-    <div class="meta">Video <b>${esc(v.nome)}</b> (${fmtDur(v.durata_s)}, ${esc(v.fps)} fps) · <a href="${esc(v.link)}" target="_blank" rel="noopener noreferrer">apri il video su Drive/YouTube</a> · ${ann ? `annotazione di <b>${esc(ann.autore.nome)}</b>` : 'nuova annotazione (tua)'}${mia ? '' : ' · <span class="err">sola lettura</span>'}</div></div>
-    <div class="riga"><a href="#sessioni"><button class="piccolo">← Elenco</button></a>${mia ? '' : '<button class="piccolo primario" id="bDupEd">Duplica come mia</button>'}</div>`;
+    <div class="meta">${t('a.ed.video')} <b>${esc(v.nome)}</b> (${fmtDur(v.durata_s)}, ${esc(v.fps)} fps) · <a href="${esc(v.link)}" target="_blank" rel="noopener noreferrer">${t('a.ed.apriVideo')}</a> · ${ann ? t('a.ed.annDi', { nome: '<b>' + esc(ann.autore.nome) + '</b>' }) : t('a.ed.nuovaAnn')}${mia ? '' : ' · <span class="err">' + t('a.ed.soloLettura') + '</span>'}</div></div>
+    <div class="riga"><a href="#sessioni"><button class="piccolo">${t('a.ed.elenco')}</button></a>${mia ? '' : '<button class="piccolo primario" id="bDupEd">' + t('a.duplica') + '</button>'}</div>`;
   const b = $('bDupEd');
-  if (b) b.onclick = async () => { try { const n = await duplica(ctx.aid); location.hash = `#annota/${n.sessioneId}/${n.videoId}/${n.id}`; } catch (e) { toast('Operazione non riuscita: ' + (e.code || e.message)); } };
+  if (b) b.onclick = async () => { try { const n = await duplica(ctx.aid); location.hash = `#annota/${n.sessioneId}/${n.videoId}/${n.id}`; } catch (e) { toast(t('a.opErr', { e: e.code || e.message })); } };
 }
 function chiudiEditor() {
   if (!ctx) return;
   const SA = window.SwimAnnotazione;
-  if (SA.stato.sporco && ctx.mia && confirm('Ci sono modifiche non ancora salvate online. Salvarle ora? (Annulla: restano solo nella copia locale del browser.)')) SA.salvaOra();
+  if (SA.stato.sporco && ctx.mia && confirm(t('a.ed.salvaChiudi'))) SA.salvaOra();
   ctx = null; SA.azzera(); SD.svuota();
 }
 
@@ -378,7 +363,7 @@ function chiudiEditor() {
 window.SwimOnline = {
   chiave: () => ctx ? (ctx.aid ? 'a:' + ctx.aid : 'n:' + ctx.v.id + ':' + (utente ? utente.uid : '')) : null,
   puoSalvare: () => !!(ctx && ctx.mia),
-  motivo: () => ctx && !ctx.mia ? 'Annotazione di un altro autore: sola lettura. Usa «Duplica come mia» per modificarla.' : '',
+  motivo: () => ctx && !ctx.mia ? t('a.ed.motivo') : '',
   async salva(a) {
     const c = ctx;            // il contesto puo' cambiare durante l'attesa (cambio pagina)
     const nome = (utente.displayName || utente.email || 'Utente').slice(0, 100);
@@ -394,36 +379,97 @@ window.SwimOnline = {
   },
   async verificaVideo(file, avanz) {
     const v = ctx && ctx.v; if (!v) return { ok: false, avviso: '' };
-    if (file.size !== v.byte) return { ok: false, avviso: `ATTENZIONE: il file scelto (${fmtByte(file.size)}) ha una dimensione diversa dal video registrato «${v.nome}» (${fmtByte(v.byte)}): non è lo stesso video, gli eventi potrebbero non combaciare.` };
+    if (file.size !== v.byte) return { ok: false, avviso: t('a.vv.dim', { s: fmtByte(file.size), nome: v.nome, b: fmtByte(v.byte) }) };
     const sha = await sha256File(file, avanz);
-    if (sha !== v.sha256) return { ok: false, avviso: `ATTENZIONE: l'impronta sha256 del file scelto non corrisponde a quella del video registrato «${v.nome}»: non è lo stesso file (o è stato ricodificato).` };
+    if (sha !== v.sha256) return { ok: false, avviso: t('a.vv.sha', { nome: v.nome }) };
     return { ok: true, avviso: '' };
   }
 };
 
 // ------------------------------------------------------------------ amministrazione utenti
+const ms = x => (x && x.toMillis ? x.toMillis() : 0);
+const nomeStato = st => t('a.stato.' + st);
 async function vistaAdmin() {
   mostra('vistaAdmin');
-  $('vistaAdmin').innerHTML = '<div class="scheda vuoto">Caricamento…</div>';
+  $('vistaAdmin').innerHTML = '<div class="scheda vuoto">' + t('a.caricamento') + '</div>';
   const sn = await getDocs(collection(db(), 'users'));
   const utenti = sn.docs.map(d => ({ uid: d.id, ...d.data() }));
-  const t = x => (x && x.toMillis ? x.toMillis() : 0);
-  utenti.sort((a, b) => t(b.creato) - t(a.creato));
+  utenti.sort((a, b) => ms(b.creato) - ms(a.creato));
   const gruppo = (titolo, stati, azioni) => {
     const li = utenti.filter(u => stati.includes(u.stato));
-    return `<div class="scheda"><header><h2>${titolo} <small>${li.length}</small></h2></header>${li.length ? `<div class="tab-scroll"><table class="utenti"><thead><tr><th>Utente</th><th>Email</th><th>Richiesta</th><th>Stato</th><th></th></tr></thead><tbody>` +
-      li.map(u => `<tr><td>${u.foto ? `<img src="${esc(u.foto)}" alt="" referrerpolicy="no-referrer">` : ''}${esc(u.nome)}${u.uid === utente.uid ? ' <span class="chip">tu</span>' : ''}</td><td>${esc(u.email)}</td><td>${fmtData(u.creato)}</td><td><span class="chip ${u.stato === 'approvato' ? 'ok' : u.stato === 'in_attesa' ? 'att' : 'no'}">${esc(u.stato.replace('_', ' '))}</span></td>
-      <td class="riga">${azioni.map(([a, et, cls]) => `<button class="piccolo ${cls || ''}" data-uid="${esc(u.uid)}" data-stato="${a}">${et}</button>`).join('')}</td></tr>`).join('') + '</tbody></table></div>' : '<div class="vuoto">Nessuno.</div>'}</div>`;
+    return `<div class="scheda"><header><h2>${titolo} <small>${li.length}</small></h2></header>${li.length ? `<div class="tab-scroll"><table class="utenti"><thead><tr><th>${t('a.ad.utente')}</th><th>Email</th><th>${t('a.ad.richiesta')}</th><th>${t('a.ad.stato')}</th><th></th></tr></thead><tbody>` +
+      li.map(u => `<tr><td>${u.foto ? `<img src="${esc(u.foto)}" alt="" referrerpolicy="no-referrer">` : ''}${esc(u.nome)}${u.uid === utente.uid ? ' <span class="chip">' + t('a.ad.tu') + '</span>' : ''}</td><td>${esc(u.email)}</td><td>${fmtData(u.creato)}</td><td><span class="chip ${u.stato === 'approvato' ? 'ok' : u.stato === 'in_attesa' ? 'att' : 'no'}">${esc(nomeStato(u.stato))}</span></td>
+      <td class="riga">${azioni.map(([a, et, cls]) => `<button class="piccolo ${cls || ''}" data-uid="${esc(u.uid)}" data-stato="${a}">${et}</button>`).join('')}</td></tr>`).join('') + '</tbody></table></div>' : '<div class="vuoto">' + t('a.ad.nessuno') + '</div>'}</div>`;
   };
-  $('vistaAdmin').innerHTML = `<div class="barra-titolo"><h1>Utenti</h1><button class="piccolo" id="bAggU">Aggiorna</button></div><div class="pila">
-    ${gruppo('In attesa di approvazione', ['in_attesa'], [['approvato', 'Approva', 'primario'], ['rifiutato', 'Rifiuta', 'pericolo']])}
-    ${gruppo('Approvati', ['approvato'], [['revocato', 'Revoca', 'pericolo']])}
-    ${gruppo('Rifiutati o revocati', ['rifiutato', 'revocato'], [['approvato', 'Approva']])}</div>`;
+  $('vistaAdmin').innerHTML = `<div class="barra-titolo"><h1>${t('a.nav.utenti')}</h1><button class="piccolo" id="bAggU">${t('a.aggiorna')}</button></div><div class="pila">
+    ${gruppo(t('a.ad.inAttesa'), ['in_attesa'], [['approvato', t('a.ad.approva'), 'primario'], ['rifiutato', t('a.ad.rifiuta'), 'pericolo']])}
+    ${gruppo(t('a.ad.approvati'), ['approvato'], [['revocato', t('a.ad.revoca'), 'pericolo']])}
+    ${gruppo(t('a.ad.rifRev'), ['rifiutato', 'revocato'], [['approvato', t('a.ad.approva')]])}</div>`;
   $('bAggU').onclick = vistaAdmin;
   $('vistaAdmin').onclick = async e => {
     const b = e.target.closest('button[data-stato]'); if (!b) return;
     b.disabled = true;
-    try { await updateDoc(doc(db(), 'users', b.dataset.uid), { stato: b.dataset.stato, deciso: serverTimestamp(), decisoDa: utente.uid }); toast('Stato aggiornato'); await vistaAdmin(); }
-    catch (err) { toast('Operazione non riuscita: ' + (err.code || err.message)); b.disabled = false; }
+    try { await updateDoc(doc(db(), 'users', b.dataset.uid), { stato: b.dataset.stato, deciso: serverTimestamp(), decisoDa: utente.uid }); toast(t('a.ad.statoAgg')); await vistaAdmin(); }
+    catch (err) { toast(t('a.opErr', { e: err.code || err.message })); b.disabled = false; }
   };
 }
+
+// ------------------------------------------------------------------ messaggi del modulo contatti (solo amministratore)
+let MSG = [];
+/** Numero di messaggi non letti: una query di conteggio (costa pochissime letture). */
+async function aggiornaBadge() {
+  try {
+    const c = await getCountFromServer(query(collection(db(), 'contatti'), where('letto', '==', false)));
+    mostraBadge(c.data().count);
+  } catch (e) { console.error(e); }
+}
+function mostraBadge(n) { const b = $('badgeMsg'); b.hidden = !n; b.textContent = n > 99 ? '99+' : String(n); }
+async function vistaMessaggi() {
+  mostra('vistaMessaggi');
+  $('vistaMessaggi').innerHTML = '<div class="scheda vuoto">' + t('a.caricamento') + '</div>';
+  const sn = await getDocs(collection(db(), 'contatti'));
+  MSG = sn.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => ms(b.creato) - ms(a.creato));
+  disegnaMessaggi();
+}
+function disegnaMessaggi() {
+  const nonLetti = MSG.filter(m => m.letto !== true).length;
+  mostraBadge(nonLetti);
+  const el = $('vistaMessaggi');
+  el.innerHTML = `<div class="barra-titolo"><h1>${t('a.nav.messaggi')} <small class="tenue">${t('a.msg.nonLetti', { n: nonLetti })}</small></h1><button class="piccolo" id="bAggM">${t('a.aggiorna')}</button></div>`
+    + (MSG.length ? '<div class="pila">' + MSG.map(m => {
+      const ogg = encodeURIComponent(t('a.msg.oggetto'));
+      return `<article class="scheda messaggio ${m.letto === true ? '' : 'nuovo'}" data-id="${esc(m.id)}">
+        <div class="sess-testa"><div><b>${esc(m.nome || t('a.msg.anonimo'))}</b> · <a href="mailto:${esc(m.email)}?subject=${ogg}">${esc(m.email)}</a>
+          <div class="meta">${fmtData(m.creato)} · ${esc((m.lingua || '').toUpperCase())}</div></div>
+          <div class="riga">${m.letto === true ? `<button class="piccolo" data-m="nonletto">${t('a.msg.segnaNonLetto')}</button>` : `<button class="piccolo primario" data-m="letto">${t('a.msg.segnaLetto')}</button>`}
+          <button class="piccolo pericolo" data-m="elimina">${t('a.elimina')}</button></div></div>
+        <div class="testo">${esc(m.messaggio)}</div></article>`;
+    }).join('') + '</div>' : '<div class="scheda vuoto">' + t('a.msg.nessuno') + '</div>');
+  $('bAggM').onclick = vistaMessaggi;
+}
+$('vistaMessaggi').addEventListener('click', async e => {
+  const b = e.target.closest('button[data-m]'); if (!b) return;
+  const id = b.closest('[data-id]').dataset.id, m = MSG.find(x => x.id === id);
+  b.disabled = true;
+  try {
+    if (b.dataset.m === 'elimina') {
+      if (!confirm(t('a.msg.confElimina'))) { b.disabled = false; return; }
+      await deleteDoc(doc(db(), 'contatti', id)); MSG = MSG.filter(x => x.id !== id); toast(t('a.msg.eliminato'));
+    } else {
+      const letto = b.dataset.m === 'letto';
+      await updateDoc(doc(db(), 'contatti', id), { letto }); m.letto = letto;
+    }
+    disegnaMessaggi();
+  } catch (err) { toast(t('a.opErr', { e: err.code || err.message })); b.disabled = false; }
+});
+
+// ------------------------------------------------------------------ cambio lingua: ridisegna la vista corrente
+document.addEventListener('swt-lingua', () => {
+  document.getElementById('toast').textContent = '';
+  if (!utente) return;
+  if (vistaCorrente === 'vistaStato' && profilo) schermataStato();
+  else if (vistaCorrente === 'vistaSessioni') disegnaSessioni();
+  else if (vistaCorrente === 'vistaAdmin') vistaAdmin().catch(console.error);
+  else if (vistaCorrente === 'vistaMessaggi') disegnaMessaggi();
+  else if (vistaCorrente === 'vistaEditor' && ctx) { intestaEditor(); window.SwimAnnotazione.aggiorna(); }
+});

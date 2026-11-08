@@ -15,7 +15,7 @@
     ],
     "headers": [
       {
-        "source": "**/*.@(html|js|css|json)",
+        "source": "**/*.@(html|js|css|json|bin)",
         "headers": [
           {
             "key": "Cache-Control",
@@ -51,7 +51,8 @@
       }
     ],
     "predeploy": [
-      "node firebase/scrivi-versione.mjs"
+      "node firebase/scrivi-versione.mjs",
+      "node firebase/prepara-strumenti.mjs"
     ]
   },
   "emulators": {

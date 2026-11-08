@@ -38,8 +38,13 @@ button[hidden] { display: none; }
 .logo { width: 36px; height: 36px; border-radius: 10px; background: linear-gradient(135deg, var(--accento), var(--accento-2)); display: grid; place-items: center; color: #fff; flex: none; }
 .marchio { display: flex; align-items: center; gap: 12px; text-decoration: none; color: inherit; }
 .marchio b { font-size: 17px; font-weight: 700; letter-spacing: -.01em; }
-input[type=text], input[type=url], input[type=date], input[type=number], textarea, select {
+input[type=text], input[type=url], input[type=date], input[type=number], input[type=email], textarea, select {
   font: 500 13px Inter, system-ui, sans-serif; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--bordo); background: var(--card); color: var(--testo); max-width: 100%; }
 textarea { width: 100%; resize: vertical; }
 .tenue { color: var(--tenue); }
 .ok { color: var(--ok); } .err { color: var(--errore); }
+
+/* selettore di lingua IT / EN (comune/i18n.js) */
+.lingua { display: inline-flex; background: var(--card-2); border: 1px solid var(--bordo); border-radius: 8px; padding: 2px; }
+.lingua button { border: 0; background: transparent; padding: 5px 9px; font-size: 12px; border-radius: 6px; color: var(--tenue); }
+.lingua button[aria-pressed="true"] { background: var(--accento-tenue); color: var(--testo); }

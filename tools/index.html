@@ -11,6 +11,10 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 <link rel="stylesheet" href="annotazione.css?v=2">
+<script>
+  // Sul sito Firebase (swimtimer-pzero.web.app/strumenti/) si attivano «Carica online» e l'aggiornamento automatico; su GitHub Pages o in locale no.
+  window.SWT_ONLINE = /^swimtimer-pzero\.(web\.app|firebaseapp\.com)$/.test(location.hostname);
+</script>
 <style>
   :root {
     --bg: #f2f4f7; --card: #ffffff; --card-2: #f7f9fb; --testo: #0f1720; --tenue: #5d6b7a; --debole: #8794a2;
@@ -1710,5 +1714,13 @@ requestAnimationFrame(ciclo);
 <script src="swr.js"></script>
 <script src="registrazione.js?v=3"></script>
 <script src="annotazione.js?v=2"></script>
+<script>
+  if (window.SWT_ONLINE) {
+    window.SWT_LINGUA_FISSA = 'it';                    // la pagina Strumenti resta in italiano
+    const nuovo = (src, fine) => { const e = document.createElement('script'); e.src = src; if (fine) e.onload = fine; document.head.appendChild(e); };
+    nuovo('/comune/versione.js');
+    nuovo('/comune/i18n.js', () => import('/comune/online-strumenti.js').catch(e => console.error(e)));
+  }
+</script>
 </body>
 </html>

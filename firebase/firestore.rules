@@ -162,5 +162,30 @@ service cloud.firestore {
 
       allow delete: if isApproved() && (isAdmin() || resource.data.autore.uid == request.auth.uid);
     }
+
+    // ------------------------------------------------------------ contatti (modulo della pagina pubblica)
+    // Senza Cloud Functions non si inviano email: i messaggi si salvano qui. Chiunque (anche senza accesso) puo' CREARE un messaggio
+    // con campi e lunghezze rigidi; leggere, segnare come letto ed eliminare e' solo dell'amministratore.
+    function emailValida(e) {
+      return e is string && e.size() >= 6 && e.size() <= 200
+        && e.matches('^[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+([.][A-Za-z0-9-]+)*[.][A-Za-z]{2,}$');
+    }
+    match /contatti/{cid} {
+      allow create: if request.resource.data.keys().hasOnly(['nome', 'email', 'messaggio', 'lingua', 'ua', 'creato', 'letto'])
+        && request.resource.data.keys().hasAll(['email', 'messaggio', 'lingua', 'creato', 'letto'])
+        && (!('nome' in request.resource.data) || (request.resource.data.nome is string && request.resource.data.nome.size() <= 100))
+        && emailValida(request.resource.data.email)
+        && stringa(request.resource.data.messaggio, 2000)
+        && request.resource.data.lingua in ['it', 'en']
+        && (!('ua' in request.resource.data) || (request.resource.data.ua is string && request.resource.data.ua.size() <= 200))
+        && request.resource.data.creato == request.time
+        && request.resource.data.letto == false;
+
+      allow read: if isAdmin();
+      allow update: if isAdmin()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['letto'])
+        && request.resource.data.letto is bool;
+      allow delete: if isAdmin();
+    }
   }
 }

@@ -4,6 +4,7 @@
  * azzera le memorie di sessione del sito (swt.*) e ricarica la pagina, così nessuno resta con file vecchi.
  * Non ricarica se c'è un salvataggio in sospeso (window.swtModificheInSospeso() === true): avvisa soltanto. */
 (function () {
+  const tt = (k, it) => (window.t ? window.t(k) : it);
   let caricata = null, avvisato = false;
   async function leggi() {
     try { const r = await fetch('/versione.json', { cache: 'no-store' }); if (!r.ok) return null; return (await r.json()).versione || null; }
@@ -26,10 +27,10 @@
     if (v === caricata) return;
     for (let i = sessionStorage.length - 1; i >= 0; i--) { const k = sessionStorage.key(i); if (k && k.startsWith('swt.')) sessionStorage.removeItem(k); }
     if (typeof window.swtModificheInSospeso === 'function' && window.swtModificheInSospeso()) {
-      if (!avvisato) { avvisato = true; avviso('Nuova versione del sito: salva il lavoro e tocca qui per aggiornare'); }
+      if (!avvisato) { avvisato = true; avviso(tt('v.salva', 'Nuova versione del sito: salva il lavoro e tocca qui per aggiornare')); }
       return;
     }
-    avviso('Nuova versione del sito: aggiornamento…');
+    avviso(tt('v.aggiorno', 'Nuova versione del sito: aggiornamento…'));
     setTimeout(() => location.reload(), 600);
   }
   controlla();

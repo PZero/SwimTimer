@@ -20,3 +20,19 @@ Tutti i timestamp sono `request.time` lato server. Gli autori sono `{ uid, nome 
 | `annotazioni/{id}` | `sessioneId`, `videoId`, `autore{uid,nome}`, `eventi[{tipo,t_video_s,nota}]` (<= 6000), `offset_s` (numero o null), `sync{video_s,dati_s}` (o null), `anticipo_ms` (0..2000), `segmento?` (intero), `nota?`, `creato`, `aggiornato` |
 
 Permessi: leggono solo gli `approvato` (e l'amministratore); modifica/eliminazione solo di chi ha creato (annotazioni: solo l'autore modifica; l'amministratore puo' eliminare tutto). Eliminando una sessione il client elimina prima chunk, annotazioni e video collegati (le regole non fanno cascata).
+
+### `contatti/{id}` (modulo «Contatti» della pagina pubblica)
+Senza Cloud Functions non si inviano email: il messaggio si salva qui. **create** consentita anche senza accesso, con validazione stretta nelle regole; **read/update/delete solo amministratore**.
+| Campo | Tipo | Note |
+|---|---|---|
+| `nome` | string, facoltativo | max 100 |
+| `email` | string | obbligatoria, 6-200 caratteri, regex `^[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+([.][A-Za-z0-9-]+)*[.][A-Za-z]{2,}$` (email di ricontatto) |
+| `messaggio` | string | obbligatorio, 1-2000 |
+| `lingua` | string | `it` o `en` (lingua del sito al momento dell'invio) |
+| `ua` | string, facoltativo | user agent troncato a 200 |
+| `creato` | timestamp | `== request.time` |
+| `letto` | bool | alla creazione deve essere `false`; l'amministratore lo aggiorna (unico campo modificabile) |
+Nessun altro campo ammesso. Anti-spam lato client: campo honeypot, pausa di 60 s tra due invii (localStorage `swt.contatto.ultimo`). Il badge dei non letti nella barra admin usa una query di conteggio (`letto == false`).
+
+### Caricamento dalla pagina Strumenti
+`/strumenti/` (copia di `tools/index.html` fatta dal predeploy `firebase/prepara-strumenti.mjs`) crea `sessioni/{id}` + `chunk` con lo stesso codice dell'area (`app/comune/sessioni.js`): stessi campi, stesse regole, controllo del duplicato per `sha256` con una query. Il link restituito è `/area/#sessioni/{id}`.

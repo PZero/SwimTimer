@@ -1,5 +1,7 @@
 # Video di presentazione di SwimTimer
 
+**Pubblicati su YouTube** — aggiornamento novembre 2026 (v2): italiano https://youtu.be/_Htx2DawnF8 · inglese https://youtu.be/JLs5JJG4JG8. Prima presentazione (v0.5): italiano https://youtu.be/_2UzpOqblVI · inglese https://youtu.be/EVrdSybpnE4.
+
 Video da 120 s (1920x1080, 30 fps, H.264 + AAC 192 kbps 48 kHz) con musica originale.
 
 ## Come si rigenera
@@ -56,3 +58,82 @@ Code and documents: GitHub repository PZero/SwimTimer.
 **Tags:** SwimTimer, swimming, lap timer, BLE tag, nRF52840, electronics, DIY project, swimming pool, wearable
 
 *Original music generated for this video.*
+
+---
+
+# Video «A che punto siamo» (v2, novembre 2026)
+
+120 s esatti, 1920x1080, 30 fps, H.264 (yuv420p, BT.709) + AAC 192 kbps 48 kHz, in due versioni con gli stessi tagli e la stessa musica:
+`SwimTimer_avanzamento_it.mp4` e `SwimTimer_avanzamento_en.mp4`; miniature YouTube `miniatura_avanzamento_it.png` / `_en.png` (1280x720).
+Nessun voice-over: solo testi a schermo (tipografia cinetica, Bahnschrift + Consolas per le formule) e musica originale.
+
+## Come si rigenera
+```
+python media/video/genera_video_v2.py --clip-dir CARTELLA_VIDEO                         # musica + miniatura + video IT
+python media/video/genera_video_v2.py --lingua en --no-musica --clip-dir CARTELLA_VIDEO  # versione EN (stessa musica)
+python media/video/genera_video_v2.py --anteprima 5 30 50 --dir CARTELLA --clip-dir CARTELLA_VIDEO   # fotogrammi PNG
+python media/video/genera_video_v2.py --solo-musica                                     # solo musica_v2.wav
+python media/video/musica_v2.py percorso.wav                                            # colonna sonora da sola
+```
+`CARTELLA_VIDEO` contiene i 5 video originali dell'autore (WhatsApp, elencati in `CLIP` dentro lo script; predefinita
+`~/Downloads/VideoTMP`). Non stanno nel repository: lo script ne estrae spezzoni di 6 s **senza audio** (`-an`), con
+stabilizzazione leggera (`deshake`) sui verticali e un color grading comune, in una cache temporanea fuori dal repo
+(variabile `SWIMTIMER_CLIP_CACHE` per cambiarla). Servono Python 3.11 con numpy e Pillow, ffmpeg nel PATH, i font Bahnschrift e Consolas di Windows.
+
+## Materiale
+- `img_v2/`: schermate fatte apposta, **solo dati inventati**: pagina Strumenti (Dal vivo in Demo, Registrazione, Firmware,
+  Annotazione con un `.swr` sintetico generato con `firmware/xiao-stream/swr.py` e un video sintetico), display a bordo vasca
+  (`tools/display.html?demo`), landing pubblica IT/EN (riquadro del video YouTube sfocato) e area riservata ricreata in locale con
+  Firebase simulato (utenti `marco@example.com` ecc.). Nessuna email o foto reale.
+- Render della scheda v0.6 (`hardware/nrf52840/kicad/jlc/v0.6_swimtag_v06/`).
+- I grafici dei filtri sono calcolati con numpy su segnali inventati (fusione complementare, passa-basso, varianza mobile, autocorrelazione).
+- Lo spezzone «cuffia» mostra il volto dell'autore (scelta dell'autore).
+
+## Scene (tagli sui battiti, 120 BPM)
+0 apertura · 6 la sfida · 12 il tag XIAO · 20 firmware OTA + scheda v0.6 · 26 testa 3D dal vivo · 32 analisi dal vivo ·
+38 metodo dei test (sync con 5 tocchi) · 44 annotazione → dataset di verità (build-up) · **48 drop: filtri** (fusione, pulizia,
+fermo/nuoto, cadenza e confidenza) · 72 piattaforma online · 78 accesso con approvazione · 84 collaborazione (SHA-256, autori) ·
+90 display a bordo vasca · 96 prototipi (mockup e display rotondo) · 102 roadmap · 110 chiusura (sito, email, GitHub).
+
+## Musica (`musica_v2.py`)
+Originale, sintetizzata con numpy (riusa gli strumenti di `musica.py` e aggiunge un lead «saw» additivo e un sub-basso):
+re minore, 120 BPM, progressione Dm9 - Bbmaj9 - Gm7/D - A7sus4; intro, groove, build-up 44-48 s con rullo e riser,
+drop a 48 s sulla sezione filtri, pausa a 102 s, finale a 110 s e stacco netto a 118 s. Circa -16 LUFS, picchi sotto -1 dBFS.
+
+## YouTube - italiano
+**Titolo:** SwimTimer: a che punto siamo - tag, dati grezzi, filtri e piattaforma (novembre 2026)
+
+**Descrizione:**
+SwimTimer è un progetto aperto per prendere i tempi in vasca senza fermarsi e senza premere pulsanti:
+un piccolo tag sotto la cuffia riconosce partenze, virate e arrivi, e un display a bordo vasca mostra i tempi.
+In questo aggiornamento:
+- il tag di prova XIAO nRF52840 Sense: IMU a 6 assi a 208 Hz, registrazione grezza su flash da 2 MB con compressione delta e CRC per pagina, Bluetooth spento in acqua, aggiornamento del firmware via Bluetooth (OTA);
+- la scheda su misura v0.6 in arrivo;
+- la testa 3D che segue i movimenti dal vivo e la pagina di analisi;
+- il metodo dei test: video e dati grezzi sincronizzati con 5 tocchi, annotazione manuale di partenze, virate e arrivi per un dataset di verità;
+- i filtri: fusione sensoriale (complementare / Madgwick), passa-basso e stima del bias del giroscopio, segmentazione fermo/nuoto con varianza mobile e soglie adattive, firma della virata, cadenza con autocorrelazione, punteggio di confidenza;
+- la piattaforma online: sito pubblico IT/EN, accesso con Google solo dopo l'approvazione dell'amministratore, sessioni condivise, video verificati con impronta SHA-256, annotazioni con autore;
+- il display a bordo vasca (mockup con dati inventati) e i prossimi passi: prima campagna di test in vasca da 50 m.
+Sito: https://swimtimer-pzero.web.app · Contatti: SmartSwimTimer@gmail.com · Codice: GitHub PZero/SwimTimer
+Musica originale generata per questo video. Le registrazioni, i nuotatori e i tempi mostrati sono inventati.
+
+**Tag:** SwimTimer, nuoto, cronometro, piscina, tag BLE, nRF52840, XIAO, IMU, sensor fusion, filtro di Madgwick, elaborazione dei segnali, Firebase, progetto open source, wearable
+
+## YouTube - English
+**Title:** SwimTimer progress update - tag, raw data, filters and platform (November 2026)
+
+**Description:**
+SwimTimer is an open project to time your swim without stopping and without pressing buttons:
+a small tag under the swim cap detects starts, turns and finishes, and a poolside display shows your times.
+In this update:
+- the XIAO nRF52840 Sense test tag: 6-axis IMU at 208 Hz, raw recording to 2 MB flash with delta compression and per-page CRC, Bluetooth off in the water, firmware updates over Bluetooth (OTA);
+- the custom v0.6 board on the way;
+- the live 3D head that follows your movements and the analysis page;
+- the test method: video and raw data synchronised with 5 taps, hand annotation of starts, turns and finishes to build a ground-truth dataset;
+- the filters: sensor fusion (complementary / Madgwick), low-pass filtering and gyro bias estimation, rest/swim segmentation with moving variance and adaptive thresholds, turn signature, stroke cadence via autocorrelation, confidence scores;
+- the online platform: public IT/EN site, Google sign-in only after admin approval, shared sessions, videos verified by SHA-256 fingerprint, annotations with author;
+- the poolside display (mockup with made-up data) and next steps: the first test campaign in a 50 m pool.
+Site: https://swimtimer-pzero.web.app · Contact: SmartSwimTimer@gmail.com · Code: GitHub PZero/SwimTimer
+Original music generated for this video. Recordings, swimmers and times shown are made up.
+
+**Tags:** SwimTimer, swimming, lap timer, swimming pool, BLE tag, nRF52840, XIAO, IMU, sensor fusion, Madgwick filter, signal processing, Firebase, open source project, wearable

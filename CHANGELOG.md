@@ -1,5 +1,15 @@
 # Changelog
 
+## 2026-11-08 (bilingual site, contacts, online tools, progress video)
+- **Bilingual site (IT/EN):** language selector on the landing page and the members' area; the choice is kept in the browser (`app/comune/i18n.js`).
+- **Contact form:** public form on the landing page with the project address SmartSwimTimer@gmail.com; messages are stored in Firestore (`contatti`), created by anyone with validated fields, readable only by the administrator. Anti-spam: hidden field and 60-second pause. New "Messages" page in the administrator's area with an unread counter.
+- **Poolside display section:** screenshot (`app/img/display_demo.png`, `media/display/`) and live demo at `/display/?demo&vel=10`; `tools/display.html` accepts the `?demo&vel=` parameters.
+- **Tools page on Firebase at `/strumenti/`:** copied at deploy by `firebase/prepara-strumenti.mjs` (generated folders ignored by git). New **Upload online** button sends a `.swr` file to the shared archive of approved members (`app/comune/sessioni.js`, `online-strumenti.js`); on the GitHub Pages copy the button points to the Firebase site.
+- **Videos:** shared through a Google Drive folder with the approved members; no video files on Firebase.
+- **Progress update video (2 minutes, original generated music):** YouTube IT https://youtu.be/_Htx2DawnF8, EN https://youtu.be/JLs5JJG4JG8; shown first in the landing page above the first presentation (IT https://youtu.be/_2UzpOqblVI, EN https://youtu.be/EVrdSybpnE4). Sources in `media/video/` (`genera_video_v2.py`, `musica_v2.py`, `testi_v2_en.py`, `img_v2/`, thumbnails); the `.mp4` files are not in the repository.
+- **Firestore rules:** 17 emulator tests, including contact messages.
+- **README:** new progress video at the top, online app section (IT/EN, contacts, display, `/strumenti/`, Drive folder), folder tree, status, roadmap and privacy notes updated.
+
 ## 2026-11-08 (firmware 0.5.4)
 - **Firmware XIAO 0.5.4:** charge current raised to 100 mA (P0.13 driven low, kept in System OFF); the test board, powered from the cell through a diode because of its dead 3.3 V regulator, stayed at 3.57 V while charging at 50 mA. Flashed over BLE from the PC with the same OTA protocol as the page.
 

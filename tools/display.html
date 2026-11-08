@@ -598,6 +598,8 @@ function aggiornaBottoneDemo() {
   btnDemo.classList.toggle('in-corso', demo.attiva);
 }
 btnDemo.addEventListener('click', () => { demo.attiva ? demo.ferma() : demo.avvia(); aggiornaBottoneDemo(); });
+{ const q = new URLSearchParams(location.search);   // display.html?demo[&vel=30]: demo avviata subito (screenshot per la landing)
+  if (q.has('demo')) addEventListener('load', () => { demo.avvia(); aggiornaBottoneDemo(); const v = document.querySelector('button[data-vel="' + (q.get('vel') || '1') + '"]'); if (v) v.click(); }); }
 document.getElementById('btnAzzera').addEventListener('click', () => { demo.azzera(); aggiornaBottoneDemo(); });
 document.querySelectorAll('button[data-vel]').forEach(b => b.addEventListener('click', () => {
   demo.vel = Number(b.dataset.vel);

@@ -185,3 +185,54 @@ test('collezioni non previste: nessun accesso', async () => {
   await assertFails(setDoc(doc(ctx('ana'), 'altro', 'x'), { a: 1 }));
   await assertFails(getDoc(doc(ctx(ADMIN), 'altro', 'x')));
 });
+
+// ---------------------------------------------------------------- contatti (modulo pubblico, senza accesso)
+const nuovoContatto = (extra = {}) => ({ nome: 'Mario Prova', email: 'mario.prova@esempio.test', messaggio: 'Messaggio di prova inventato.', lingua: 'it', ua: 'Mozilla/5.0 (prova)', creato: serverTimestamp(), letto: false, ...extra });
+
+test('contatti: l\'anonimo crea un messaggio valido (anche senza nome e senza ua)', async () => {
+  const d = anon();
+  await assertSucceeds(setDoc(doc(d, 'contatti', 'c1'), nuovoContatto()));
+  const { nome, ua, ...minimo } = nuovoContatto({ lingua: 'en' });
+  await assertSucceeds(setDoc(doc(d, 'contatti', 'c2'), minimo));
+  await assertSucceeds(setDoc(doc(ctx('ana'), 'contatti', 'c3'), nuovoContatto()));               // anche un utente connesso
+});
+
+test('contatti: campi extra, email non valida, testi troppo lunghi o vuoti, creato/letto falsati vengono rifiutati', async () => {
+  const d = anon();
+  const r = (id, extra) => setDoc(doc(d, 'contatti', id), nuovoContatto(extra));
+  await assertFails(r('x1', { extra: 'no' }));
+  await assertFails(r('x2', { email: 'non-una-email' }));
+  await assertFails(r('x3', { email: 'a@b' }));
+  await assertFails(r('x4', { email: 'con spazio@esempio.test' }));
+  await assertFails(r('x5', { email: 'a'.repeat(200) + '@esempio.test' }));
+  await assertFails(r('x6', { messaggio: 'x'.repeat(2001) }));
+  await assertSucceeds(r('x6ok', { messaggio: 'x'.repeat(2000) }));
+  await assertFails(r('x7', { messaggio: '' }));
+  await assertFails(r('x8', { nome: 'n'.repeat(101) }));
+  await assertFails(r('x9', { lingua: 'fr' }));
+  await assertFails(r('x10', { ua: 'u'.repeat(201) }));
+  await assertFails(r('x11', { creato: new Date(0) }));
+  await assertFails(r('x12', { letto: true }));
+  await assertFails(r('x13', { messaggio: 42 }));
+  const { email, ...senzaEmail } = nuovoContatto();
+  await assertFails(setDoc(doc(d, 'contatti', 'x14'), senzaEmail));
+  const { messaggio, ...senzaMsg } = nuovoContatto();
+  await assertFails(setDoc(doc(d, 'contatti', 'x15'), senzaMsg));
+});
+
+test('contatti: anonimo e utente approvato non leggono, non modificano, non eliminano; l\'admin si', async () => {
+  await env.withSecurityRulesDisabled(async c => { await setDoc(doc(c.firestore(), 'contatti', 'c9'), { ...nuovoContatto(), creato: new Date() }); });
+  for (const d of [anon(), ctx('ana'), ctx('carla')]) {
+    await assertFails(getDoc(doc(d, 'contatti', 'c9')));
+    await assertFails(getDocs(collection(d, 'contatti')));
+    await assertFails(updateDoc(doc(d, 'contatti', 'c9'), { letto: true }));
+    await assertFails(deleteDoc(doc(d, 'contatti', 'c9')));
+  }
+  const a = ctx(ADMIN);
+  await assertSucceeds(getDoc(doc(a, 'contatti', 'c9')));
+  await assertSucceeds(getDocs(collection(a, 'contatti')));
+  await assertSucceeds(updateDoc(doc(a, 'contatti', 'c9'), { letto: true }));
+  await assertFails(updateDoc(doc(a, 'contatti', 'c9'), { messaggio: 'riscritto' }));            // l'admin cambia solo «letto»
+  await assertFails(updateDoc(doc(a, 'contatti', 'c9'), { letto: 'si' }));
+  await assertSucceeds(deleteDoc(doc(a, 'contatti', 'c9')));
+});
