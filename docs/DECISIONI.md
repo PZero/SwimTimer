@@ -126,3 +126,4 @@
 | 2026-11-08 | Il controllo «sono admin» in sessione ricorda solo il sì, mai il no | Un no memorizzato bloccava l'admin dopo l'aggiornamento delle regole |
 | 2026-11-08 | Video di annotazione: camera ferma al muro, esercizi corti per virate/partenze/arrivi (giorni 1–3), allenamento vero solo per verifica (giorno 4); X360 al muro solo sott'acqua e lato corsia | Gli eventi rari sono il cuore del progetto; i giri in acqua servono come falsi positivi |
 | 2026-11-08 | Firmware 0.5.4: corrente di carica 100 mA (P0.13 uscita bassa) invece di 50 mA | Con il regolatore guasto la scheda si alimenta sempre dalla cella e a 50 mA la tensione restava ferma a 3,57 V |
+| 2026-11-08 | Per le prove la tag usa una cella da 1000 mAh (non 100); la pagina stima la carica con 1000 mAh e 100 mA | Con 100 mA una cella da 1000 mAh sale di pochi mV in minuti: la tensione ferma non è un guasto |

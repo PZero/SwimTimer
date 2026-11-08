@@ -2,6 +2,8 @@
 
 Firmware di prova: annuncia "SwimTag", invia l'IMU alla tab XIAO di `tools/index.html`, manda un log, si sospende (comando, fermo prolungato) e si risveglia con 4 tocchi o con l'USB, e si aggiorna via Bluetooth dalla finestra «Firmware del tag».
 
+**0.5.4** (2026-11-08): corrente di carica 100 mA (P0.13 basso, resta in System OFF). Per le prove si usa una cella da 1000 mAh: da vuota servono ~10-12 h.
+
 ## Compilazione e caricamento via USB
 Core `Seeeduino:nrf52` 1.1.13 (non mbed, con Bluefruit), FQBN `Seeeduino:nrf52:xiaonRF52840Sense`.
 Indice schede: `https://files.seeedstudio.com/arduino/package_seeeduino_boards_index.json`.
