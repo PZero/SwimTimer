@@ -1,12 +1,13 @@
 /* SwimTimer - scheda «Registrazione»: scarico via USB (Web Serial) della memoria della XIAO e apertura di file .swr.
- * Protocollo seriale (firmware 0.5.0, vedi firmware/xiao-stream/scarica.py): MEM -> "K mem <usate> <totali>";
+ * La porta seriale è quella unica della pagina (window.UsbXiao, definita in index.html con il filtro USB della XIAO): qui non si apre
+ * nessuna porta. Protocollo seriale (firmware 0.5.0, vedi firmware/xiao-stream/scarica.py): MEM -> "K mem <usate> <totali>";
  * DUMP -> "SWR1 <pagine>\n", pagine da 256 byte, "\nEND <pagine>\n"; ERASE -> "K erase ok" (5-15 s).
  * Espone window.SwimDati (il .swr corrente, condiviso con la scheda Annotazione). I dati restano nel browser. */
 (function () {
   'use strict';
-  const SWR = window.SWR;
+  const SWR = window.SWR, UsbXiao = window.UsbXiao;
   const radice = document.getElementById('vistaSwr');
-  if (!radice || !SWR) return;
+  if (!radice || !SWR || !UsbXiao) return;
   const sleep = ms => new Promise(r => setTimeout(r, ms));
   const pad = n => String(n).padStart(2, '0');
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -89,21 +90,10 @@
 
   // ---------------------------------------------------------------- porta seriale
   class Seriale {
-    constructor() { this.buf = new Uint8Array(1 << 16); this.len = 0; this.attesa = null; this.chiusa = true; this.suChiusura = null; }
-    async apri() {
-      this.port = await navigator.serial.requestPort();
-      await this.port.open({ baudRate: 115200, bufferSize: 1 << 16 });
-      try { await this.port.setSignals({ dataTerminalReady: true, requestToSend: true }); } catch (e) { /* la tag rileva la porta aperta */ }
-      this.chiusa = false; this.len = 0;
-      this.scrittore = this.port.writable.getWriter();
-      this.ciclo = this._leggi();
-    }
-    async _leggi() {
-      const r = this.lettore = this.port.readable.getReader();
-      try { for (;;) { const { value, done } = await r.read(); if (done) break; if (value) this._push(value); } } catch (e) { this.errore = e; }
-      finally { try { r.releaseLock(); } catch (e) { /* gia' rilasciato */ } this.chiusa = true; this._sveglia(); if (this.suChiusura) this.suChiusura(); }
-    }
+    constructor() { this.buf = new Uint8Array(1 << 16); this.len = 0; this.attesa = null; this.attivo = false; UsbXiao.suDati(v => this._push(v)); }
+    get chiusa() { return !UsbXiao.aperta; }
     _push(v) {
+      if (!this.attivo) return;                 // fuori dalle operazioni il flusso (log, acc/gyro) lo gestisce index.html
       if (this.len + v.length > this.buf.length) { const n = new Uint8Array(Math.max(this.buf.length * 2, this.len + v.length)); n.set(this.buf.subarray(0, this.len)); this.buf = n; }
       this.buf.set(v, this.len); this.len += v.length; this._sveglia();
     }
@@ -111,7 +101,12 @@
     _aspetta(ms) { return new Promise(ok => { const t = setTimeout(() => { this.attesa = null; ok(); }, ms); this.attesa = () => { clearTimeout(t); ok(); }; }); }
     svuota() { this.len = 0; }
     consuma(n) { const out = this.buf.slice(0, n); this.buf.copyWithin(0, n, this.len); this.len -= n; return out; }
-    async scrivi(testo) { await this.scrittore.write(new TextEncoder().encode(testo)); }
+    async scrivi(testo) { await UsbXiao.scrivi(testo); }
+    /** Occupa la porta: il testo non viene più interpretato da index.html e i byte arrivano qui. */
+    async sessione(fn) {
+      UsbXiao.esclusivo = true; this.attivo = true; this.len = 0;
+      try { return await fn(); } finally { this.attivo = false; UsbXiao.esclusivo = false; this.len = 0; }
+    }
     /** Una riga di testo (senza \n) o null allo scadere del tempo. */
     async riga(timeout) {
       const fine = Date.now() + timeout;
@@ -163,29 +158,20 @@
       this.fineOk = fineOk;
       return dati;
     }
-    async chiudi() {
-      try { this.scrittore.releaseLock(); } catch (e) { /* ok */ }
-      try { await this.lettore.cancel(); } catch (e) { /* ok */ }
-      try { await this.ciclo; } catch (e) { /* ok */ }
-      try { await this.port.close(); } catch (e) { /* ok */ }
-      this.chiusa = true;
-    }
   }
 
   // ---------------------------------------------------------------- interfaccia
   radice.innerHTML = `
   <section class="scheda s12 swr-scheda">
-    <header><h2>Tag via USB <small>Chrome o Edge · Web Serial · 115200</small></h2></header>
+    <header><h2>Memoria del tag <small>via USB · la porta si collega dal pannello in alto</small></h2></header>
     <div class="swr-riga">
-      <button id="rgCollega" class="primario">Collega USB</button>
-      <button id="rgScollega" disabled>Scollega</button>
       <button id="rgMem" disabled>MEM</button>
       <button id="rgScarica" class="primario" disabled>Scarica</button>
       <button id="rgAzzera" disabled>Azzera</button>
       <span class="pillola" id="rgPillola"><span class="punto"></span><span id="rgStatoPorta">Non collegato</span></span>
     </div>
     <div class="avanzamento" id="rgAvanz" hidden><div class="barra"><div id="rgBarra"></div></div><span id="rgAvanzTesto" class="mono"></span></div>
-    <p class="swr-stato" id="rgStato" aria-live="polite">Collega la XIAO via USB in modalità normale (non in registrazione), poi premi «Collega USB».</p>
+    <p class="swr-stato" id="rgStato" aria-live="polite">Collega la XIAO con il pulsante «USB» in alto (modalità normale, non in registrazione): la memoria si legge da sola.</p>
     <div class="swr-mem" id="rgMemInfo"></div>
     <p class="ann-nota">I dati restano nel browser: nessun file viene inviato a server. Le registrazioni sono dati di salute: non metterle nel repository.</p>
   </section>
@@ -201,8 +187,6 @@
   function stato(testo, tipo) { const e = $('rgStato'); e.textContent = testo; e.className = 'swr-stato' + (tipo ? ' ' + tipo : ''); }
   function pulsanti() {
     const c = !porta.chiusa;
-    $('rgCollega').disabled = c || occupato || !('serial' in navigator);
-    $('rgScollega').disabled = !c || occupato;
     for (const id of ['rgMem', 'rgScarica', 'rgAzzera']) $(id).disabled = !c || occupato;
     $('rgPillola').className = 'pillola' + (c ? ' attivo' : '');
     $('rgStatoPorta').textContent = c ? 'USB collegata' : 'Non collegato';
@@ -215,7 +199,7 @@
   async function conOccupato(fn) {
     if (occupato) return;
     occupato = true; pulsanti();
-    try { await fn(); } catch (e) { if (!(e && e.name === 'AbortError')) stato('Errore: ' + (e && e.message || e), 'err'); else stato('Annullato.'); }
+    try { await porta.sessione(fn); } catch (e) { if (!(e && e.name === 'AbortError')) stato('Errore: ' + (e && e.message || e), 'err'); else stato('Annullato.'); }
     finally { occupato = false; $('rgAvanz').hidden = true; pulsanti(); }
   }
   async function leggiMem() {
@@ -232,14 +216,16 @@
     return { usate, tot };
   }
 
-  $('rgCollega').addEventListener('click', () => conOccupato(async () => {
-    if (!('serial' in navigator)) throw new Error('Web Serial non disponibile: usa Chrome o Edge su https o localhost.');
-    await porta.apri();
-    porta.suChiusura = () => { pulsanti(); if (!occupato) stato('Porta chiusa o tag scollegato.'); };
-    stato('Collegato. Premi MEM per vedere la memoria usata.');
-    await leggiMem().catch(e => stato('Collegato, ma MEM non risponde: ' + e.message + ' (la tag è in modalità normale con l\'USB?)', 'err'));
-  }));
-  $('rgScollega').addEventListener('click', () => conOccupato(async () => { await porta.chiudi(); stato('Scollegato.'); }));
+  // La porta la apre e la chiude il pannello di collegamento della pagina: qui si reagisce ai cambi di stato
+  UsbXiao.suStato(aperta => {
+    porta._sveglia(); pulsanti();
+    if (!aperta) { if (!occupato) { stato('USB scollegata.'); $('rgMemInfo').innerHTML = ''; } return; }
+    stato('USB collegata: leggo la memoria…');
+    conOccupato(async () => {
+      try { await leggiMem(); stato('USB collegata. Memoria letta.'); }
+      catch (e) { stato('Collegato, ma MEM non risponde: ' + e.message + ' (la tag è in modalità normale con l\'USB?)', 'err'); }
+    });
+  });
   $('rgMem').addEventListener('click', () => conOccupato(async () => { await leggiMem(); stato('Memoria letta.'); }));
   $('rgScarica').addEventListener('click', () => conOccupato(async () => {
     const nome = marcaTempo() + '.swr';
@@ -274,8 +260,7 @@
   }));
   $('rgApri').addEventListener('click', () => SwimDati.apriDialogo());
   $('rgVaiAnn').addEventListener('click', () => { if (typeof window.mostraVista === 'function') window.mostraVista('ann'); });
-  if ('serial' in navigator) navigator.serial.addEventListener('disconnect', () => { pulsanti(); });
-  else stato('Web Serial non è disponibile in questo browser: usa Chrome o Edge (https o localhost). Puoi comunque aprire un .swr dal disco.', 'err');
+  if (!('serial' in navigator)) stato('Web Serial non è disponibile in questo browser: usa Chrome o Edge (https o localhost). Puoi comunque aprire un .swr dal disco.', 'err');
   pulsanti();
 
   // ---------------------------------------------------------------- riassunto del file

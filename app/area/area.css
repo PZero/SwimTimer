@@ -1,0 +1,60 @@
+/* SwimTimer - area riservata */
+body { min-height: 100vh; }
+.testata { display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: center; justify-content: space-between; padding: 12px 20px; background: var(--card); border-bottom: 1px solid var(--bordo); position: sticky; top: 0; z-index: 5; }
+.testata nav { display: flex; gap: 6px; margin-right: auto; }
+.testata nav a { padding: 7px 12px; border-radius: 8px; text-decoration: none; color: var(--tenue); font-weight: 500; font-size: 13px; }
+.testata nav a:hover { color: var(--testo); background: var(--card-2); }
+.testata nav a.attivo { color: var(--testo); background: var(--accento-tenue); }
+.testata nav[hidden], .utente[hidden] { display: none; }
+.utente { display: flex; align-items: center; gap: 10px; font-size: 13px; }
+.utente img { border-radius: 50%; object-fit: cover; background: var(--griglia); }
+main { max-width: 1320px; margin: 0 auto; padding: 18px 16px 48px; }
+main [hidden] { display: none !important; }
+.centro { max-width: 560px; margin: 8vh auto 0; text-align: center; padding: 28px; }
+.centro h1 { margin: 0 0 8px; font-size: 22px; letter-spacing: -.01em; }
+.piccolo-t { font-size: 12.5px; }
+
+.barra-titolo { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.barra-titolo h1 { margin: 0; font-size: 20px; letter-spacing: -.01em; }
+.riga { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.pila { display: flex; flex-direction: column; gap: 14px; }
+.vuoto { padding: 28px; text-align: center; color: var(--tenue); }
+
+.sess-testa { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 10px; align-items: flex-start; }
+.sess-testa h3 { margin: 0 0 2px; font-size: 16px; }
+.meta { font-size: 12.5px; color: var(--tenue); }
+.meta b { color: var(--testo); font-weight: 600; }
+.nota-sess { margin: 8px 0 0; font-size: 13px; white-space: pre-wrap; }
+.sotto { margin: 14px 0 0; padding-left: 14px; border-left: 3px solid var(--bordo); display: flex; flex-direction: column; gap: 12px; }
+.video-riga { display: flex; flex-direction: column; gap: 6px; }
+.video-riga .titolo { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; }
+.video-riga .titolo b { font-size: 13.5px; }
+.annot { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; justify-content: space-between; padding: 7px 10px; background: var(--card-2); border: 1px solid var(--bordo); border-radius: 10px; font-size: 13px; }
+.annot.mia { border-color: color-mix(in srgb, var(--accento) 45%, var(--bordo)); }
+.annot .azioni { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { display: inline-block; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--bordo); font-size: 11.5px; color: var(--tenue); }
+.chip.ok { color: var(--ok); border-color: var(--ok); } .chip.att { color: var(--attenzione); border-color: var(--attenzione); } .chip.no { color: var(--errore); border-color: var(--errore); }
+
+table.utenti { width: 100%; border-collapse: collapse; font-size: 13px; }
+table.utenti th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--tenue); padding: 6px 8px; }
+table.utenti td { padding: 8px; border-top: 1px solid var(--bordo); vertical-align: middle; }
+table.utenti img { width: 26px; height: 26px; border-radius: 50%; vertical-align: middle; margin-right: 8px; }
+.tab-scroll { overflow-x: auto; }
+
+.editor-testa { margin-bottom: 14px; display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; justify-content: space-between; }
+.editor-testa h2 { margin: 0; font-size: 16px; }
+#vistaAnn { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 16px; }
+#vistaAnn[hidden] { display: none; }
+.s12 { grid-column: span 12; }
+#vistaAnn .scheda { padding: 14px 16px; }
+
+dialog { border: 1px solid var(--bordo); border-radius: 14px; background: var(--card); color: var(--testo); padding: 20px; width: min(560px, calc(100vw - 24px)); box-shadow: 0 20px 60px rgba(0,0,0,.35); }
+dialog::backdrop { background: rgba(5, 10, 16, .55); }
+dialog h3 { margin: 0 0 12px; }
+dialog label { display: flex; flex-direction: column; gap: 4px; font-size: 12.5px; color: var(--tenue); margin-bottom: 10px; }
+dialog label input, dialog label textarea { color: var(--testo); }
+dialog .azioni { display: flex; gap: 8px; justify-content: flex-end; margin-top: 14px; }
+dialog .barra { margin: 8px 0; }
+#toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); background: var(--testo); color: var(--bg); padding: 10px 16px; border-radius: 10px; font-size: 13px; opacity: 0; pointer-events: none; transition: opacity .25s; max-width: calc(100vw - 32px); z-index: 20; }
+#toast.on { opacity: 1; }
+@media (max-width: 640px) { main { padding: 12px 10px 40px; } .testata { padding: 10px 12px; } }

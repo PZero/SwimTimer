@@ -1,36 +1,31 @@
 # Stato del progetto
 
-**Ultimo aggiornamento:** 2026-11-07. Tutto è nel repository unico e pubblico `PZero/SwimTimer` (`main`). Fase: prototipo; si prepara la **prima prova in piscina con video** per annotare gli eventi a mano e sviluppare poi i filtri.
+**Ultimo aggiornamento:** 2026-11-08. Tutto è nel repository unico e pubblico `PZero/SwimTimer` (`main`). Fase: prototipo; pronta la **campagna di test 1** (video + raw, annotazione a mano) e la parte online collaborativa; i filtri verranno dopo.
 
 ## Fotografia
-- **Scheda v0.6 "Rev0"** (`hardware/nrf52840/kicad/swimtag_v06.*`): 4 strati, 21,59 × 28,5 mm, DRC/ERC 0; uscite in `nextpcb/v0.6/` e `jlc/v0.6_swimtag_v06/`. Preventivo NextPCB 20 pz 216,39 $ con coupon, in attesa di Viviane.
-- **XIAO nRF52840 Sense** (tag di prova, cella 100 mAh): ha il firmware `firmware/xiao-stream/` **0.5.0 caricata sulla tag; la 0.5.1 compila ma non è ancora caricata** (blu che si spegne a ogni tocco contato). Provati: risveglio, avvio della registrazione e lampo verde ogni 8 s.
-  - **Risveglio:** 2 tocchi, LED blu, 2 tocchi. Il bug dei 2 tocchi era il bootloader che azzera `RESETREAS`: ora marca in `GPREGRET2` prima di ogni System OFF.
-  - **Registra:** QSPI 2 MB, pagine da 256 B con CRC, delta int8, 208 Hz, acc ±16 g, gyro ±1000 dps, ~25 min con dati regolari; BLE spento; nuovi risvegli accodano un segmento. **Azzera:** 2 tocchi, blu, 6 tocchi, poi 2 di conferma. Nessuno stop a tocchi; quiete 180 s, memoria piena, batteria < 3,3 V.
-  - **Scarico:** solo USB (`DUMP`), dalla pagina (Web Serial) o con `scarica.py`; formato `.swr` (decodificatori `swr.py` e `tools/swr.js`, 11 test Python verdi).
-- **Pagina `tools/index.html`:** nuove schede **Registrazione** (USB, scarica, azzera, apri `.swr`) e **Annotazione** (grafici con zoom in alto, video sotto a 30 fps, sync con X sul 5° tocco, eventi B/R/V/F/P/A nel tempo del video, progetto JSON e CSV). La vecchia «Registrazioni» ora è «Reg. ESP32». Provata solo con dati simulati e con un MP4 H.264 1080p. **Corretto il 2026-11-07:** su schermo ampio il riquadro video aveva altezza 0 (CSS a schermata unica); CSS/JS ora versionati (`?v=2`) contro la cache e avviso se il video ha solo audio (HEVC).
-- **Display a bordo vasca** (da confermare): Raspberry Pi 4 + dongle nRF52840 + monitor 15,6" + power bank; mockup `tools/display.html`.
-- Riquadro Batteria, tab XIAO, OTA via BLE (0.4.x) funzionano; il DFU Nordic legacy non è raggiungibile dal browser.
-- **Scheda XIAO di prova guasta in parte:** regolatore 3,3 V morto, va con un diodo al silicio.
+- **Scheda v0.6 "Rev0"** (`hardware/nrf52840/kicad/`): 4 strati, DRC/ERC 0; uscite in `nextpcb/v0.6/` e `jlc/`. Preventivo NextPCB 216,39 $ per 20 pz, in attesa di Viviane (fino a mer 2026-11-11).
+- **Tag di prova XIAO nRF52840 Sense** (cella 100 mAh, regolatore 3,3 V guasto: va con un diodo): firmware `firmware/xiao-stream/` **0.5.3** sulla tag. Registra raw su QSPI 2 MB (208 Hz, ~25 min, `.swr`), risveglio 2 tocchi+blu+2 tocchi, azzera con 6 tocchi, scarico solo USB. Novità di oggi: con USB alimentata non va in sospensione; collegare l'USB durante la registrazione la chiude (motivo 4) e riavvia in modalità normale. `release/xiao.bin` pubblicato è ancora 0.4.2.
+- **Memoria della tag:** al momento 2204/8192 pagine usate (registrazione di prova a casa), già scaricata e annotata dall'utente (dati personali: restano fuori dal repo).
+- **Pagina locale `tools/index.html`** (solo XIAO, riordinata oggi): pannello unico USB/Bluetooth/Demo; schede Dal vivo, Registrazione, Annotazione, Firmware. Rimossi ESP32 e `assi.html`. Provata in browser con Demo e porte simulate, poi dall'utente con la tag vera (USB, scarico, annotazione con video).
+- **App online** (nuova, Firebase Spark, nessun Storage/Functions): https://swimtimer-pzero.web.app (landing pubblica) e `/area/` (login Google, approvazione utenti solo admin, sessioni raw su Firestore a chunk, video come link Drive con sha256, annotazioni con autore). Admin = UID in `firebase/firestore.rules`. Aggiornamento automatico della cache (`versione.json` a ogni deploy). Regole: 14 test emulatore verdi. Login e accesso admin provati dall'utente; **non provati dal vivo**: upload sessione, collegamento video, salvataggio annotazione online, duplica come mia, controllo sha256.
+- **Display a bordo vasca** (da confermare): Pi 4 + dongle nRF52840 + monitor 15,6" + power bank; mockup `tools/display.html`.
 
 ## Prossimi passi
-1. Collegare la tag all'USB e caricare la 0.5.1 via BLE (modalità normale); provare il lampo blu.
-2. **Prova a secco della 0.5.0:** registrare a casa (5 colpi, movimento, 3 min fermo), scaricare via USB, `node tools/parita_swr.mjs <file>` e controllare il CSV (az ≈ 1 g, 5 picchi, nessuna CRC errata).
-3. Provare a mano le schede: Web Serial con la tag, un MP4 vero a 30 fps (passo di un fotogramma, X, eventi), salvataggio e riapertura del progetto.
-4. Prima registrazione in piscina (5–10 min, tag sotto la cuffia, video H.264 a 30 fps), poi annotazione a mano di tutti gli eventi; **solo dopo** sviluppo e confronto dei filtri.
-5. Aspettare Viviane (NextPCB) fino a mercoledì 2026-11-11; poi decidere l'ordine. Display: confermare l'architettura Pi + dongle.
+1. Provare l'app online con dati veri: caricare una sessione `.swr`, collegare il video da Drive, annotare e salvare; correggere ciò che non va.
+2. **Campagna di test 1** (50 m, solo l'utente, ~800 m/giorno, 4 giorni, iPhone o Insta360 fermo al muro): esercizi per virate, partenze, arrivi (giorni 1–3), allenamento vero per verifica (giorno 4). Giorno 1 annotato a mano → bozza del filtro (solo web) → giorni successivi pre-classificati con confidenza.
+3. Adattare l'Annotazione al frame rate reale (60 fps se iPhone/camera lo permettono).
+4. Decidere NextPCB dopo mer 2026-11-11; confermare architettura display.
 
 ## Problemi aperti
-- **Annotazione a 25 fps:** il file di prova `file.mp4` è a 25 fps, ma la pagina assume 30 fps (±1f, numero fotogramma, «±1 fotogramma» di sync sbagliati; gli eventi in secondi restano giusti). Da rendere il frame rate configurabile o letto dal video.
-- 0.5.0/0.5.1: non verificati su hardware l'ordine FIFO gyro/acc, la cancellazione chip della flash (5–15 s), il QSPI senza SoftDevice, i consumi, la parità C++/Python del formato.
-- Durata reale della registrazione con dati veri (compressione); 180 s di quiete contano anche prima di entrare in acqua.
-- Nessun BLE/OTA durante la registrazione: aggiornare richiede l'USB. LED poco visibile sotto la cuffia.
-- Rischio V-cut sulla v0.6; livello CHG_N con D4 borderline; brevetti (verifica di libertà di operare).
-- Il BLE non attraversa l'acqua; custodia stagna da definire. Nessun test automatico oltre ai 11 del formato `.swr`.
+- Annotazione assume 30 fps (in `tools/` e in `app/area/`, due copie da tenere allineate).
+- Dopo il reset con USB la tag una volta non rispondeva finché non è stata riprogrammata; il 2026-11-08 era finita nel bootloader UF2 (cause ignote).
+- 0.5.x: da verificare su hardware FIFO gyro/acc, consumi, durata reale con dati veri; LED poco visibile sotto la cuffia; nessun BLE/OTA durante la registrazione.
+- Privacy: video e raw dei nuotatori sono dati di salute (consenso scritto, permesso della piscina, mai nel repo).
+- Rischio V-cut v0.6; livello CHG_N con D4 borderline; brevetti; BLE non attraversa l'acqua, custodia stagna da definire.
 
 ## Decisioni in attesa dell'utente
-- Data della prova a secco e della piscina; telefono e video H.264 30 fps; ordine NextPCB; scheda di scorta e multimetro; architettura display; test per l'Effort; Zephyr o Arduino. Vedi `docs/DOMANDE-APERTE.md` (33–44).
+- Frame rate del video e programma dei 4 giorni (domande 46–47); ordine NextPCB; scheda di scorta e multimetro; architettura display; test per l'Effort; Zephyr o Arduino. Vedi `docs/DOMANDE-APERTE.md`.
 
 ## Riferimenti
-- Firmware tag: `firmware/xiao-stream/LEGGIMI.md` (grammatica dei tocchi, LED, formato `.swr`). Scheda: `hardware/nrf52840/progetto.md`. Pagina: `tools/index.html`, definizioni degli eventi in `docs/DESIGN.md`.
+- Firmware: `firmware/xiao-stream/LEGGIMI.md`. Scheda: `hardware/nrf52840/progetto.md`. Pagina locale: `tools/index.html`. App online: `app/`, `firebase/`, `docs/MODELLO-DATI.md`, `docs/DESIGN.md` (sezione App online).
 - Video: https://youtu.be/EVrdSybpnE4 (en), https://youtu.be/_2UzpOqblVI (it).

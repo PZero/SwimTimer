@@ -53,3 +53,6 @@ media/video/tmp/
 eventi*.csv
 *.mp4
 *.mov
+
+# Generato a ogni deploy (firebase/scrivi-versione.mjs)
+app/versione.json

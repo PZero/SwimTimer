@@ -1,0 +1,166 @@
+rules_version = '2';
+
+// SwimTimer - regole Firestore (piano Spark, niente Cloud Functions).
+// Modello di fiducia: accesso su approvazione. Ogni utente crea il proprio users/{uid} con stato 'in_attesa';
+// solo l'amministratore (isAdmin) cambia lo stato. Gli utenti 'approvato' leggono tutto il materiale condiviso;
+// ognuno modifica/elimina solo cio' che ha creato (l'amministratore puo' eliminare tutto, non modificare le annotazioni altrui).
+// Contratto dei dati: docs/MODELLO-DATI.md e docs/DESIGN.md (sezione "App online").
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ------------------------------------------------------------ funzioni
+    // UID Firebase dell'amministratore: dopo il primo accesso dell'amministratore si copia da
+    // Console Firebase > Authentication > Utenti e si sostituisce il segnaposto, poi: firebase deploy --only firestore:rules
+    // Finche' resta il segnaposto nessuno e' amministratore (nessun UID reale lo uguaglia).
+    function isAdmin() {
+      return request.auth != null && request.auth.uid == 'qTYmrfoDy8SdQhcxFP0KqtzNDzZ2';
+    }
+    function signedIn() { return request.auth != null; }
+    function isApproved() {
+      return signedIn() && (isAdmin()
+        || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.stato == 'approvato');
+    }
+    function stringa(v, max) { return v is string && v.size() > 0 && v.size() <= max; }
+    function autoreValido(a) {
+      return a is map && a.keys().hasOnly(['uid', 'nome']) && a.uid == request.auth.uid && stringa(a.nome, 100);
+    }
+    function numeroONull(v) { return v == null || v is number; }
+
+    // ------------------------------------------------------------ utenti
+    match /users/{uid} {
+      allow get: if signedIn() && (request.auth.uid == uid || isAdmin());
+      allow list: if isAdmin();
+
+      // lo stato iniziale e' sempre 'in_attesa': nessuno si auto-approva
+      allow create: if signedIn() && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['nome', 'email', 'foto', 'stato', 'creato'])
+        && request.resource.data.keys().hasAll(['nome', 'email', 'stato', 'creato'])
+        && request.resource.data.stato == 'in_attesa'
+        && request.resource.data.creato == request.time
+        && stringa(request.resource.data.nome, 100)
+        && stringa(request.resource.data.email, 200)
+        && (!('foto' in request.resource.data) || stringa(request.resource.data.foto, 500));
+
+      allow update: if (signedIn() && request.auth.uid == uid
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['nome', 'email', 'foto'])
+          && stringa(request.resource.data.nome, 100)
+          && stringa(request.resource.data.email, 200)
+          && (!('foto' in request.resource.data) || stringa(request.resource.data.foto, 500)))
+        || (isAdmin()
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['stato', 'deciso', 'decisoDa'])
+          && request.resource.data.stato in ['in_attesa', 'approvato', 'rifiutato', 'revocato']);
+
+      allow delete: if isAdmin();
+    }
+
+    // ------------------------------------------------------------ sessioni (registrazione .swr a pezzi)
+    match /sessioni/{sid} {
+      allow read: if isApproved();
+
+      // si crea con completa == false; si imposta true dopo aver scritto tutti i chunk
+      allow create: if isApproved()
+        && request.resource.data.keys().hasOnly(['titolo', 'data', 'nota', 'caricatoDa', 'caricatoIl', 'sha256', 'byte', 'nChunk', 'completa'])
+        && request.resource.data.keys().hasAll(['titolo', 'data', 'caricatoDa', 'caricatoIl', 'sha256', 'byte', 'nChunk', 'completa'])
+        && autoreValido(request.resource.data.caricatoDa)
+        && request.resource.data.caricatoIl == request.time
+        && stringa(request.resource.data.titolo, 120)
+        && stringa(request.resource.data.data, 40)
+        && (!('nota' in request.resource.data) || (request.resource.data.nota is string && request.resource.data.nota.size() <= 1000))
+        && request.resource.data.sha256 is string && request.resource.data.sha256.size() == 64
+        && request.resource.data.byte is int && request.resource.data.byte > 0 && request.resource.data.byte <= 4194304
+        && request.resource.data.nChunk is int && request.resource.data.nChunk >= 1 && request.resource.data.nChunk <= 6
+        && request.resource.data.completa == false;
+
+      allow update: if isApproved()
+        && (resource.data.caricatoDa.uid == request.auth.uid || isAdmin())
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['titolo', 'data', 'nota', 'completa'])
+        && stringa(request.resource.data.titolo, 120)
+        && stringa(request.resource.data.data, 40)
+        && (!('nota' in request.resource.data) || (request.resource.data.nota is string && request.resource.data.nota.size() <= 1000))
+        && request.resource.data.completa is bool
+        && (resource.data.completa == false || request.resource.data.completa == true);
+
+      allow delete: if isApproved() && (isAdmin() || resource.data.caricatoDa.uid == request.auth.uid);
+
+      // chunk: pezzi di byte (<= 900000 per restare sotto 1 MiB per documento); immutabili, si cancellano e si riscrivono
+      match /chunk/{n} {
+        allow read: if isApproved();
+        allow create: if isApproved()
+          && get(/databases/$(database)/documents/sessioni/$(sid)).data.caricatoDa.uid == request.auth.uid
+          && get(/databases/$(database)/documents/sessioni/$(sid)).data.completa == false
+          && request.resource.data.keys().hasOnly(['n', 'data'])
+          && request.resource.data.n is int && request.resource.data.n >= 0 && request.resource.data.n < 6
+          && n == string(request.resource.data.n)
+          && request.resource.data.data is bytes
+          && request.resource.data.data.size() > 0 && request.resource.data.data.size() <= 900000;
+        allow delete: if isApproved()
+          && (isAdmin() || get(/databases/$(database)/documents/sessioni/$(sid)).data.caricatoDa.uid == request.auth.uid);
+      }
+    }
+
+    // ------------------------------------------------------------ video (solo riferimenti: i video stanno su Drive/YouTube)
+    function linkVideoValido(l) {
+      return l is string && l.size() <= 500
+        && l.matches('https://(drive[.]google[.]com|docs[.]google[.]com|youtu[.]be|www[.]youtube[.]com|youtube[.]com)/.*');
+    }
+    match /video/{vid} {
+      allow read: if isApproved();
+
+      allow create: if isApproved()
+        && request.resource.data.keys().hasOnly(['sessioneId', 'link', 'nome', 'sha256', 'byte', 'fps', 'durata_s', 'caricatoDa', 'caricatoIl'])
+        && request.resource.data.keys().hasAll(['sessioneId', 'link', 'nome', 'sha256', 'byte', 'fps', 'durata_s', 'caricatoDa', 'caricatoIl'])
+        && stringa(request.resource.data.sessioneId, 40)
+        && exists(/databases/$(database)/documents/sessioni/$(request.resource.data.sessioneId))
+        && linkVideoValido(request.resource.data.link)
+        && stringa(request.resource.data.nome, 200)
+        && request.resource.data.sha256 is string && request.resource.data.sha256.size() == 64
+        && request.resource.data.byte is int && request.resource.data.byte > 0
+        && request.resource.data.fps is number && request.resource.data.fps > 0 && request.resource.data.fps <= 240
+        && request.resource.data.durata_s is number && request.resource.data.durata_s > 0
+        && autoreValido(request.resource.data.caricatoDa)
+        && request.resource.data.caricatoIl == request.time;
+
+      allow update: if isApproved()
+        && (resource.data.caricatoDa.uid == request.auth.uid || isAdmin())
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['link', 'nome'])
+        && linkVideoValido(request.resource.data.link)
+        && stringa(request.resource.data.nome, 200);
+
+      allow delete: if isApproved() && (isAdmin() || resource.data.caricatoDa.uid == request.auth.uid);
+    }
+
+    // ------------------------------------------------------------ annotazioni
+    // Gli elementi di 'eventi' ({tipo, t_video_s, nota}) non sono validabili uno per uno nelle regole (niente cicli):
+    // si controllano tipo e dimensione della lista; il limite di 1 MiB per documento e la validazione del client fanno il resto.
+    function annotazioneValida(d) {
+      return d.eventi is list && d.eventi.size() <= 6000
+        && numeroONull(d.offset_s)
+        && (d.sync == null || d.sync is map)
+        && d.anticipo_ms is int && d.anticipo_ms >= 0 && d.anticipo_ms <= 2000
+        && (!('segmento' in d) || d.segmento == null || d.segmento is int)
+        && (!('nota' in d) || (d.nota is string && d.nota.size() <= 1000));
+    }
+    match /annotazioni/{aid} {
+      allow read: if isApproved();
+
+      allow create: if isApproved()
+        && request.resource.data.keys().hasOnly(['sessioneId', 'videoId', 'autore', 'eventi', 'offset_s', 'sync', 'anticipo_ms', 'segmento', 'nota', 'creato', 'aggiornato'])
+        && request.resource.data.keys().hasAll(['sessioneId', 'videoId', 'autore', 'eventi', 'offset_s', 'sync', 'anticipo_ms', 'creato', 'aggiornato'])
+        && stringa(request.resource.data.sessioneId, 40)
+        && stringa(request.resource.data.videoId, 40)
+        && autoreValido(request.resource.data.autore)
+        && request.resource.data.creato == request.time
+        && request.resource.data.aggiornato == request.time
+        && annotazioneValida(request.resource.data);
+
+      // solo l'autore modifica (anche l'amministratore no: puo' solo eliminare)
+      allow update: if isApproved()
+        && resource.data.autore.uid == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['eventi', 'offset_s', 'sync', 'anticipo_ms', 'segmento', 'nota', 'aggiornato'])
+        && request.resource.data.aggiornato == request.time
+        && annotazioneValida(request.resource.data);
+
+      allow delete: if isApproved() && (isAdmin() || resource.data.autore.uid == request.auth.uid);
+    }
+  }
+}

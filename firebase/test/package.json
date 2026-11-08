@@ -1,0 +1,13 @@
+{
+  "name": "swimtimer-test-regole",
+  "private": true,
+  "type": "module",
+  "description": "Test delle regole Firestore con l'emulatore (nessun dato reale). Esecuzione: npm test (dalla cartella firebase/test).",
+  "scripts": {
+    "test": "firebase emulators:exec --only firestore --project demo-swimtimer --config ../../firebase.json \"node --test regole.test.mjs\""
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "^4.0.1",
+    "firebase": "^11.10.0"
+  }
+}

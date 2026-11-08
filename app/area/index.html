@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>SwimTimer · Area riservata</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../comune/stile.css">
+<link rel="stylesheet" href="area.css">
+<link rel="stylesheet" href="annotazione.css">
+<script src="/comune/versione.js"></script>
+</head>
+<body>
+<header class="testata">
+  <a class="marchio" href="../">
+    <span class="logo" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M2 16c2 0 2-1.5 4-1.5S8 16 10 16s2-1.5 4-1.5 2 1.5 4 1.5 2-1.5 4-1.5"/><path d="M2 21c2 0 2-1.5 4-1.5S8 21 10 21s2-1.5 4-1.5 2 1.5 4 1.5 2-1.5 4-1.5"/><circle cx="15.5" cy="6" r="2.2"/><path d="M5 12l4-4 3 2 2.5 3"/></svg></span>
+    <b>SwimTimer</b>
+  </a>
+  <nav id="nav" hidden>
+    <a href="#sessioni" data-v="sessioni">Sessioni</a>
+    <a href="#admin" data-v="admin" id="navAdmin" hidden>Utenti</a>
+  </nav>
+  <div class="utente" id="utente" hidden>
+    <img id="foto" alt="" width="28" height="28" referrerpolicy="no-referrer">
+    <span id="nomeUtente"></span>
+    <button class="piccolo" id="btnEsci">Esci</button>
+  </div>
+</header>
+
+<main id="main">
+  <section class="scheda centro" id="vistaLogin" hidden>
+    <h1>Area riservata</h1>
+    <p class="tenue">Registrazioni, video e annotazioni condivise tra i membri approvati del progetto SwimTimer.</p>
+    <p><button class="primario" id="btnAccedi">Accedi con Google</button></p>
+    <p class="tenue piccolo-t" id="erroreLogin"></p>
+  </section>
+
+  <section class="scheda centro" id="vistaStato" hidden></section>
+
+  <div id="vistaSessioni" hidden></div>
+  <div id="vistaAdmin" hidden></div>
+
+  <div id="vistaEditor" hidden>
+    <div class="scheda editor-testa" id="intestaAnn"></div>
+    <div id="vistaAnn" hidden></div>
+  </div>
+</main>
+
+<dialog id="dlg"></dialog>
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script src="swr.js"></script>
+<script src="dati.js"></script>
+<script src="annotazione.js"></script>
+<script type="module" src="area.js"></script>
+</body>
+</html>

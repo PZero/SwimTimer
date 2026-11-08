@@ -2,9 +2,9 @@
 
 Automatic lap times in the pool: a tag under the swim cap and a poolside display detect start and finish, with no buttons.
 
-![Status](https://img.shields.io/badge/status-ESP32%20prototype%20working-yellow) ![Board](https://img.shields.io/badge/nRF52840%20tag-v0.6%20Rev0%20ready%20for%20preview-green) ![Repository](https://img.shields.io/badge/repository-public-blue) ![License](https://img.shields.io/badge/license-to%20be%20defined-lightgrey)
+![Status](https://img.shields.io/badge/status-XIAO%20test%20tags%20in%20bench%20tests-yellow) ![Board](https://img.shields.io/badge/nRF52840%20tag-v0.6%20Rev0%20ready%20for%20preview-green) ![Repository](https://img.shields.io/badge/repository-public-blue) ![License](https://img.shields.io/badge/license-to%20be%20defined-lightgrey)
 
-Updated on **2026-11-07**. Single public repository `PZero/SwimTimer`: ESP32 prototype, firmware, analysis web page (GitHub Pages: https://pzero.github.io/SwimTimer/), nRF52840 tag (KiCad, Gerber, JLCPCB and NextPCB files), programmer HAT, technical wallpapers and video.
+Updated on **2026-11-08**. Single public repository `PZero/SwimTimer`: XIAO test tags and their firmware, tools page (GitHub Pages: https://pzero.github.io/SwimTimer/), online collaboration app (Firebase: https://swimtimer-pzero.web.app), ESP32 prototype, nRF52840 tag (KiCad, Gerber, JLCPCB and NextPCB files), programmer HAT, technical wallpapers and video.
 
 > **Language.** This README is in English. Internal working documents in [`docs/`](docs/) (state, decisions, requirements, design) are written in Italian.
 
@@ -21,9 +21,11 @@ Watch it on YouTube: **https://youtu.be/EVrdSybpnE4** (Italian version: https://
 - [Current status](#current-status)
 - [Test methodology: raw data, video and hand annotation](#test-methodology-raw-data-video-and-hand-annotation)
 - [System architecture](#system-architecture)
-- [ESP32 prototype, firmware 0.4.3 and analysis page](#esp32-prototype-firmware-043-and-analysis-page)
+- [ESP32 prototype, firmware 0.4.3](#esp32-prototype-firmware-043)
 - [nRF52840 tag](#nrf52840-tag)
 - [XIAO nRF52840 Sense test tags](#xiao-nrf52840-sense-test-tags)
+- [Tools page (`tools/index.html`)](#tools-page-toolsindexhtml)
+- [Online collaboration app](#online-collaboration-app)
 - [External reviews](#external-reviews-v04)
 - [Programmer HAT for Raspberry Pi 3/4](#programmer-hat-for-raspberry-pi-34)
 - [Poolside display mockup and proposed architecture](#poolside-display-mockup-and-proposed-architecture)
@@ -48,11 +50,14 @@ Watch it on YouTube: **https://youtu.be/EVrdSybpnE4** (Italian version: https://
 
 | Area | Status |
 |---|---|
-| ESP32-S3 + BMI160 prototype, firmware **0.4.3**, analysis page | Working on the bench; no pool tests yet |
+| ESP32-S3 + BMI160 prototype, firmware **0.4.3** | Working on the bench; no pool tests yet. Its tools were removed from the tools page on 2026-11-08 |
 | LilyGO T-RGB display (4-hand pace clock) | Working on the bench |
 | nRF52840 tag **v0.5 "economy"** | Ready: 21.59 x 28.0 mm, 2 layers, DRC 0, ERC 0 errors, `verifica_v05.py` 100/100 pins. JLCPCB files plus NextPCB files (single board and 3x1 / 2x1 panels); JLC placement preview checked, Q1 and U6 rotations fixed (commit `dea9744`) |
 | nRF52840 tag **v0.6 "Rev0"** (new) | 4 layers 0.8 mm, 21.59 x 28.5 mm, no BGA (NextPCB Rev0 rejects pitch below 0.45 mm). Files generated; JLC rotations of the new SOT-23 parts still to verify in a JLC preview |
-| XIAO nRF52840 Sense test tags | One board in use on the bench ([`hardware/xiao/README.md`](hardware/xiao/README.md)). Streaming firmware 0.4.2 tested; pool recording mode 0.5.0 flashed on the board (tap wake-up and recording start confirmed, download and data not yet checked), 0.5.1 compiled; not yet used in the pool |
+| XIAO nRF52840 Sense test tags | One board in use on the bench ([`hardware/xiao/README.md`](hardware/xiao/README.md)). Firmware 0.5.2 (no automatic sleep on USB power) and 0.5.3 (USB during a recording closes it and restarts in normal mode) flashed and checked on the bench; pool recording download and recorded data not yet checked; not yet used in the pool |
+| Tools page `tools/index.html` | XIAO only: Live, Recording, Annotation and Firmware tabs, USB / Bluetooth / Demo. Tested in the browser with Demo and simulated ports, not yet with the real XIAO over USB for a full download |
+| Online collaboration app | Public landing page and members' area (Google login, admin approval of new accounts). Firestore rules tested with 14 emulator tests. Not yet used with real sessions |
+| Test campaign 1 | **Planned**: one swimmer (the author), 50 m pool, wall drills, then a real training session as verification. See [Test methodology](#test-methodology-raw-data-video-and-hand-annotation) |
 | Order | **Not placed yet**: preview, finish choice (HASL/ENIG), DFM ticket and cost decision pending |
 | nRF52840 tag firmware | To be written (Zephyr / nRF Connect SDK) |
 | Programmer HAT for Raspberry Pi 3/4 | Designed, regenerated on v0.5 (TP1-TP7 unchanged), DRC 0; **not built yet** |
@@ -60,6 +65,17 @@ Watch it on YouTube: **https://youtu.be/EVrdSybpnE4** (Italian version: https://
 ## Test methodology: raw data, video and hand annotation
 
 The core of SwimTimer is a set of **filters** that recognise strokes, breaths, turns, starts and finishes from the IMU of a tag worn under the cap. Before writing those filters we need **ground truth**: real swimming data in which every event is known. For this phase the tag is a **Seeed XIAO nRF52840 Sense** (same SoC as the custom board, which is still being manufactured) running the pool recording firmware [`firmware/xiao-stream`](firmware/xiao-stream/) 0.5.x.
+
+**Test campaign 1 (planned).** The first campaign has a deliberately small scope:
+
+- **One swimmer only**: the author of the project. No other person is recorded.
+- **Pool**: 50 m, with a wall for the drills.
+- **Drills at one wall** (turns, starts, finishes), repeated to collect many examples of each event with known timing.
+- **Real training** afterwards, used to verify the filters on a session that was not used to tune them.
+- **Video** from an iPhone and an Insta360 camera, both at 30 fps for now (the page does not yet handle 25 fps).
+- **Annotation by hand first**, in the *Annotation* tab. Filters are developed and compared **only in the web page**, after the whole session is annotated.
+
+The steps below describe the procedure of each session.
 
 1. **Record raw data in the pool.** The swimmer wakes the tag (2 taps, blue LED, 2 taps): it records the raw accelerometer and gyroscope at 208 Hz to its flash, with BLE off (BLE does not cross water). The swimmer is filmed from the deck with a phone (H.264, 30 fps).
 2. **Sync gesture.** With the tag under the cap, the swimmer gives **5 large, clearly visible taps** on it. The taps are sharp peaks in the data and visible frames in the video: the **5th tap** is the common reference point.
@@ -83,18 +99,21 @@ flowchart LR
   MCU -- "BLE advertising (out of the water)" --> DSP[Poolside display<br/>LilyGO T-RGB 2.8 inch]
   MCU -- "GATT / OTA (out of the water)" --> WEB[Analysis page<br/>Web Bluetooth]
   MCU -. "flash recording,<br/>downloaded later" .-> WEB
+  WEB -. "downloaded .swr files" .-> PCU[Member's browser]
+  PCU -. "upload in chunks, annotations" .-> APP[Online collaboration app<br/>Firebase Spark, Firestore]
   DSP -- "pace clock, times" --> SWI[Swimmer]
   CHG[Charging base / programmer] -- "contacts under the tag" --> TAG
 ```
 
 - **Tag.** Under the cap, pressed against the skull. It decides START, turns and STOP on its own using the IMU and logs raw data to flash.
 - **Poolside display.** Receives the tag's BLE advertisements without connecting. Shows a 4-hand pace clock. Goes to sleep after 5 minutes without a tag.
-- **Web page.** `tools/index.html`: live data, recordings, calibration, firmware update over Bluetooth.
+- **Tools page.** [`tools/index.html`](tools/index.html) connects to the XIAO over USB or Bluetooth, downloads and annotates recordings and updates the firmware. Details in [Tools page](#tools-page-toolsindexhtml).
+- **Online app.** Optional collaboration area for sessions, video links and annotations. Details in [Online collaboration app](#online-collaboration-app).
 - **BLE out of the water.** Underwater the signal disappears within a few centimetres: during the swim the tag works alone and hands over its data when the swimmer emerges or at the end of the session.
 
-## ESP32 prototype, firmware 0.4.3 and analysis page
+## ESP32 prototype, firmware 0.4.3
 
-The prototype is used to tune the algorithms before the custom board exists.
+The prototype was used to tune the algorithms before the XIAO and custom boards. Since 2026-11-08 the tools page no longer supports it.
 
 **Tag (prototype).** ESP32-S3 SuperMini + BMI160 (GY-BMI160), LiPo with main switch. Bill of materials: [`hardware/bom.md`](hardware/bom.md). Wiring: [`hardware/schema.md`](hardware/schema.md) (both in Italian).
 
@@ -104,16 +123,6 @@ The prototype is used to tune the algorithms before the custom board exists.
 - double tap = start recording, triple tap = stop (software detection, unreliable: about 1 in 10);
 - BLE with data, status, commands, OTA and version; the same commands over USB; Bluetooth update with automatic rollback to the previous version;
 - automatic I2C bus recovery, RGB LED feedback, last reset reason, voltage dividers on GPIO 1 (battery) and GPIO 2 (5V pin).
-
-**Analysis page** [`tools/index.html`](tools/index.html), online at <https://pzero.github.io/SwimTimer/> (GitHub Pages of the **public** repository, firmware 0.4.3 published):
-- "Live" tab (battery, 3D orientation, radar with 15 s trail, interpretation, events, charts) and "Recordings" tab;
-- automatic calibration, Firmware and LED windows, Demo mode;
-- Bluetooth (Chrome, Edge, Bluefy on iPhone) or USB;
-- battery card with GPIO 1, GPIO 2 and estimated resting voltage charts.
-- "XIAO" tab: 3D XIAO model oriented live by the IMU; head-mounting calibration (right temple, Calibra / Annuisci buttons); wireframe half-bust whose head follows the movements (green wireframe eyes, solid red only during the blink), Ricentra, Demo testa, an optional orange swim cap (the "Cuffia" checkbox, on by default, choice remembered between visits; dense grid and translucent shell on the scan) and an axis check with 10 s scrolling accelerometer and gyroscope charts. The tag is always worn on the right with components facing out, so no mounting settings are needed. It waits for a XIAO sketch that sends the same `SwimTag` BLE protocol.
-- Head model: scan by Lee Perry-Smith (Infinite-Realities), licensed CC BY 3.0, loaded from the three.js CDN; neck and shoulders are procedural.
-
-`tools/assi.html` is the old 3-axis page, kept for reference.
 
 **Display** (`firmware/display-prova`): LilyGO T-RGB 2.8 inch, PlatformIO with espressif32 6.9.0, driver copied and adapted in `src/trgb/` (MIT license, Xinyuan-LilyGO).
 
@@ -338,16 +347,18 @@ A cheap path to test now, while the custom boards are in the making: two **Seeed
 
 ### XIAO firmware (`firmware/xiao-stream`): BLE streaming 0.4.2 and pool recording mode 0.5.x
 
-Arduino sketch (core Seeeduino:nrf52 + Bluefruit) that makes the XIAO speak the same **`SwimTag` BLE protocol** as the ESP32 tag, so the "XIAO" tab of [`tools/index.html`](tools/index.html) works over Web Bluetooth. Details (Italian): [`firmware/xiao-stream/LEGGIMI.md`](firmware/xiao-stream/LEGGIMI.md).
+Arduino sketch (core Seeeduino:nrf52 + Bluefruit) that makes the XIAO speak the same **`SwimTag` BLE protocol** as the ESP32 tag, so the [tools page](#tools-page-toolsindexhtml) connects to it over Web Bluetooth or USB. Details (Italian): [`firmware/xiao-stream/LEGGIMI.md`](firmware/xiao-stream/LEGGIMI.md).
 
 - **Data.** 16-byte packets at 25 Hz; the IMU runs at 208 Hz and is averaged down. Gyroscope bias calibration reduces head drift.
 - **Status.** 12-byte extended status: charge state, VBUS, die temperature, battery divider. Commands, tag log and version are as on the ESP32 tag. The page has a "Tag log" panel over BLE and a rebuilt Battery panel (charge state, % from a LiPo curve, time to full / runtime, chart, VCAL calibration against a multimeter).
 - **OTA over BLE.** Own protocol on characteristic `0006`: staging in flash, CRC32, board signature check, installer running from RAM. Nordic legacy DFU cannot be used from the browser because it is on the Web Bluetooth blocklist. The binary `firmware/xiao-stream/release/xiao.bin` + `xiao.json` is published by GitHub Pages (workflow updated); the "Tag firmware" dialog of the page handles the XIAO too. The release binary is built with `-fmacro-prefix-map` so that no local build paths (e.g. the Windows user folder) end up inside it; the published `xiao.bin` is still **0.4.2** (BLE streaming + OTA), while 0.5.x (pool recording) is flashed only after the dry run on the bench.
 - **Sleep.** "Sleep" command, and automatic sleep after 60 s of "still enough" (1 s averages: rotation < 3 dps and tilt < 3 deg). Never during an OTA or with the serial port open. Wake with 2 taps, blue LED, 2 taps (or by USB). Forced sleep when the battery is low (< 3.3 V).
-- **Verification status.** Tested on the board: double tap, OTA (0.4.0 -> 0.4.1 -> 0.4.2) and sleep. **Not yet tested:** 4-tap wake, low-battery sleep, the Battery panel with the board, VCAL calibration.
+- **0.5.2: no sleep on USB power.** While VBUS is present the tag does not go to automatic sleep, even with no serial port open. Before, it slept after 60 s on the desk and disappeared from USB.
+- **0.5.3: USB during a recording.** Plugging USB in during a pool recording closes it cleanly (new stop reason 4, "USB connected", also decoded by `swr.py` and `tools/swr.js`) and restarts the tag in normal mode, so it can be read from the tools page. Before, the recording loop ignored serial commands and the page reported "MEM does not respond".
+- **Verification status.** Tested on the board: double tap, OTA (0.4.0 -> 0.4.1 -> 0.4.2) and sleep. 0.5.2 flashed over USB: still on the port after 80 s at rest. 0.5.3 flashed and checked with the memory command (`K mem 2204 8192`). **Not yet tested:** 4-tap wake, low-battery sleep, the Battery panel with the board, VCAL calibration.
 - **Bench note.** One XIAO lost its 3.3 V regulator while the cell was being soldered; it is used on the bench through a silicon diode. Heat the BAT pads briefly and with care.
 
-#### Pool recording mode (firmware 0.5.0 / 0.5.1)
+#### Pool recording mode (firmware 0.5.0 to 0.5.3)
 
 BLE does not cross water, so for the first pool session the tag records the **raw IMU to its 2 MB QSPI flash** with BLE off, and the data is downloaded at home over USB. Purpose: collect real swimming data with video, hand-annotate every event, then develop and compare the detection filters. Details (Italian): [`firmware/xiao-stream/LEGGIMI.md`](firmware/xiao-stream/LEGGIMI.md).
 
@@ -359,9 +370,66 @@ BLE does not cross water, so for the first pool session the tag records the **ra
 - **Wake-up fix.** The 2-tap wake bug was caused by the Adafruit bootloader clearing `RESETREAS`; the firmware now writes a marker in `GPREGRET2` before every System OFF.
 - **Download over USB only.** [`scarica.py`](firmware/xiao-stream/scarica.py) (needs `pyserial`) or the "Recording" tab of the page (Web Serial). Output: a `.swr` file plus CSV.
 - **`.swr` format.** Specified in [`swr_formato.h`](firmware/xiao-stream/swr_formato.h); decoders [`swr.py`](firmware/xiao-stream/swr.py) and [`tools/swr.js`](tools/swr.js). 11 unit tests on invented data only (`python -m unittest test_swr`). The parity check [`tools/parita_swr.mjs`](tools/parita_swr.mjs) still has to be run on a real recording.
-- **Web page.** [`tools/index.html`](tools/index.html) has two new tabs. *Recording*: Web Serial download and erase, open a `.swr` file. *Annotation*: raw-data charts with zoom, video at 30 fps (a 25 fps video is not yet handled: frame stepping is off; warns if the video has no decodable picture, e.g. HEVC), synchronisation with key X on the 5th tap, events B/R/V/F/P/A saved in video time, project JSON and CSV export. The old tab is renamed "Reg. ESP32".
-- **Verification status.** 0.5.0 is flashed on the board: the 2-taps-blue-2-taps wake-up and the start of recording (green blink every 8 s) are confirmed; the download and the recorded data are **not yet checked**: FIFO order and burst reads, chip erase, QSPI without SoftDevice and power consumption (estimated 1.5-2 mA while recording) are unverified. 0.5.1 is compiled but not yet flashed. The C++ encoder has never been run on a PC: C++/Python parity holds by construction only. The page tabs were tested with simulated data only. `.swr` files and CSV are health data and are ignored by git.
+- **Web page.** [`tools/index.html`](tools/index.html) has the *Recording* tab (Web Serial download and erase, open a `.swr` file) and the *Annotation* tab (raw-data charts with zoom, video at 30 fps (a 25 fps video is not yet handled: frame stepping is off; warns if the video has no decodable picture, e.g. HEVC), synchronisation with key X on the 5th tap, events B/R/V/F/P/A saved in video time, project JSON and CSV export). See [Tools page](#tools-page-toolsindexhtml).
+- **Verification status.** 0.5.0 is flashed on the board: the 2-taps-blue-2-taps wake-up and the start of recording (green blink every 8 s) are confirmed; the download and the recorded data are **not yet checked**: FIFO order and burst reads, chip erase, QSPI without SoftDevice and power consumption (estimated 1.5-2 mA while recording) are unverified. 0.5.1 is superseded by 0.5.2 and 0.5.3 (see above). The C++ encoder has never been run on a PC: C++/Python parity holds by construction only. The page tabs were tested with simulated data only. `.swr` files and CSV are health data and are ignored by git.
 - **Next steps.** Dry run of 0.5.0 at home, first pool session with video, hand annotation of all events, then filter development and comparison.
+
+## Tools page (`tools/index.html`)
+
+Static page (no build step) for the XIAO test tags. Online at <https://pzero.github.io/SwimTimer/>, or open the file locally in a browser. Since 2026-11-08 it supports only the XIAO; the ESP32 tabs, the ESP32 USB link, the radar, the event log and `tools/assi.html` were removed.
+
+**Connection panel (one for all tabs).**
+- **USB** (Web Serial, Chromium-based browsers): the port is filtered on the Seeed Studio vendor ID `0x2886`.
+- **Bluetooth** (Web Bluetooth, `SwimTag` service).
+- **Demo**: simulated data, no hardware.
+
+The panel shows link state, firmware version and battery level. The Recording tab uses the same USB port; USB log lines go to the live log.
+
+**Tabs** (the labels in the page are in Italian: *Dal vivo*, *Registrazione*, *Annotazione*, *Firmware*):
+- **Live**: 3D orientation of the tag from the IMU, battery card, head-mounting calibration (*Calibra*, *Ricentra*), charts of the accelerometer and gyroscope. The head model is the Lee Perry-Smith 3D scan (Infinite-Realities), licensed CC BY 3.0, loaded from a public CDN.
+- **Recording**: download and erase the pool recordings over USB, open a `.swr` file, see the decoded data.
+- **Annotation**: raw-data charts with zoom, video playback, synchronisation on the 5th tap (key **X**), hand annotation of events **B**, **R**, **V**, **F**, **P**, **A**, export of a project JSON and an events CSV. Known limits: 30 fps only; phone video in HEVC/H.265 may play audio only, depending on the browser; the page warns about it.
+- **Firmware**: update over Bluetooth with the XIAO OTA protocol. Only XIAO-signed images are accepted. The published image is `firmware/xiao-stream/release/xiao.bin` (version in `xiao.json`).
+
+**Verification status.** Tested in the browser with Demo mode and simulated USB and Bluetooth ports. Not yet tested end to end with the real XIAO over USB for a full download and annotation.
+
+## Online collaboration app
+
+A small online area to share pool sessions among the people who work on the project. Firebase **Spark** (free) plan only: Firestore and Hosting, **no Cloud Storage, no Cloud Functions**, so there are no paid services.
+
+- **Public landing page**: <https://swimtimer-pzero.web.app> (presentation of the project and of the tag).
+- **Members' area**: <https://swimtimer-pzero.web.app/area/>. Sign in with Google.
+- **Approval.** Every new account is **pending** until the administrator approves it. Pending, refused or revoked accounts cannot read sessions, videos or annotations. The administrator is recognised by the Firebase user ID in the security rules, not by e-mail.
+- **Sessions.** A raw `.swr` file (up to 4 MiB) is uploaded to Firestore in chunks of about 800 KiB, with its SHA-256 recorded.
+- **Videos are not stored on Firebase.** A video is shared as a link to Google Drive or YouTube, with its SHA-256 and metadata recorded to verify the file.
+- **Annotations** carry the author's name and ID. Only the author edits an annotation; others can read it and make a copy.
+- **Automatic refresh.** `firebase/scrivi-versione.mjs` writes `app/versione.json` before each deploy. Open pages compare it with the version they loaded and reload themselves when it changes. HTML, JS, CSS and JSON are served with `no-cache`.
+- **Security rules**: `firebase/firestore.rules`. Data model: [`docs/MODELLO-DATI.md`](docs/MODELLO-DATI.md) (Italian).
+
+**Tests.** The rules are tested on the Firestore emulator with 14 tests (anonymous access, pending and revoked users, approval, self-approval attempts, session and chunk validation, video links, annotation authorship, undeclared collections). The tests use invented users and a placeholder administrator ID, so they do not depend on the real account.
+
+```
+cd firebase/test
+npm install
+npm test
+```
+
+`npm test` runs `firebase emulators:exec`: the Firebase CLI must be installed (for example `npm install -g firebase-tools`) and Java must be available for the Firestore emulator.
+
+**Deploy.** From the repository root, with the Firebase CLI logged in to the project: `firebase deploy --only hosting,firestore:rules`. The `predeploy` hook in `firebase.json` writes the new version file first.
+
+**Configuration.** `app/comune/fb.js` holds the public Firebase web configuration. It is not a secret: access control is in the security rules. No service account, token or `.env` file is in the repository.
+
+**Folders and files.**
+
+| Path | Content |
+|---|---|
+| `app/` | Static site (landing, members' area, shared scripts and styles, `versione.json`) |
+| `firebase/` | Security rules, indexes, version script and rule tests (`firebase/test/`) |
+| `firebase.json`, `.firebaserc` | Hosting and Firestore configuration, default project |
+| `docs/MODELLO-DATI.md` | Collections, fields and limits (Italian) |
+
+**Status.** Deployed and reachable; not yet used with real sessions. The administrator approves each new account by hand.
 
 ## External reviews (v0.4)
 
@@ -449,12 +517,15 @@ Twenty 1170 x 2532 px drawing sheets generated from the real PCBs (blueprint, OL
 
 ```
 SwimTimer/
-├── docs/                         idea, state, decisions, open questions, requirements, design, lessons, algorithms (Italian)
+├── app/                          online collaboration app: landing (index.html), members' area (area/), shared scripts (comune/), versione.json
+├── docs/                         idea, state, decisions, open questions, requirements, design, data model (MODELLO-DATI.md), lessons, algorithms (Italian)
+├── firebase/                     Firestore security rules, indexes, version script (scrivi-versione.mjs), test/ (14 rule tests)
+├── firebase.json, .firebaserc    Firebase Hosting and Firestore configuration
 ├── firmware/
 │   ├── test-collegamenti/        ESP32-S3 tag: firmware 0.4.3
 │   ├── xiao-stream/              XIAO nRF52840 Sense: BLE streaming + OTA, pool recording 0.5.x, .swr tools (release/ xiao.bin, xiao.json = 0.4.2)
 │   └── display-prova/            T-RGB display
-├── tools/                        index.html (analysis page with Recording and Annotation tabs), annotazione.js/.css, registrazione.js, swr.js, parita_swr.mjs, display.html (poolside display mockup), assi.html (old)
+├── tools/                        index.html (XIAO tools page: Live, Recording, Annotation, Firmware), annotazione.js/.css, registrazione.js, swr.js, parita_swr.mjs, display.html (poolside display mockup)
 ├── media/video/                  presentation video generator, thumbnail, music
 ├── hardware/
 │   ├── bom.md, schema.md         ESP32 prototype
@@ -527,7 +598,12 @@ The v0.5 board is verified (DRC/ERC, `verifica_v05.py`). **Do not order** before
 - Agree the reference test for the Effort 1-10 indicator.
 
 **XIAO test tags**
-- Order 2 boards and the 100 mAh cells, dry-run the waterproofing. Firmware ported (`firmware/xiao-stream`): published release is 0.4.2; the 0.5.0 pool recording mode and 0.5.1 are not yet tested on the board. Still to do: dry run at home (2-taps-blue-2-taps wake and recording), low-battery sleep, Battery panel and VCAL calibration, then the first pool session with video and hand annotation of all events.
+- Order 2 boards and the 100 mAh cells, dry-run the waterproofing. Firmware ported (`firmware/xiao-stream`): published release is 0.4.2; 0.5.2 and 0.5.3 are flashed on the bench, the download of a pool recording is not yet checked. Still to do: dry run at home (2-taps-blue-2-taps wake, recording and download over USB), low-battery sleep, Battery panel and VCAL calibration, then **test campaign 1** (one swimmer, 50 m pool, wall drills, then a training session for verification, with hand annotation of all events).
+
+**Tools page and online app**
+- Check the real XIAO end to end on the tools page over USB (download, `.swr` decoding, annotation) and run `tools/parita_swr.mjs` on a real recording.
+- Add 25 fps support to the Annotation tab (frame stepping is wrong at 25 fps).
+- Online app: first real session uploaded and viewed by an approved member; test the video-link flow; check the Firebase Spark quotas on real use.
 
 **ESP32 prototype**
 - On battery only, the tag does not flash blue and is not visible over Bluetooth (red LED on, 3.87 V at the pads).
@@ -539,7 +615,8 @@ The v0.5 board is verified (DRC/ERC, `verifica_v05.py`). **Do not order** before
 **General risks**
 - Patents in the field (FORM US 11833392): freedom-to-operate check before any commercial use.
 - BLE does not cross water; waterproof case and resin to be defined.
-- No automated tests.
+- Automated tests cover only the `.swr` decoders (11 unit tests, invented data) and the Firestore rules (14 emulator tests). The tools page and the members' area are tested by hand.
+- Sessions are health data: the online app stores them in Firestore; the approval process and the rules are the only protection.
 
 Details: [`docs/STATO.md`](docs/STATO.md) (Italian). Decisions: [`docs/DECISIONI.md`](docs/DECISIONI.md) (Italian). Changes: [`CHANGELOG.md`](CHANGELOG.md).
 
@@ -552,7 +629,8 @@ Contributions are not open yet. Issues and suggestions are welcome on GitHub. Wo
 - No credentials in the repository: if needed, only in `.env` (excluded from git) and as CI secrets.
 - No real personal data: swim sessions are health data and stay local (`dati/`, excluded from git). Tests use invented data only.
 - Since 2026-11-04 the whole project, hardware included, lives in this single public repository; the old private repository `PZero/SwimTimer-nrf52840` is retired.
-- Possible companion app: Firebase free Spark plan, no Cloud Functions.
+- Online app: Firebase Spark (free) plan, no Cloud Storage and no Cloud Functions; access by administrator approval; security rules tested on the emulator. The administrator's user ID is in the public rules file: it identifies the account, it is not a secret.
+- No personal data in the repository: swim sessions, videos and annotation projects stay out of git (see `.gitignore`).
 
 ## License and author
 

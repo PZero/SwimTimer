@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>SwimTimer · Tempi in vasca, senza pulsanti</title>
+<meta name="description" content="SwimTimer: un piccolo tag sotto la cuffia e un display a bordo vasca prendono i tempi di partenza, virate e arrivo mentre nuoti, senza fermarti e senza premere pulsanti.">
+<meta property="og:title" content="SwimTimer · Tempi in vasca, senza pulsanti">
+<meta property="og:description" content="Un tag sotto la cuffia e un display a bordo vasca: partenza, virate e arrivo riconosciuti da soli.">
+<meta property="og:image" content="img/hero.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="comune/stile.css">
+<link rel="stylesheet" href="landing.css">
+<script src="/comune/versione.js"></script>
+</head>
+<body>
+<header class="testata">
+  <a class="marchio" href="#in-alto">
+    <span class="logo" aria-hidden="true"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M2 16c2 0 2-1.5 4-1.5S8 16 10 16s2-1.5 4-1.5 2 1.5 4 1.5 2-1.5 4-1.5"/><path d="M2 21c2 0 2-1.5 4-1.5S8 21 10 21s2-1.5 4-1.5 2 1.5 4 1.5 2-1.5 4-1.5"/><circle cx="15.5" cy="6" r="2.2"/><path d="M5 12l4-4 3 2 2.5 3"/></svg></span>
+    <b>SwimTimer</b>
+  </a>
+  <nav>
+    <a href="#come-funziona">Come funziona</a>
+    <a href="#stato">Stato</a>
+    <a href="#dati">Dati</a>
+    <a href="#video">Video</a>
+  </nav>
+  <button class="primario btn-accedi" data-accedi>Accedi con Google</button>
+</header>
+
+<main id="in-alto">
+  <section class="hero">
+    <div class="hero-testo">
+      <p class="etichetta">Progetto aperto · prototipo in sviluppo</p>
+      <h1>Tempi in vasca.<br><span>Senza pulsanti.</span></h1>
+      <p class="lead">Un piccolo tag sotto la cuffia e un display a bordo vasca riconoscono da soli partenza, virate e arrivo. Tu nuoti: i tempi si prendono da soli, senza fermarti e senza guardare l'orologio.</p>
+      <div class="riga">
+        <button class="primario grande btn-accedi" data-accedi>Accedi con Google</button>
+        <a class="btn-link" href="#video">Guarda il video</a>
+      </div>
+      <p class="piccolo-t tenue" id="msgAccesso">L'area riservata è per i membri approvati del progetto: dopo l'accesso, l'amministratore approva l'account.</p>
+    </div>
+    <figure class="hero-img"><img src="img/hero.png" alt="Titolo SwimTimer con il rendering della scheda del tag e il suo schema" width="1280" height="720" fetchpriority="high"></figure>
+  </section>
+
+  <section id="come-funziona" class="sezione">
+    <h2>Come funziona</h2>
+    <p class="sotto-titolo">Il sensore decide, non la radio: il Bluetooth a 2,4 GHz non attraversa l'acqua, quindi i tempi nascono dal movimento e il Bluetooth serve solo fuori dall'acqua.</p>
+    <div class="passi">
+      <article class="scheda passo">
+        <span class="num">1</span>
+        <h3>Il tag sotto la cuffia</h3>
+        <p>Una scheda grande poco più di un francobollo, con accelerometro e giroscopio a sei assi e un microcontrollore Bluetooth a basso consumo. Sta sotto la cuffia, resiste all'acqua e si ricarica in una custodia.</p>
+      </article>
+      <article class="scheda passo">
+        <span class="num">2</span>
+        <h3>Il movimento racconta la vasca</h3>
+        <p>La spinta sul muro, la rotazione della virata, la bracciata regolare e la quiete finale hanno firme riconoscibili nei dati grezzi. Il tag le individua e memorizza partenza, virate e arrivo.</p>
+      </article>
+      <article class="scheda passo">
+        <span class="num">3</span>
+        <h3>Il display a bordo vasca</h3>
+        <p>Quando esci dall'acqua il tag si riconosce con il display, scarica i tempi e li mostra: tempi per vasca, riposi, ritmo. Nessun pulsante da premere nuotando.</p>
+      </article>
+    </div>
+  </section>
+
+  <section id="stato" class="sezione">
+    <h2>A che punto siamo</h2>
+    <div class="stato">
+      <div class="scheda"><span class="chip ok">funziona al banco</span><h3>Prototipo ESP32 + display</h3><p>Prototipo con sensore inerziale e display a lancette per il ritmo: funziona sul banco, non ancora in vasca.</p></div>
+      <div class="scheda"><span class="chip ok">in uso</span><h3>Tag di prova XIAO nRF52840</h3><p>Una scheda commerciale registra i dati grezzi a 208 Hz nella memoria interna, con avvio dal doppio tocco e scarico via USB.</p></div>
+      <div class="scheda"><span class="chip att">in preparazione</span><h3>Tag dedicato nRF52840</h3><p>Scheda su misura a quattro strati, completa di file di produzione. Ordine non ancora effettuato.</p></div>
+      <div class="scheda"><span class="chip att">fase attuale</span><h3>Dati veri in piscina</h3><p>Prima dei filtri servono dati veri annotati a mano: il nuotatore viene ripreso con il telefono e ogni evento viene marcato sul video, fotogramma per fotogramma.</p></div>
+    </div>
+    <p class="tenue piccolo-t">Il codice, i file della scheda e la documentazione sono pubblici su <a href="https://github.com/PZero/SwimTimer" target="_blank" rel="noopener noreferrer">GitHub</a>.</p>
+  </section>
+
+  <section id="dati" class="sezione">
+    <h2>Che cosa vede il tag</h2>
+    <p class="sotto-titolo">Grafici dimostrativi costruiti con <b>dati inventati</b> (nessuna registrazione reale): servono a mostrare che cosa si cerca nei dati grezzi.</p>
+    <div class="grafici">
+      <figure class="scheda grafico"><figcaption><b>Accelerazione durante una virata</b><span>|acc| in g, 14 s, dati dimostrativi</span></figcaption><div id="gAcc" role="img" aria-label="Grafico dimostrativo: accelerazione con bracciate regolari, picco alla spinta sul muro e planata"></div></figure>
+      <figure class="scheda grafico"><figcaption><b>Rotazione durante la virata</b><span>|giroscopio| in gradi/s, dati dimostrativi</span></figcaption><div id="gGir" role="img" aria-label="Grafico dimostrativo: velocità di rotazione con un picco durante la capriola"></div></figure>
+      <figure class="scheda grafico largo"><figcaption><b>Tempi per vasca</b><span>secondi su 25 m, dati dimostrativi</span></figcaption><div id="gTempi" role="img" aria-label="Grafico a barre dimostrativo dei tempi per vasca"></div></figure>
+    </div>
+  </section>
+
+  <section id="video" class="sezione">
+    <h2>Il progetto in due minuti</h2>
+    <div class="video-coppia">
+      <figure class="scheda"><div class="video"><iframe src="https://www.youtube-nocookie.com/embed/_2UzpOqblVI" title="SwimTimer: video di presentazione in italiano" loading="lazy" allow="accelerometer; encrypted-media; picture-in-picture" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe></div><figcaption>Italiano</figcaption></figure>
+      <figure class="scheda"><div class="video"><iframe src="https://www.youtube-nocookie.com/embed/EVrdSybpnE4" title="SwimTimer: presentation video in English" loading="lazy" allow="accelerometer; encrypted-media; picture-in-picture" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe></div><figcaption>English</figcaption></figure>
+    </div>
+  </section>
+
+  <section class="sezione">
+    <div class="scheda cta">
+      <div>
+        <h2>Annotazione collaborativa</h2>
+        <p>Chi partecipa alle prove può caricare le registrazioni del tag, collegare i video (che restano su Drive o YouTube) e annotare insieme bracciate, respirazioni, virate, partenze e arrivi. Si vede sempre chi ha fatto che cosa. L'accesso è su approvazione.</p>
+      </div>
+      <div class="riga"><button class="primario grande btn-accedi" data-accedi>Accedi con Google</button></div>
+    </div>
+  </section>
+</main>
+
+<footer class="piede">
+  <img src="img/tag.png" alt="Rendering della scheda del tag, vista dall'alto" width="120" height="auto" loading="lazy">
+  <div>
+    <b>SwimTimer</b> · progetto aperto, <a href="https://github.com/PZero/SwimTimer" target="_blank" rel="noopener noreferrer">codice e documenti su GitHub</a>.
+    <p class="tenue piccolo-t">Le sessioni di nuoto sono dati di salute: l'archivio è privato, accessibile solo ai membri approvati, e nel repository pubblico non c'è alcun dato reale.</p>
+  </div>
+</footer>
+
+<script type="module" src="landing.js"></script>
+</body>
+</html>

@@ -10,7 +10,7 @@
 #include "swr_formato.h"
 #include <flash/flash_nrf5x.h>   // scrittura flash compatibile con il SoftDevice (sd_flash_*)
 
-#define VER_NUM "0.5.1"
+#define VER_NUM "0.5.3"
 #define VERSIONE "xiao-" VER_NUM
 // Marcatore cercato nel binario dalla pagina (come per l'ESP32) e dall'OTA del tag
 __attribute__((used)) static const char marcatoreVersione[] = "SWIMTAG_VER=" VER_NUM ";";
@@ -1054,6 +1054,7 @@ static void modalitaVasca() {
       vMv = batteriaMv(); vTemp = tempDie();
       if (vMv > 0 && vMv < BAT_STOP_MV) { if (++sotto >= 3 || vMv < 3100) vMotivo = SWR_STOP_BATTERIA; } else sotto = 0;
     }
+    if (!vMotivo && (NRF_POWER->USBREGSTATUS & POWER_USBREGSTATUS_VBUSDETECT_Msk)) vMotivo = SWR_STOP_USB;   // USB collegata: chiude e riparte in modalita' normale
     if (ora - tLed >= 8000 && !vMotivo) {                // un lampo ogni 8 s
       tLed = ora;
       if (vMv > 0 && vMv < 3500) lampi(LED_R, 1, 30, 0);
@@ -1076,6 +1077,12 @@ static void modalitaVasca() {
   if (motivo == SWR_STOP_PIENA) lampi(LED_R, 5, 150, 150);
   else if (motivo == SWR_STOP_BATTERIA) lampi(LED_R, 3, 200, 200);
   else if (motivo == SWR_STOP_ERRORE) lampi(LED_R, 10, 60, 60);
+  if (motivo == SWR_STOP_USB) {                          // riavvio: con VBUS presente al boot si entra in modalita' normale (seriale, BLE)
+    lampi(LED_G | LED_B, 2, 150, 150);
+    if (flashPronta) flash.end();
+    NRF_POWER->GPREGRET2 = 0;
+    NVIC_SystemReset();
+  }
   dormiVasca(motivo == SWR_STOP_BATTERIA);
 }
 
@@ -1218,6 +1225,11 @@ static void controllaInattivita(uint32_t ora) {
   if (Serial) {                                          // porta seriale USB aperta da un programma sul PC (DTR attivo): niente sospensione automatica
     static bool avvisato = false;
     if (!avvisato) { avvisato = true; logRiga("seriale aperta: niente sospensione"); }
+    sg = 0; n = 0; secFermo = 0; rifOk = false; return;
+  }
+  if (vbusPresente()) {                                  // alimentata dall'USB (PC o caricatore): niente sospensione automatica
+    static bool avvisatoUsb = false;
+    if (!avvisatoUsb) { avvisatoUsb = true; logRiga("USB collegata: niente sospensione"); }
     sg = 0; n = 0; secFermo = 0; rifOk = false; return;
   }
   if (Bluefruit.connected() && millis() - ultimoComando < 120000UL && ultimoComando) { sg = 0; n = 0; secFermo = 0; rifOk = false; return; }   // collegato e con comandi di recente: niente sospensione automatica

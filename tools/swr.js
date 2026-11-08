@@ -7,7 +7,7 @@
   const PAGINA = 256, TOT_PAGINE = 8192;
   const T_SEGMENTO = 0xA5, T_DATI = 0xD1, T_CHIUSURA = 0xE0;
   const FLAG_PRIMA = 0x01, FLAG_GAP = 0x02;
-  const MOTIVI = { 1: 'quiete', 2: 'memoria piena', 3: 'batteria', 5: 'errore flash/IMU' };
+  const MOTIVI = { 1: 'quiete', 2: 'memoria piena', 3: 'batteria', 4: 'USB collegata', 5: 'errore flash/IMU' };
   const ODR_HZ_NOMINALE = 2083 / 10.0;
   const MS_PER_CAMPIONE = 1000.0 / ODR_HZ_NOMINALE;
   const G_PER_LSB = 488 / 1e6;

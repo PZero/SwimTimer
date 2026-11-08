@@ -1,0 +1,47 @@
+/* Schede «Registrazione» e «Annotazione» di tools/index.html (usa le variabili colore della pagina). */
+#vistaSwr > .scheda, #vistaAnn > .scheda { grid-column: span 12; }
+.swr-riga, .ann-riga { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.swr-scheda .swr-riga, .ann-sez > .swr-riga { margin-bottom: 8px; }
+.swr-stato { margin: 10px 0 4px; font-size: 13px; color: var(--tenue); }
+.swr-stato.ok, .ok { color: var(--ok); } .swr-stato.err, .err { color: var(--errore); }
+.swr-mem { font-size: 12.5px; margin: 6px 0; } .swr-mem .barra { display: block; margin-top: 6px; max-width: 420px; }
+.swr-kv, .ann-kv { display: grid; grid-template-columns: max-content 1fr; gap: 4px 14px; font-size: 12.5px; margin: 8px 0; }
+.swr-kv span, .ann-kv span { color: var(--tenue); }
+.swr-problemi { font-size: 12px; margin-top: 8px; } .swr-problemi ul { margin: 6px 0 0; padding-left: 18px; max-height: 160px; overflow: auto; }
+.tenue { color: var(--tenue); }
+select, input[type=number], input[type=text] { font: 500 12.5px Inter, system-ui, sans-serif; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--bordo); background: var(--card); color: var(--testo); }
+.ann-nota { margin: 4px 0 6px; font-size: 12px; color: var(--tenue); }
+.ann-info { font-size: 12.5px; line-height: 1.6; }
+.ann-chk { font-size: 12.5px; display: inline-flex; gap: 5px; align-items: center; }
+.ann-num { width: 84px; }
+.ann-lane { position: relative; margin-bottom: 6px; }
+.ann-lane-tit { display: flex; gap: 8px; align-items: center; font-size: 11px; color: var(--tenue); font-weight: 600; margin: 2px 0 2px 46px; }
+.ann-lane-tit select { padding: 2px 6px; font-size: 11px; }
+.ann-cv { width: 100%; height: 110px; display: block; touch-action: none; background: var(--card-2); border-radius: 8px; cursor: crosshair; }
+.ann-pan .ann-cv { height: 44px; cursor: ew-resize; }
+#anGrafBox.nascosto { display: none; }
+.ann-video-wrap { position: relative; background: #000; border-radius: 10px; overflow: hidden; display: grid; place-items: center; }
+.ann-video-wrap video { width: 100%; max-height: 64vh; display: block; background: #000; }
+.ann-vuoto { position: absolute; inset: 0; display: grid; place-items: center; color: #9aa7b4; font-size: 13px; pointer-events: none; }
+.ann-vuoto[hidden] { display: none; }
+.ann-comandi { margin: 10px 0 6px; }
+.ann-vel { display: inline-flex; gap: 4px; align-items: center; margin-left: 8px; }
+.ann-striscia-box { margin-top: 6px; } .ann-striscia-box .ann-cv { height: 54px; cursor: pointer; }
+.ann-blocchi { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; margin-top: 12px; }
+@media (max-width: 1100px) { .ann-blocchi { grid-template-columns: minmax(0, 1fr); } }
+.ann-blocco { border: 1px solid var(--bordo); border-radius: 10px; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.ann-tipo { border-left: 4px solid var(--c); } .ann-tipo b { color: var(--c); }
+.ann-cont { display: flex; flex-wrap: wrap; gap: 6px; }
+.ann-chip { font-size: 12px; padding: 3px 9px; border-radius: 999px; border: 1px solid var(--c); }
+.ann-chip b { color: var(--c); }
+.ann-nota-lbl { display: flex; gap: 6px; align-items: center; flex: 1; font-size: 12.5px; } .ann-nota-lbl input { flex: 1; min-width: 0; }
+.ann-lista { margin: 0; padding: 0; list-style: none; max-height: 220px; overflow: auto; font-size: 12.5px; }
+.ann-lista li { padding: 3px 6px; border-left: 4px solid var(--c); cursor: pointer; border-radius: 4px; }
+.ann-lista li:hover { background: var(--card-2); } .ann-lista li.sel { background: var(--accento-tenue); outline: 1px solid var(--accento); }
+.ann-lista b { color: var(--c); }
+.ann-tasti { margin-top: 10px; font-size: 12.5px; color: var(--tenue); }
+@media (min-width: 1000px) and (min-height: 600px) {
+  #vistaSwr, #vistaAnn { overflow: auto; align-content: start; }
+  /* le schede qui scorrono: niente min-height:0 del layout a schermata unica, altrimenti la griglia le schiaccia (video ad altezza 0) */
+  #vistaSwr > .scheda, #vistaAnn > .scheda { flex: none; display: block; min-height: auto; }
+}

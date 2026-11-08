@@ -12,7 +12,7 @@ PAGINA = 256
 TOT_PAGINE = 8192
 T_SEGMENTO, T_DATI, T_CHIUSURA = 0xA5, 0xD1, 0xE0
 FLAG_PRIMA, FLAG_GAP = 0x01, 0x02
-MOTIVI = {1: "quiete", 2: "memoria piena", 3: "batteria", 5: "errore flash/IMU"}
+MOTIVI = {1: "quiete", 2: "memoria piena", 3: "batteria", 4: "USB collegata", 5: "errore flash/IMU"}
 ODR_HZ_NOMINALE = 2083 / 10.0
 MS_PER_CAMPIONE = 1000.0 / ODR_HZ_NOMINALE
 # unita' per LSB (valori del segmento): acc 488 ug/LSB (+-16 g), giro 35 mdps/LSB (+-1000 dps)

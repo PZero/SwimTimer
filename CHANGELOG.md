@@ -1,5 +1,19 @@
 # Changelog
 
+## 2026-11-08 (XIAO-only tools page, firmware 0.5.2/0.5.3)
+- **Firmware XIAO 0.5.3:** plugging USB in during a pool recording now closes the recording cleanly (new stop reason 4 "USB connected", also in `swr.py`/`swr.js`) and restarts the tag in normal mode, so it can be read from the page; before, the recording loop ignored serial commands and the page reported "MEM does not respond". Flashed and checked (`K mem 2204 8192`).
+- **Firmware XIAO 0.5.2:** no automatic sleep while USB power (VBUS) is present, even with no serial port open; before, the tag went to sleep after 60 s on the desk and disappeared from USB. Flashed over USB and checked (still on the port after 80 s at rest).
+- **`tools/index.html` reorganised for the XIAO only** (3028 → ~1700 lines): one connection panel (USB via Web Serial filtered on Seeed VID 0x2886, Bluetooth, Demo) showing link, firmware version and battery; tabs Live / Recording / Annotation / Firmware. The Recording tab uses the shared USB port (no own Connect button); USB log lines go to the live log.
+- **Removed** all ESP32-only parts: "Reg. ESP32" tab, ESP32 USB link (VID 0x303a), radar, motion interpretation, event log, LED legend, ESP32 branches of the OTA update (only XIAO-signed images accepted); `tools/assi.html` (old BMI160 axes page) deleted. ESP32 firmware stays in `firmware/`.
+- **Test campaign 1 planned** (docs): swimmer alone, 50 m pool, drills at one wall for turns, starts and finishes, iPhone/Insta360 video; filters developed in the web page only.
+- **Verification status**: page tested in the browser with Demo and simulated USB/BLE ports, not yet with the real XIAO.
+- **Online collaboration app (new, Firebase Spark, no Storage, no Cloud Functions):** public landing page (`app/`, <https://swimtimer-pzero.web.app>) and members' area (`app/area/`, `/area/`) with Google login. Every new account is **pending** until the administrator approves it; pending, refused and revoked accounts read nothing. Raw `.swr` sessions are stored in Firestore in chunks; videos are shared as Google Drive or YouTube links with SHA-256 and metadata (no video files on Firebase); annotations carry the author.
+- **Data model** documented in `docs/MODELLO-DATI.md`. **Security rules** in `firebase/firestore.rules`: the administrator is recognised by Firebase user ID, not by e-mail; **14 rule tests** on the Firestore emulator (`cd firebase/test; npm test`).
+- **Automatic cache refresh:** the deploy hook writes `app/versione.json`; open pages compare it with the version they loaded and reload when it changes. HTML, JS, CSS and JSON are served with `no-cache`.
+- **Fix of the administrator check:** the members' area remembers only a positive answer in the session (a "no" is checked again every time), so an approved administrator is recognised without stale results.
+- **Rule tests independent of the real UID:** the tests replace the administrator ID in the rules with a test ID before loading them into the emulator, so the repository tests do not depend on the real account.
+- **README** rewritten for the XIAO-only tools page, firmware 0.5.2/0.5.3, the online app and test campaign 1 (planned: one swimmer, 50 m pool, wall drills, training for verification, video from iPhone and Insta360, hand annotation before the filters).
+
 ## 2026-11-07 (annotation tab fix)
 - **Fix:** the Annotation tab collapsed its cards on large screens (single-screen layout forced `min-height: 0`), so the video box had height 0; the Recording/Annotation cards now scroll normally.
 - `annotazione.css` and `annotazione.js` are loaded with a version query (`?v=2`) so browsers do not keep stale copies.

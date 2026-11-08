@@ -36,6 +36,7 @@
 #define SWR_STOP_QUIETE 1
 #define SWR_STOP_PIENA 2
 #define SWR_STOP_BATTERIA 3
+#define SWR_STOP_USB 4        // USB collegata durante la registrazione: chiude e riparte in modalita' normale
 #define SWR_STOP_ERRORE 5
 
 static inline uint16_t swrCrc16(const uint8_t *p, uint32_t n, uint16_t crc = 0xFFFF) {

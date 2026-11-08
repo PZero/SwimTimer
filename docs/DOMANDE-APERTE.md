@@ -1,6 +1,6 @@
 # Domande aperte per l'utente
 
-1. Piscina da 25 o 50 m? Solo piscina o anche acque libere?
+1. ~~Piscina da 25 o 50 m~~: 50 m (2026-11-08). Resta: anche acque libere?
 2. Ti fermi al muro a ogni vasca o fai anche virate continue (capovolta)? Vuoi i tempi per vasca o per ripetuta (es. 4×100)?
 3. ~~Accelerometro nel tag~~: deciso, già montato.
 4. Dove indossarlo: cuffia/elastico degli occhialini (consigliato) o polso?
@@ -42,3 +42,7 @@ Risolte: modulo E73 (Raytac a stock 0), IMU LSM6DSV16X, flash 16 MB, interruttor
 43. LED sotto la cuffia: se non si vede, serve un altro segnale (cicalino fuori dal tag) oppure basta controllare da PC?
 44. Caricare la 0.5.1 (lampo blu a ogni tocco): serve la tag in modalità normale (USB collegata).
 45. Il video di prova è a 25 fps: adattiamo l'Annotazione al frame rate reale del video o giri a 30 fps (telefono)? Per ora i tasti ±1f e il numero del fotogramma sono sbagliati con 25 fps.
+46. iPhone: giri in **H.264 a 30 fps** («Più compatibile» in Impostazioni › Fotocamera › Formati), che la pagina già gestisce, oppure a **60 fps** (tocco e spinta più precisi, ±17 ms invece di ±33 ms) adattando prima la pagina al frame rate (vedi 45)?
+47. Programma dei 4 giorni: quale combinazione di 100 e 50 (es. 4×100 + 8×50 = 12 partenze/arrivi e 4 virate al giorno; più 100 = più virate, più 50 = più partenze/arrivi)?
+48. Dati dei nuotatori sull'app online: quando si estende ad altri, serve un testo di consenso da mostrare al primo accesso? Vuoi un elenco delle persone ammesse con il motivo dell'approvazione?
+49. Video su Google Drive: cartella condivisa con gli utenti approvati (consigliato) o ogni utente carica il suo?
