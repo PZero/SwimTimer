@@ -138,3 +138,15 @@
 | 2026-11-10 | Pacchetto di aggiornamento della pagina portato da 0.4.2 a 0.5.4 (`xiao.bin`/`xiao.json`, compilato senza percorsi locali) | Il tag del test 1 gira la 0.5.4; la pagina installava una versione più vecchia |
 | 2026-11-10 | Annotazione d'ora in poi nell'area riservata online; editor con fps reali, lista senza scroll e frecce che spostano l'evento selezionato | Salvataggio condiviso su Firestore; le etichette erano imprecise a 30 fps su video a 50 |
 | 2026-11-10 | Video da Google Drive nell'editor: lasciato stare | Serve la Drive API e la condivisione «chiunque abbia il link» |
+| 2026-11-10 | Sincronizzazione tag→display (`docs/SINCRONIZZAZIONE.md`): blocchi da 4 KB, la tag spinge il più vecchio non confermato, conferma solo dopo scrittura e rilettura su SD, nessun rinvio a tempo, finestra 2 | Nessun dato perso e memoria «estesa» a ogni sosta al muro |
+| 2026-11-10 | Si resta a 208 Hz; la tag non interpreta il movimento (niente stato «al muro», annuncio fisso ~200 ms) | Richiesta dell'utente: per ora solo registrazione e scarico |
+| 2026-11-10 | Display di sincronizzazione su T-RGB con Adafruit GFX (no LVGL), 3 spicchi da 120°, mai in standby | Riuso dell'ambiente già stabile; il display deve sempre ricevere |
+| 2026-11-10 | Formato `.swr` 2: pagina 0 di ogni blocco = intestazione 0xB1 con seq e byte di conferma fuori CRC | Formato 1 delle pagine dati invariato; −6% di spazio |
+| 2026-11-10 | Nome (max 11 caratteri) e colore (tavolozza di 10) impostati dalla pagina, salvati nella tag, mostrati dal display | Riconoscere la propria tag a colpo d'occhio |
+| 2026-11-10 | **LED della tag spenti a batteria** (sotto la cuffia non si vedono e consumano): da applicare al prossimo aggiornamento del firmware | Richiesta dell'utente |
+| 2026-11-10 | Priorità: versione «super stabile» di tag e display (timeout, watchdog, prova di durata, casi limite) prima di nuove funzioni | Richiesta dell'utente |
+| 2026-11-10 | Formato `.swr` 3: conferma nella parola di 4 byte 252..255, tutta sua; il formato 2 si legge ma non si scrive | La flash Puya riscrive l'intera parola da 4 byte: la conferma nel byte 16 rovinava il seq |
+| 2026-11-10 | Seq dei blocchi mai riusato, nemmeno dopo un azzeramento (base salvata in `/seq.bin`, iniziale 1000) | Il display riconosce i doppioni dal seq: un seq riusato diventa un'anomalia |
+| 2026-11-10 | La tag non cancella mai da sola una memoria non riconosciuta (4 lampi viola, azzeramento esplicito) | Nessun dato perso; prima un contenuto «estraneo» si cancellava automaticamente |
+| 2026-11-10 | Batteria sul display con la stessa curva LiPo della pagina; segnale in % al posto di «vista N s fa» (scala provvisoria −95…−55 dBm) | I due numeri non coincidevano; il segnale dice il margine per lo scarico |
+| 2026-11-10 | Pagina dei tool con Edge (Chrome su Windows tiene un collegamento BLE appeso) | Con Edge il collegamento funziona |

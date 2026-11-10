@@ -75,6 +75,14 @@ class FlashQspi {
     if (nrfx_qspi_write(tmp, n4, addr) != NRFX_SUCCESS) return 0;
     return len;
   }
+  // cancella un settore da 4 KB (comando 0x20), indirizzo multiplo di 4096; tipico 45 ms, massimo ~300 ms
+  bool eraseSector(uint32_t addr) {
+    if (!attiva || (addr & 4095) || addr >= size() || !attendi(100)) return false;
+    wren();
+    const uint8_t a[3] = {(uint8_t)(addr >> 16), (uint8_t)(addr >> 8), (uint8_t)addr};
+    if (!scriviCmd(0x20, a, 3)) return false;
+    return attendi(1000);
+  }
   bool eraseChip() {
     if (!attiva || !attendi(100)) return false;
     wren();

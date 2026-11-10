@@ -165,6 +165,22 @@
   .fw-spiega { font-size: 12.5px; color: var(--tenue); margin: 0; }
   #vistaFw > .scheda { grid-column: span 12; }
 
+  /* Sincronizzazione (sola lettura) */
+  .sync-kv { display: grid; grid-template-columns: auto 1fr; gap: 2px 12px; font-size: 12.5px; margin: 0 0 8px; }
+  .sync-kv dt { color: var(--tenue); } .sync-kv dd { margin: 0; text-align: right; font-weight: 600; }
+  .sync-kv dd.err { color: var(--errore); } .sync-kv dd.att { color: var(--attenzione); } .sync-kv dd.ok { color: var(--ok); }
+  #syncMappa { width: 100%; display: block; border-radius: 6px; background: var(--card-2); }
+  .sync-leg { display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: 11px; color: var(--tenue); margin-top: 6px; }
+  .sync-leg i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 4px; vertical-align: -1px; }
+
+  .sync-id { margin-top: 12px; border-top: 1px solid var(--bordo); padding-top: 10px; }
+  .sync-pal { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+  .sync-pal button { width: 24px; height: 24px; padding: 0; border-radius: 50%; border: 2px solid var(--bordo); }
+  .sync-pal button.nessuno { width: auto; border-radius: 12px; padding: 0 8px; font-size: 11px; }
+  .sync-pal button.sel { border-color: var(--testo); box-shadow: 0 0 0 2px var(--accento-tenue); }
+  .sync-anteprima { display: inline-block; width: 22px; height: 22px; border-radius: 50%; border: 1px solid var(--bordo); vertical-align: middle; margin-left: 6px; }
+  .sync-esito-err { color: var(--errore); }
+
   /* Schermo ampio: tutto in una schermata, nessuno scorrimento della pagina */
   @media (min-width: 1000px) and (min-height: 600px) {
     html, body { height: 100%; overflow: hidden; }
@@ -309,6 +325,32 @@
         <div class="xiao-mnt" id="xiaoFwNota"></div>
       </section>
 
+      <section class="scheda" id="syncScheda" aria-label="Sincronizzazione">
+        <header><h2>Sincronizzazione <small>sola lettura</small></h2><span class="mono" id="syncId" style="color:var(--tenue)"></span></header>
+        <div class="nota" id="syncNota">Collega il tag via Bluetooth.</div>
+        <div id="syncCorpo" hidden>
+          <dl class="sync-kv">
+            <dt>Stato</dt><dd id="syncStato">–</dd>
+            <dt>Batteria</dt><dd id="syncBat">–</dd>
+            <dt>Memoria non confermata</dt><dd id="syncMem">–</dd>
+            <dt>Blocchi in attesa</dt><dd id="syncAttesa">–</dd>
+            <dt>Ultimo seq / più vecchio non confermato</dt><dd id="syncSeq">–</dd>
+            <dt>Registrazione</dt><dd id="syncSec">–</dd>
+            <dt>Errori</dt><dd id="syncErr">–</dd>
+          </dl>
+          <canvas id="syncMappa" width="512" height="48" aria-label="Mappa dei 512 blocchi di memoria"></canvas>
+          <div class="sync-leg"><span><i style="background:#2fcf5b"></i>validato</span><span><i style="background:#ffab00"></i>da validare</span><span><i style="background:#fff;border:1px solid var(--bordo)"></i>aperto</span><span><i style="background:#3a3d44"></i>libero</span></div>
+        </div>
+        <div class="sync-id" id="syncImposta">
+          <div class="riga"><span class="etichetta">Nome e colore della tag</span><span class="mono" id="syncNomeAtt" style="color:var(--tenue)"></span></div>
+          <div class="comandi" style="margin-top:6px"><input id="syncNome" type="text" maxlength="11" placeholder="Nome (max 11)" aria-label="Nome della tag" style="width:130px" autocomplete="off" spellcheck="false">
+            <span class="sync-anteprima" id="syncAnt" title="Anteprima del colore"></span></div>
+          <div class="sync-pal" id="syncPal" role="radiogroup" aria-label="Colore della tag"></div>
+          <div class="comandi" style="margin-top:6px"><button class="piccolo primario" id="syncSalva" disabled>Salva</button></div>
+          <div class="nota" id="syncEsito">&nbsp;</div>
+        </div>
+      </section>
+
       <section class="scheda a-log">
         <header><h2>Log del tag</h2><button class="piccolo" id="xiaoLogPulisci">Pulisci</button></header>
         <div class="mono log-tag" id="xiaoLog"><span style="color:var(--tenue)">Nessuna riga: collega la XIAO via Bluetooth o USB.</span></div>
@@ -350,6 +392,7 @@ const LSB_ACC = 2048;          // la XIAO invia l'accelerazione a ±16 g (2048 L
 const BLE_SERVIZIO = '7a1e0001-5b1d-4c8e-9f3a-1d2c3b4a5e60';
 const BLE_DATI = '7a1e0002-5b1d-4c8e-9f3a-1d2c3b4a5e60';
 const BLE_STATO = '7a1e0003-5b1d-4c8e-9f3a-1d2c3b4a5e60';
+const SYNC_SERVIZIO = '7a1e0101-5b1d-4c8e-9f3a-1d2c3b4a5e60', SYNC_STATO = '7a1e0104-5b1d-4c8e-9f3a-1d2c3b4a5e60'; // solo lettura: CONTROLLO (…0102) non si usa mai da qui
 const BLE_COMANDI = '7a1e0004-5b1d-4c8e-9f3a-1d2c3b4a5e60';
 const BLE_RISPOSTE = '7a1e0005-5b1d-4c8e-9f3a-1d2c3b4a5e60';
 const BLE_OTA = '7a1e0006-5b1d-4c8e-9f3a-1d2c3b4a5e60';
@@ -1337,7 +1380,7 @@ function aggiornaInfoConn() {
   } else if (usbBat) bat = `${Math.round(percentuale(usbBat.vbus ? usbBat.mv / 1000 - 0.05 : usbBat.mv / 1000))}% · ${virg(usbBat.mv / 1000)} V${usbBat.carica ? ' ⚡' : ''}`;
   $('connBat').textContent = bat;
 }
-function aggiornaConn() { aggiornaPillola(); aggiornaPulsanti(); aggiornaInfoConn(); aggiornaFw(); }
+function aggiornaConn() { syncNomeDispositivo(); aggiornaPillola(); aggiornaPulsanti(); aggiornaInfoConn(); aggiornaFw(); }
 
 // Avvisi sulle API mancanti
 (() => {
@@ -1436,10 +1479,22 @@ async function collegaBt() {
   let dispositivo;
   conn.attesa = true; conn.messaggio = ''; aggiornaConn();
   try {
-    dispositivo = await navigator.bluetooth.requestDevice({ filters: [{ name: 'SwimTag' }], optionalServices: [BLE_SERVIZIO] });
+    dispositivo = await navigator.bluetooth.requestDevice({ filters: [{ name: 'SwimTag' }, { namePrefix: 'ST-' }, { services: [BLE_SERVIZIO] }], optionalServices: [BLE_SERVIZIO, SYNC_SERVIZIO] });
     dispositivo.addEventListener('gattserverdisconnected', () => finisceBt());
-    const server = await dispositivo.gatt.connect();
-    const servizio = await server.getPrimaryService(BLE_SERVIZIO);
+    // Windows a volte risponde con servizi vecchi dalla cache o con un collegamento appeso: fino a 3 tentativi
+    let server, servizio, ultimoErr;
+    for (let t = 1; t <= 3 && !servizio; t++) {
+      try {
+        server = await dispositivo.gatt.connect();
+        servizio = await server.getPrimaryService(BLE_SERVIZIO);
+      } catch (e) {
+        ultimoErr = e;
+        xiaoLogRiga('Bluetooth: tentativo ' + t + ' non riuscito (' + e.message + ')');
+        try { dispositivo.gatt.disconnect(); } catch {}
+        await new Promise(r => setTimeout(r, 800 * t));
+      }
+    }
+    if (!servizio) throw ultimoErr;
     const dati = await servizio.getCharacteristic(BLE_DATI);
     conn.bt = { dispositivo, invia: null, ota: null, chiudi: () => dispositivo.gatt.disconnect() };
     conn.attesa = false;
@@ -1494,6 +1549,7 @@ async function collegaBt() {
     } catch {
       $('xiaoFwNota').textContent = 'Il firmware del tag non supporta i comandi (aggiornalo via cavo)';
     }
+    syncAvvia(server, dispositivo.name);
   } catch (e) {
     if (dispositivo && dispositivo.gatt.connected) dispositivo.gatt.disconnect();
     conn.attesa = false;
@@ -1507,6 +1563,7 @@ function finisceBt(motivo) {
   conn.messaggio = 'Bluetooth scollegato' + (motivo ? ': ' + motivo : '');
   if (ota) ota.annullato = true;
   versioneTag = null;
+  syncReset();
   xiaoLogRiga(conn.messaggio);
   aggiornaConn();
 }
@@ -1519,14 +1576,98 @@ function comando(testo) {
   return true;
 }
 function conferma(t) {
+  if (syncRisposta(t, false)) return;
   if (t.startsWith('ota')) return rispostaOta(t, false);
   if (t.startsWith('vcal')) { $('batNota').textContent = 'Taratura: fattore del partitore ' + t.slice(5) + ' (salvato nel tag)'; return; }
   xiaoLogRiga('tag: ' + t);
 }
 function errore(t) {
+  if (syncRisposta(t, true)) return;
   if (t.startsWith('vcal')) { $('batNota').textContent = 'Taratura non riuscita: ' + t.slice(5); return; }
   if (t.startsWith('ota') || ota) return rispostaOta(t, true);
   xiaoLogRiga('errore: ' + t);
+}
+
+// ---------- Sincronizzazione: stato della tag (caratteristica 7a1e0104, 151 B, lettura + notifica ogni 2 s). Solo lettura. ----------
+const SYNC_STATI = { 0: ['vado in sonno (SPENTA)', 'att'], 1: ['pronta', 'ok'], 2: ['registra', 'ok'], 3: ['riservato', 'att'], 4: ['memoria piena', 'err'], 5: ['errore', 'err'], 6: ['sincronizza', 'ok'] };
+const SYNC_ERRORI = ['IMU', 'flash', 'batteria bassa'];
+const SYNC_COLORI = ['#3a3d44', '#ffffff', '#ffab00', '#2fcf5b']; // libero, aperto, da validare, validato
+function syncReset(testo) {
+  $('syncCorpo').hidden = true; $('syncId').textContent = '';
+  $('syncNota').textContent = testo || 'Collega il tag via Bluetooth.'; $('syncNota').hidden = false;
+}
+function syncMostra(d) {
+  if (!d || d.byteLength < 151) return;
+  const stato = d.getUint8(5), mv = d.getUint8(6) * 20, mem = d.getUint8(7), err = d.getUint8(16);
+  const vecchio = d.getUint32(19, true), sec = d.getUint16(14, true);
+  const [nome, cls] = SYNC_STATI[stato] || ['sconosciuto (' + stato + ')', 'att'];
+  const set = (id, t, c) => { const e = $(id); e.textContent = t; e.className = c || ''; };
+  $('syncNota').hidden = true; $('syncCorpo').hidden = false;
+  $('syncId').textContent = 'ST-' + d.getUint32(1, true).toString(16).toUpperCase().padStart(8, '0').slice(-4);
+  set('syncStato', nome, cls);
+  set('syncBat', mv ? Math.round(percentuale(mv / 1000)) + '% · ' + (mv / 1000).toFixed(2).replace('.', ',') + ' V (come sul display)' : '–', mv && mv < 3500 ? 'att' : '');
+  set('syncMem', mem + ' %', mem >= 90 ? 'err' : mem >= 60 ? 'att' : '');
+  set('syncAttesa', String(d.getUint16(8, true)));
+  set('syncSeq', d.getUint32(10, true) + ' / ' + (vecchio === 0xFFFFFFFF ? 'nessuno' : vecchio));
+  set('syncSec', stato === 2 || sec ? Math.floor(sec / 60) + ' min ' + (sec % 60) + ' s' : '–');
+  set('syncErr', err ? SYNC_ERRORI.filter((_, i) => err & (1 << i)).join(', ') || 'bit 0x' + err.toString(16) : 'nessuno', err ? 'err' : 'ok');
+  const c = $('syncMappa'), g = c.getContext('2d'), W = c.width / 128, H = c.height / 4;
+  g.clearRect(0, 0, c.width, c.height);
+  for (let i = 0; i < 512; i++) {
+    const v = (d.getUint8(23 + (i >> 2)) >> (2 * (i & 3))) & 3;
+    g.fillStyle = SYNC_COLORI[v];
+    g.fillRect((i % 128) * W + .5, (i >> 7) * H + .5, W - 1, H - 1);
+  }
+}
+async function syncAvvia(server, nome) {
+  syncReset('Cerco il servizio di sincronizzazione…');
+  let servizio;
+  try { servizio = await server.getPrimaryService(SYNC_SERVIZIO); }
+  catch { syncReset('firmware senza sincronizzazione (serve 0.6.0)'); return; }
+  try {
+    const car = await servizio.getCharacteristic(SYNC_STATO);
+    car.addEventListener('characteristicvaluechanged', e => syncMostra(e.target.value));
+    await car.startNotifications();
+    syncMostra(await car.readValue());
+  } catch { syncReset('firmware senza sincronizzazione (serve 0.6.0)'); }
+}
+
+// ---------- Nome e colore della tag (comandi NOME,<testo> e COLORE,<n> su 7a1e0004; risposte "nome …", "colore …" su 7a1e0005) ----------
+const TAVOLOZZA = ['#3b82f6', '#f97316', '#a855f7', '#06b6d4', '#ec4899', '#eab308', '#e5e7eb', '#84cc16', '#ef4444', '#a16207'];
+const TAV_NOMI = ['blu', 'arancione', 'viola', 'ciano', 'rosa', 'giallo', 'bianco', 'verde lime', 'rosso', 'marrone'];
+let syncColore = -1;
+function syncEsito(t, err) { const e = $('syncEsito'); e.textContent = t; e.classList.toggle('sync-esito-err', !!err); }
+function syncColoreScegli(n) {
+  syncColore = n;
+  $('syncAnt').style.background = n >= 0 ? TAVOLOZZA[n] : 'transparent';
+  [...$('syncPal').children].forEach((b, i) => { const v = i < 10 ? i : -1; b.classList.toggle('sel', v === n); b.setAttribute('aria-checked', String(v === n)); });
+}
+(function () {
+  const pal = $('syncPal');
+  TAVOLOZZA.forEach((c, i) => { const b = document.createElement('button'); b.type = 'button'; b.style.background = c; b.title = TAV_NOMI[i]; b.setAttribute('role', 'radio'); b.addEventListener('click', () => syncColoreScegli(i)); pal.appendChild(b); });
+  const n = document.createElement('button'); n.type = 'button'; n.className = 'nessuno'; n.textContent = 'nessuno'; n.setAttribute('role', 'radio'); n.addEventListener('click', () => syncColoreScegli(-1)); pal.appendChild(n);
+  syncColoreScegli(-1);
+  $('syncNome').addEventListener('input', () => { const e = $('syncNome'); e.value = e.value.replace(/[^ -~,]/g, '').replace(/,/g, ''); });
+  $('syncSalva').addEventListener('click', () => {
+    const nome = $('syncNome').value.trim();
+    if (!/^[ -~]{0,11}$/.test(nome) || nome.includes(',')) { syncEsito('Nome non valido: max 11 caratteri ASCII stampabili, senza virgola', true); return; }
+    if (!comando('NOME,' + nome)) { syncEsito('Collega il tag via Bluetooth', true); return; }
+    comando('COLORE,' + syncColore);
+    syncEsito('Invio…');
+  });
+})();
+function syncRisposta(t, err) { // true se la risposta riguarda nome/colore
+  const m = /^(nome|colore)(?![a-z])\s*(.*)$/i.exec(t);
+  if (!m) return false;
+  const che = m[1].toLowerCase();
+  if (err) syncEsito('Non riuscito (' + che + '): ' + (m[2] || 'errore') + (/comando|sconosc|unknown/i.test(m[2]) ? ' - firmware vecchio?' : ''), true);
+  else { syncEsito('Salvato: ' + che + ' ' + (m[2] || '(cancellato)')); if (che === 'nome') $('syncNomeAtt').textContent = m[2] || ''; }
+  return true;
+}
+function syncNomeDispositivo() {
+  const att = conn.bt && conn.bt.dispositivo && conn.bt.dispositivo.name;
+  $('syncNomeAtt').textContent = att || '';
+  $('syncSalva').disabled = !conn.bt || !conn.bt.invia;
 }
 
 // ---------- Scheda Firmware: aggiornamento via Bluetooth (solo XIAO, OTA 0006) ----------

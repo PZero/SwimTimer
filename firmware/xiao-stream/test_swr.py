@@ -173,13 +173,189 @@ class TestFormato(unittest.TestCase):
             self.assertEqual([int(g[2][k]) for k in ("ax", "ay", "az", "gx", "gy", "gz")], list(camp[2]))
 
 
+def costruisci2(segmenti, mv=3900, confermati=()):
+    """Formato 2: ogni segmento comincia un blocco nuovo (seq crescente da 1); blocco = intestazione + max 15 pagine, il resto 0xFF.
+    Ritorna (blocchi in ordine fisico = ordine di seq, elenco)."""
+    blocchi = []
+    seq = 0
+    for idx, (camp, chiudi) in enumerate(segmenti):
+        seq += 1
+        blocchi.append(dict(seq=seq, seg=idx, voci=[("seg", None)]))
+        cod = swr.Codificatore()
+        n_pag = 0
+        flag = swr.FLAG_PRIMA
+
+        def aggiungi_voce(voce):
+            nonlocal seq
+            if len(blocchi[-1]["voci"]) == 15:                 # blocco pieno: se ne apre uno nuovo
+                seq += 1
+                blocchi.append(dict(seq=seq, seg=idx, voci=[]))
+            blocchi[-1]["voci"].append(voce)
+
+        for i, s in enumerate(camp):
+            if cod.nc and not cod.sta(s):
+                aggiungi_voce(("dati", (bytes(cod.pag), cod.nc, cod.t_primo, flag)))
+                flag = 0
+                n_pag += 1
+                cod.azzera()
+            cod.aggiungi(s, int(1000 + 100000 * idx + i * swr.MS_PER_CAMPIONE))
+        if cod.nc:
+            aggiungi_voce(("dati", (bytes(cod.pag), cod.nc, cod.t_primo, flag)))
+            n_pag += 1
+        if chiudi:
+            aggiungi_voce(("chiusura", (len(camp), n_pag)))
+    uscita = []
+    for f, b in enumerate(blocchi):
+        pagine = []
+        for j, (tipo, arg) in enumerate(b["voci"]):
+            numero = f * 16 + 1 + j
+            if tipo == "seg":
+                pagine.append(swr.pagina_segmento(numero, b["seg"], mv=mv))
+            elif tipo == "dati":
+                pag, nc, t_primo, fl = arg
+                c = swr.Codificatore()
+                c.pag = bytearray(pag); c.nc = nc; c.t_primo = t_primo
+                pagine.append(c.chiudi(numero, b["seg"], mv, 22, fl))
+            else:
+                pagine.append(swr.pagina_chiusura(numero, b["seg"], 1, arg[0], arg[1]))
+        uscita.append(swr.costruisci_blocco(f, b["seq"], pagine, segmento=b["seg"], confermato=(b["seq"] in confermati)))
+    return uscita, blocchi
+
+
+class TestFormato2(unittest.TestCase):
+    def test_crc32_valore_noto(self):
+        import zlib
+        self.assertEqual(zlib.crc32(b"123456789") & 0xFFFFFFFF, 0xCBF43926)     # lo stesso CRC32 di firmware e display
+
+    def test_intestazione_conferma_fuori_dal_crc(self):
+        a = swr.intestazione_blocco(32, 7)
+        b = swr.intestazione_blocco(32, 7, confermato=True)
+        self.assertEqual(a[252:256], b"\xff" * 4)
+        self.assertEqual(b[252:256], b"\x00" * 4)
+        self.assertEqual(a[16], 0xFF)                                            # byte 16 riservato, non piu' usato
+        self.assertEqual(a[14:16], b[14:16])                                     # stessa CRC con o senza conferma
+        self.assertEqual(swr.crc_blocco_pagina(a), struct.unpack_from("<H", a, 14)[0])
+        self.assertEqual(swr.crc_blocco_pagina(b), struct.unpack_from("<H", b, 14)[0])
+        c = bytearray(a)
+        c[17] ^= 1                                                               # il seq e' coperto dal CRC
+        self.assertNotEqual(swr.crc_blocco_pagina(c), struct.unpack_from("<H", c, 14)[0])
+
+    def test_parola_conferma_isolata(self):
+        """La flash riscrive l'intera parola da 4 byte: la conferma (252..255) non deve condividere la parola con altri dati."""
+        a = bytearray(swr.intestazione_blocco(32, 0x01020304, id_tag=0xA1B2C3D4))
+        self.assertEqual(swr.OFF_CONFERMA % 4, 0)
+        self.assertEqual(a[swr.OFF_CONFERMA:swr.OFF_CONFERMA + 4], b"\xff" * 4)
+        self.assertTrue(all(x == 0xFF for x in a[25:256]))                       # dopo id tag solo 0xFF
+        a[252:256] = b"\x00\x00\x00\x00"                                      # scrittura «sostitutiva» della parola, come la Puya
+        self.assertTrue(swr.e_confermato(a))
+        self.assertEqual(struct.unpack_from("<I", a, 17)[0], 0x01020304)          # seq intatto
+        self.assertEqual(swr.crc_blocco_pagina(a), struct.unpack_from("<H", a, 14)[0])
+
+    def test_formato2_si_legge_ancora(self):
+        """Blocchi del 2026-11-10 (formato 2, conferma nel byte 16): CRC e conferma letti con la regola vecchia."""
+        a = bytearray(swr.intestazione_blocco(32, 7))
+        a[1] = 2
+        a[14:16] = b"\x00\x00"
+        a[14:16] = struct.pack("<H", swr.crc_blocco_pagina(a))
+        self.assertFalse(swr.e_confermato(a))
+        a[16] = 0x00
+        self.assertTrue(swr.e_confermato(a))
+        self.assertEqual(swr.crc_blocco_pagina(a), struct.unpack_from("<H", a, 14)[0])
+
+    def test_crc32_blocco_ignora_la_conferma(self):
+        bl = swr.costruisci_blocco(3, 9, [])
+        conf = bytearray(bl)
+        conf[252:256] = b"\x00" * 4
+        self.assertEqual(swr.crc32_blocco(bl), swr.crc32_blocco(bytes(conf)))
+        conf[100] ^= 1
+        self.assertNotEqual(swr.crc32_blocco(bl), swr.crc32_blocco(bytes(conf)))
+
+    def test_roundtrip_piu_blocchi_in_ordine_fisico_rimescolato(self):
+        camp = campioni_inventati(2500, seme=13)
+        blocchi, _ = costruisci2([(camp, True)])
+        self.assertGreater(len(blocchi), 3)
+        rot = blocchi[2:] + blocchi[:2]                       # l'anello e' girato: ordine fisico diverso da quello di seq
+        es = swr.decodifica(b"".join(rot))
+        self.assertEqual(es.problemi, [])
+        self.assertEqual(es.formato, 2)
+        self.assertEqual([s for pg in es.pagine_dati for s in pg["campioni"]], camp)
+        self.assertTrue(es.segmenti[0]["chiuso"])
+        self.assertEqual(es.segmenti[0]["campioni"], len(camp))
+
+    def test_pagine_vuote_in_coda_al_blocco_sono_valide(self):
+        a, b = campioni_inventati(300, 1), campioni_inventati(200, 2)
+        blocchi, _ = costruisci2([(a, True), (b, True)])      # ogni segmento in un blocco nuovo: i blocchi finiscono con pagine 0xFF
+        self.assertTrue(blocchi[0].endswith(b"\xff" * 256))
+        es = swr.decodifica(b"".join(blocchi))
+        self.assertEqual(es.problemi, [])
+        per = {0: [], 1: []}
+        for pg in es.pagine_dati:
+            per[pg["seg"]] += pg["campioni"]
+        self.assertEqual(per, {0: a, 1: b})
+
+    def test_conferma_scritta_non_rovina_il_blocco(self):
+        camp = campioni_inventati(900, 3)
+        blocchi, _ = costruisci2([(camp, True)], confermati=(1,))
+        es = swr.decodifica(b"".join(blocchi))
+        self.assertEqual(es.problemi, [])
+        self.assertTrue(es.blocchi[0]["confermato"])
+        self.assertFalse(es.blocchi[-1]["confermato"])
+        self.assertEqual([s for pg in es.pagine_dati for s in pg["campioni"]], camp)
+
+    def test_buco_di_seq_segnalato(self):
+        camp = campioni_inventati(2500, seme=5)
+        blocchi, _ = costruisci2([(camp, True)])
+        senza = blocchi[:1] + blocchi[2:]                     # manca il blocco seq 2
+        es = swr.decodifica(b"".join(senza))
+        self.assertTrue(any("buco di seq" in p for p in es.problemi))
+
+    def test_intestazione_corrotta_scarta_il_blocco(self):
+        camp = campioni_inventati(2500, seme=6)
+        blocchi, _ = costruisci2([(camp, True)])
+        guasto = bytearray(b"".join(blocchi))
+        guasto[4096 + 5] ^= 0x10                              # un bit nell'intestazione del secondo blocco
+        es = swr.decodifica(bytes(guasto))
+        self.assertTrue(any("intestazione non valida" in p for p in es.problemi))
+
+    def test_pagina_dati_corrotta_dentro_un_blocco(self):
+        camp = campioni_inventati(1500, seme=8)
+        blocchi, _ = costruisci2([(camp, True)])
+        guasto = bytearray(b"".join(blocchi))
+        guasto[256 * 5 + 100] ^= 0x04                         # pagina 5 del primo blocco
+        es = swr.decodifica(bytes(guasto))
+        self.assertEqual(len(es.pagine_corrotte), 1)
+        self.assertTrue(any("CRC" in p for p in es.problemi))
+
+    def test_misure_della_chiusura(self):
+        pag = bytearray(swr.pagina_chiusura(2, 0, 1, 100, 3))
+        struct.pack_into("<HBHH", pag, 24, 480, 2, 310, 17)
+        pag[14:16] = struct.pack("<H", swr.crc_pagina(pag))
+        bl = swr.costruisci_blocco(0, 1, [swr.pagina_segmento(1, 0), bytes(pag)])
+        es = swr.decodifica(bl)
+        s = es.segmenti[0]
+        self.assertEqual((s["gap_max_ms"], s["overrun"], s["apri_max_ms"], s["confermati"]), (480, 2, 310, 17))
+        self.assertIn("tempi", swr.riassunto(es))
+
+    def test_dump_formato2(self):
+        camp = campioni_inventati(1200, seme=21)
+        blocchi, _ = costruisci2([(camp, True)])
+        img = b"".join(blocchi)
+        ricevuto = scarica.leggi_dump(SerialeFinta(img, "SWR2", 4096))
+        self.assertEqual(ricevuto, img)
+        es = swr.decodifica(ricevuto)
+        self.assertEqual([s for pg in es.pagine_dati for s in pg["campioni"]], camp)
+
+    def test_dump_vuoto(self):
+        self.assertEqual(scarica.leggi_dump(SerialeFinta(b"", "SWR2", 4096)), b"")
+
+
 class SerialeFinta:
-    """Simula la porta: rumore di log, poi SWR1 + pagine + END."""
-    def __init__(self, dati):
-        n = len(dati) // 256
+    """Simula la porta: rumore di log, poi SWR1 (pagine da 256) o SWR2 (blocchi da 4096) + dati + END."""
+    def __init__(self, dati, sigla="SWR1", unita=256):
+        n = len(dati) // unita
         self.rx = bytearray(b"12.3 bat 3900 mV usb 1 carica 0\nacc 1 2 3 | gyro 4 5 6\n")
         self.dati = dati
-        self.dopo = b"SWR1 %d\n" % n + dati + b"\nEND %d\n" % n
+        self.dopo = sigla.encode() + b" %d\n" % n + dati + b"\nEND %d\n" % n
         self.inviato = False
         self.scritto = b""
 

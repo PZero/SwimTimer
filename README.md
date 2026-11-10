@@ -40,6 +40,7 @@ English: **https://youtu.be/EVrdSybpnE4**. Italian: https://youtu.be/_2UzpOqblVI
 - [ESP32 prototype, firmware 0.4.3](#esp32-prototype-firmware-043)
 - [nRF52840 tag](#nrf52840-tag)
 - [XIAO nRF52840 Sense test tags](#xiao-nrf52840-sense-test-tags)
+- [Tag to display synchronization](#tag-to-display-synchronization)
 - [Tools page (`tools/index.html`)](#tools-page-toolsindexhtml)
 - [Analysis: video (OpenCV) and IMU test bench](#analysis-video-opencv-and-imu-test-bench)
 - [Online collaboration app](#online-collaboration-app)
@@ -72,6 +73,8 @@ English: **https://youtu.be/EVrdSybpnE4**. Italian: https://youtu.be/_2UzpOqblVI
 | nRF52840 tag **v0.5 "economy"** | Ready: 21.59 x 28.0 mm, 2 layers, DRC 0, ERC 0 errors, `verifica_v05.py` 100/100 pins. JLCPCB files plus NextPCB files (single board and 3x1 / 2x1 panels); JLC placement preview checked, Q1 and U6 rotations fixed (commit `dea9744`) |
 | nRF52840 tag **v0.6 "Rev0"** (new) | 4 layers 0.8 mm, 21.59 x 28.5 mm, no BGA (NextPCB Rev0 rejects pitch below 0.45 mm). Files generated; JLC rotations of the new SOT-23 parts still to verify in a JLC preview |
 | XIAO nRF52840 Sense test tags | One board in use on the bench ([`hardware/xiao/README.md`](hardware/xiao/README.md)). Firmware 0.5.2 (no automatic sleep on USB power), 0.5.3 (USB during a recording closes it and restarts in normal mode) and 0.5.4 (charge current 100 mA) flashed and checked on the bench; test cell 1000 mAh; pool recording download and recorded data not yet checked; not yet used in the pool |
+| XIAO firmware **0.6.0** (`firmware/xiao-stream`) | Ring flash of 512 blocks, `.swr` format 3, BLE always on (also while recording), 2 connections, settable name and colour. Tested in a dry run with the display; the published OTA release is still 0.5.4 |
+| Display firmware `firmware/display-sync` | LilyGO T-RGB: receives the blocks from up to 3 tags, verifies, writes to microSD and confirms. Dry run: 2 tags x 15 min, 666 blocks saved and confirmed, 0 CRC errors, 0 anomalies. Signal strength still to be tuned |
 | Tools page `tools/index.html` | XIAO only: Live, Recording, Annotation and Firmware tabs, USB / Bluetooth / Demo. Also published on the Firebase site at `/strumenti/`, with an "Upload online" button. Tested in the browser with Demo and simulated ports, not yet with the real XIAO over USB for a full download |
 | Online collaboration app | Bilingual (IT/EN) public landing page with a contact form, and members' area (Google login, admin approval of new accounts, admin page for messages). Poolside display section with a live demo. Firestore rules tested with 17 emulator tests. Not yet used with real sessions |
 | Test campaign 1 | **Planned**: one swimmer (the author), 50 m pool, wall drills, then a real training session as verification. See [Test methodology](#test-methodology-raw-data-video-and-hand-annotation) |
@@ -122,6 +125,7 @@ flowchart LR
   CHG[Charging base / programmer] -- "contacts under the tag" --> TAG
 ```
 
+- **Synchronization.** After the swim the tag pushes its recorded blocks to the poolside display over BLE; the display verifies, stores and confirms them. See [Tag to display synchronization](#tag-to-display-synchronization).
 - **Tag.** Under the cap, pressed against the skull. It decides START, turns and STOP on its own using the IMU and logs raw data to flash.
 - **Poolside display.** Receives the tag's BLE advertisements without connecting. Shows a 4-hand pace clock. Goes to sleep after 5 minutes without a tag.
 - **Tools page.** [`tools/index.html`](tools/index.html) connects to the XIAO over USB or Bluetooth, downloads and annotates recordings and updates the firmware. Details in [Tools page](#tools-page-toolsindexhtml).
@@ -377,6 +381,16 @@ Arduino sketch (core Seeeduino:nrf52 + Bluefruit) that makes the XIAO speak the 
 - **Verification status.** Tested on the board: double tap, OTA (0.4.0 -> 0.4.1 -> 0.4.2) and sleep. 0.5.2 flashed over USB: still on the port after 80 s at rest. 0.5.3 flashed and checked with the memory command (`K mem 2204 8192`). 0.5.4 flashed over BLE and version checked; charging at 100 mA is under observation (see the cell notes above). **Not yet tested:** 4-tap wake, low-battery sleep, the Battery panel with the board, VCAL calibration, a full charge at 100 mA.
 - **Bench note.** One XIAO lost its 3.3 V regulator while the cell was being soldered; it is used on the bench through a silicon diode. Heat the BAT pads briefly and with care.
 
+#### Firmware 0.6.0: ring flash, BLE always on, synchronization
+
+Source in [`firmware/xiao-stream`](firmware/xiao-stream/); the published release `release/xiao.bin` is **still 0.5.4** (0.6.0 is not yet published for OTA).
+
+- **Ring flash.** The 2 MB flash is a ring of **512 blocks of 4 KB**. A block is overwritten only after the display has confirmed it. Recording stops when the memory is full of unconfirmed blocks. A memory that is not recognised is never erased automatically.
+- **`.swr` format 3.** Each block has a header (marker `0xB1`) with a global sequence number that is never reused, even after an erase. The confirmation flag is stored in the last word of the block (bytes 252..255): the Puya flash replaces a 4-byte word instead of ANDing it, so format 2 (confirmation in byte 16) corrupted the sequence number. Found and fixed with no data lost. Decoders [`swr.py`](firmware/xiao-stream/swr.py) and [`tools/swr.js`](tools/swr.js) read formats 1, 2 and 3.
+- **BLE always on.** Also while recording: 200 ms advertising with state, battery, memory and colour; up to 2 connections.
+- **Settings.** Tag name (up to 11 characters) and colour (palette of 10) can be set from the tools page. LEDs are off on battery.
+- **Sync service** `7a1e0101`: see [Tag to display synchronization](#tag-to-display-synchronization).
+
 #### Pool recording mode (firmware 0.5.0 to 0.5.4)
 
 BLE does not cross water, so for the first pool session the tag records the **raw IMU to its 2 MB QSPI flash** with BLE off, and the data is downloaded at home over USB. Purpose: collect real swimming data with video, hand-annotate every event, then develop and compare the detection filters. Details (Italian): [`firmware/xiao-stream/LEGGIMI.md`](firmware/xiao-stream/LEGGIMI.md).
@@ -397,9 +411,49 @@ BLE does not cross water, so for the first pool session the tag records the **ra
 - **Verification status.** 0.5.0 is flashed on the board: the 2-taps-blue-2-taps wake-up and the start of recording (green blink every 8 s) are confirmed; the download and the recorded data are **not yet checked**: FIFO order and burst reads, chip erase, QSPI without SoftDevice and power consumption (estimated 1.5-2 mA while recording) are unverified. 0.5.1 is superseded by 0.5.2, 0.5.3 and 0.5.4 (see above). The C++ encoder has never been run on a PC: C++/Python parity holds by construction only. The page tabs were tested with simulated data only. `.swr` files and CSV are health data and are ignored by git.
 - **Next steps.** Dry run of 0.5.0 at home, first pool session with video, hand annotation of all events, then filter development and comparison.
 
+## Tag to display synchronization
+
+Protocol specification (Italian): [`docs/SINCRONIZZAZIONE.md`](docs/SINCRONIZZAZIONE.md). It moves the recorded data from the tags to the poolside display without the swimmer doing anything, and without ever losing a block.
+
+**Flow.**
+
+```mermaid
+sequenceDiagram
+  participant T as Tag (ring flash, 512 blocks)
+  participant D as Display (LilyGO T-RGB)
+  participant S as microSD
+  T->>D: advertising (state, battery, memory, colour)
+  D->>T: connect, bonding (encrypted CONTROL)
+  T->>D: oldest unconfirmed 4 KB block (DATA notifications)
+  D->>D: verify CRC32 + CRC16 of the pages
+  D->>S: write block
+  S->>D: read back and compare
+  D->>T: confirm (seq)
+  T->>T: mark block confirmed, space can be reused
+```
+
+**Rules.**
+- **4 KB blocks.** The tag sends the oldest unconfirmed block; window of 2 blocks.
+- **Services.** BLE service `7a1e0101`: CONTROL characteristic (encrypted, with bonding), DATA (notifications), SYNC STATE (151 bytes).
+- **Verification.** The display checks CRC32 of the block and CRC16 of each page, writes it to microSD, reads it back and only then confirms.
+- **No timed resend.** The tag never resends on a timer.
+- **Global sequence number** never reused, also after an erase.
+- **Invariant.** The tag never overwrites an unconfirmed block; when memory is full of unconfirmed blocks, recording stops.
+
+**Display firmware** [`firmware/display-sync`](firmware/display-sync/) (PlatformIO, espressif32 6.9.0, Adafruit GFX, no LVGL; details in [`LEGGIMI.md`](firmware/display-sync/LEGGIMI.md), Italian):
+- Dial in **3 sectors of 120 degrees**, one per tag, with the **map of the 512 blocks** (validated / transmitting / to validate / open / free), tag name and colour, battery (LiPo curve) and signal in %.
+- Up to **3 tags connected at once**; a single task writes to the SD card; the display never goes to standby; a boot log is kept on the SD card.
+- **DEMO mode** with 3 simulated tags.
+
+![Mockup of the tag status screen (invented data)](docs/img/mockup-stato-tag.png)
+
+**Dry run (2026-11-10).** 2 tags x 15 minutes next to the display: **666 blocks saved and confirmed, 0 CRC errors, 0 anomalies**, memory of both tags working as a ring, no display restart. Measured throughput up to 8 KB/s against 1.25 KB/s produced at 208 Hz. Signal on the T-RGB is weak (about -57 / -64 dBm at 10 cm) and still to be tuned.
+
+**Tools page.** The *Synchronization* panel shows the state and the block map and sets name and colour; the `.swr` reader opens formats 1, 2 and 3 (test [`tools/test_swr2.mjs`](tools/test_swr2.mjs)). Use Edge: on Windows Chrome keeps a stale BLE connection.
+
 ## Tools page (`tools/index.html`)
 
-Static page (no build step) for the XIAO test tags. Online at <https://pzero.github.io/SwimTimer/>, or open the file locally in a browser. The same page is published on the Firebase site at <https://swimtimer-pzero.web.app/strumenti/> (copied at deploy by `firebase/prepara-strumenti.mjs`). On GitHub Pages the **Upload online** button points to the Firebase site; on the Firebase copy it uploads the `.swr` file to the shared archive of the online app (members only). Since 2026-11-08 it supports only the XIAO; the ESP32 tabs, the ESP32 USB link, the radar, the event log and `tools/assi.html` were removed.
+Static page (no build step) for the XIAO test tags. It also has a *Synchronization* panel (see [Tag to display synchronization](#tag-to-display-synchronization)); Edge is recommended for Bluetooth. Online at <https://pzero.github.io/SwimTimer/>, or open the file locally in a browser. The same page is published on the Firebase site at <https://swimtimer-pzero.web.app/strumenti/> (copied at deploy by `firebase/prepara-strumenti.mjs`). On GitHub Pages the **Upload online** button points to the Firebase site; on the Firebase copy it uploads the `.swr` file to the shared archive of the online app (members only). Since 2026-11-08 it supports only the XIAO; the ESP32 tabs, the ESP32 USB link, the radar, the event log and `tools/assi.html` were removed.
 
 **Connection panel (one for all tabs).**
 - **USB** (Web Serial, Chromium-based browsers): the port is filtered on the Seeed Studio vendor ID `0x2886`.
@@ -564,14 +618,15 @@ Twenty 1170 x 2532 px drawing sheets generated from the real PCBs (blueprint, OL
 ```
 SwimTimer/
 ├── app/                          online collaboration app: landing (index.html), members' area (area/), shared scripts (comune/, incl. i18n.js), img/, versione.json; strumenti/ and display/ are copies made at deploy
-├── docs/                         idea, state, decisions, open questions, requirements, design, data model (MODELLO-DATI.md), lessons, algorithms (Italian)
+├── docs/                         img/ (mockups), SINCRONIZZAZIONE.md (sync protocol), idea, state, decisions, open questions, requirements, design, data model (MODELLO-DATI.md), lessons, algorithms (Italian)
 ├── firebase/                     Firestore security rules, indexes, scrivi-versione.mjs, prepara-strumenti.mjs, test/ (17 rule tests)
 ├── firebase.json, .firebaserc    Firebase Hosting and Firestore configuration
 ├── firmware/
 │   ├── test-collegamenti/        ESP32-S3 tag: firmware 0.4.3
-│   ├── xiao-stream/              XIAO nRF52840 Sense: BLE streaming + OTA, pool recording 0.5.x, .swr tools (release/ xiao.bin, xiao.json = 0.5.4)
-│   └── display-prova/            T-RGB display
-├── tools/                        index.html (XIAO tools page: Live, Recording, Annotation, Firmware), annotazione.js/.css, registrazione.js, swr.js, parita_swr.mjs, display.html (poolside display mockup)
+│   ├── xiao-stream/              XIAO nRF52840 Sense: BLE streaming + OTA, recording, ring flash and sync 0.6.0, .swr tools (release/ xiao.bin, xiao.json = 0.5.4)
+│   ├── display-sync/             T-RGB display: tag synchronization, 3 tags, microSD, DEMO (PlatformIO)
+│   └── display-prova/            T-RGB display (first test)
+├── tools/                        index.html (XIAO tools page: Live, Recording, Annotation, Firmware), annotazione.js/.css, registrazione.js, swr.js, test_swr2.mjs, parita_swr.mjs, display.html (poolside display mockup)
 ├── analisi/video/                OpenCV analysis of the underwater video (stabilisation, background, skin filter, classification, tuning, comparison)
 ├── analisi/imu/                  IMU test bench: dataset, streaming simulator, evaluation, validation, sample-rate experiment, 5 tests
 ├── media/video/                  three videos: first presentation, progress update, first pool test (generators genera_video*.py, music, texts, STORYBOARD_v3.md, prepara_img_v3.py; .mp4 and real images not in git)
@@ -640,6 +695,11 @@ The v0.5 board is verified (DRC/ERC, `verifica_v05.py`). **Do not order** before
 4. Build the programmer, write UICR, antenna range test before the resin (antenna 0.3 mm from the edge, 28 mm board).
 5. Firmware on Zephyr / nRF Connect SDK (SPI, flash, recording, MCUboot, sleep with IMU INT), then pool tests.
 6. Final version: motor, pressure sensor, multi-slot charging base with NFC association (see [Planned features and ideas](#planned-features-and-ideas)).
+
+**Tag to display synchronization**
+- Stability: ERROR advertisement before sleep, display timeout/watchdog.
+- Check the microSD contents from the PC, tune the signal strength, long-duration test and edge cases.
+- Publish firmware 0.6.0 as the OTA release after the tests.
 
 **Poolside display**
 - Confirm the Raspberry Pi 4 + nRF52840 dongle architecture, then wire `ricevi()` to a real BLE source.

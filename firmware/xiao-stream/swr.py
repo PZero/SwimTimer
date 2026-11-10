@@ -1,7 +1,9 @@
-"""SwimTimer - formato .swr della registrazione in vasca (XIAO, firmware 0.5.0).
+"""SwimTimer - formato .swr della registrazione in vasca (XIAO, firmware 0.5.0 formato 1, 0.6.0 formato 2).
 
 Codifica (usata solo nei test, per generare dati inventati) e decodifica del formato descritto in
-swr_formato.h. Una registrazione e' una sequenza di pagine da 256 byte; ogni pagina dati si decodifica da sola.
+swr_formato.h. Formato 1: sequenza di pagine da 256 byte. Formato 2 (0.6.0): blocchi da 4096 byte (16 pagine); la pagina 0 di
+ogni blocco e' l'intestazione (0xB1, seq, byte di conferma fuori dal CRC), le pagine 1..15 sono pagine del formato 1; i blocchi si
+riordinano per seq, le pagine tutte 0xFF sono vuote. Ogni pagina dati si decodifica da sola.
 Nessun dato reale: i test usano solo campioni inventati.
 """
 import csv
@@ -10,6 +12,12 @@ import struct
 
 PAGINA = 256
 TOT_PAGINE = 8192
+BLOCCO = 4096
+PAGINE_BLOCCO = 16
+N_BLOCCHI = 512
+T_BLOCCO = 0xB1
+FORMATO_FLASH = 3          # 2 = conferma nel byte 16 (solo 2026-11-10, si legge ancora); 3 = conferma nei byte 252..255
+OFF_CONFERMA, LEN_CONFERMA = 252, 4
 T_SEGMENTO, T_DATI, T_CHIUSURA = 0xA5, 0xD1, 0xE0
 FLAG_PRIMA, FLAG_GAP = 0x01, 0x02
 MOTIVI = {1: "quiete", 2: "memoria piena", 3: "batteria", 4: "USB collegata", 5: "errore flash/IMU"}
@@ -31,6 +39,58 @@ def crc16(dati, crc=0xFFFF):
 
 def crc_pagina(pag):
     return crc16(pag[16:PAGINA], crc16(pag[0:14]))
+
+
+def _conferma_ff(pag):
+    """Copia della pagina 0 con il campo conferma a 0xFF (formato 2: byte 16; formato 3: parola 252..255)."""
+    t = bytearray(pag[:PAGINA])
+    if t[1] == 2:
+        t[16] = 0xFF
+    else:
+        t[OFF_CONFERMA:OFF_CONFERMA + LEN_CONFERMA] = b"\xff" * LEN_CONFERMA
+    return t
+
+
+def e_confermato(pag):
+    """Blocco confermato dal display (formato 2: byte 16; formato 3: parola 252..255)."""
+    if pag[1] == 2:
+        return pag[16] != 0xFF
+    return any(x != 0xFF for x in pag[OFF_CONFERMA:OFF_CONFERMA + LEN_CONFERMA])
+
+
+def crc_blocco_pagina(pag):
+    """CRC16 dell'intestazione di blocco: byte 0..13 e 16..255 con il campo conferma considerato 0xFF."""
+    t = _conferma_ff(pag)
+    return crc16(bytes(t[16:PAGINA]), crc16(bytes(t[0:14])))
+
+
+def crc32_blocco(blocco):
+    """CRC32 IEEE del blocco da 4096 byte con il campo conferma della pagina 0 a 0xFF (messaggio BLOCCO del protocollo)."""
+    import zlib
+    b = bytearray(blocco)
+    b[:PAGINA] = _conferma_ff(b[:PAGINA])
+    return zlib.crc32(bytes(b)) & 0xFFFFFFFF
+
+
+def intestazione_blocco(numero_pagina, seq, id_tag=0x12345678, millis=0, mv=4000, temp=22, flag=0, segmento=0, confermato=False):
+    """Pagina 0 di un blocco (formato 3)."""
+    pag = bytearray(b"\xff" * PAGINA)
+    pag[0:14] = struct.pack("<BBHIHbBH", T_BLOCCO, FORMATO_FLASH, numero_pagina, millis, mv, temp, flag, segmento)
+    pag[17:25] = struct.pack("<II", seq, id_tag)
+    pag[14:16] = struct.pack("<H", crc_blocco_pagina(pag))
+    if confermato:
+        pag[OFF_CONFERMA:OFF_CONFERMA + LEN_CONFERMA] = b"\x00" * LEN_CONFERMA
+    return bytes(pag)
+
+
+def costruisci_blocco(indice_fisico, seq, pagine, **kw):
+    """Blocco da 4096 byte: intestazione + fino a 15 pagine (le altre restano 0xFF)."""
+    assert len(pagine) <= PAGINE_BLOCCO - 1
+    b = bytearray(intestazione_blocco(indice_fisico * PAGINE_BLOCCO, seq, **kw))
+    for p in pagine:
+        b += p
+    b += b"\xff" * (BLOCCO - len(b))
+    return bytes(b)
 
 
 def intestazione(pag, tipo, param, numero, millis, mv, temp, flag, segmento):
@@ -141,41 +201,96 @@ class Esito:
 
 
 def decodifica(immagine):
-    """Decodifica un'immagine .swr (pagine concatenate; le pagine libere 0xFF alla fine sono ignorate)."""
+    """Decodifica un'immagine .swr: formato 2 (blocchi, primo byte 0xB1) o formato 1 (pagine concatenate; le pagine
+    libere 0xFF alla fine sono ignorate)."""
     es = Esito()
     es.dimensione = len(immagine)
+    es.formato = 1
+    es.totale_pagine = TOT_PAGINE
+    es.blocchi = []
+    # formato 2/3: almeno un blocco inizia con 0xB1 (il blocco 0 puo' essere vuoto)
+    if any(immagine[i] == T_BLOCCO for i in range(0, len(immagine), BLOCCO)):
+        es.formato = 2
+        es.totale_pagine = N_BLOCCHI * (PAGINE_BLOCCO - 1)
+        return _decodifica_formato2(es, immagine)
     if len(immagine) % PAGINA:
         es.avvisa("file troncato: %d byte non e' multiplo di %d" % (len(immagine), PAGINA))
     n_pag = len(immagine) // PAGINA
-    seg_corrente = None
     for p in range(n_pag):
         pag = immagine[p * PAGINA:(p + 1) * PAGINA]
         if pag[:16] == b"\xff" * 16:
             break                                            # prima pagina libera: fine dei dati
         es.pagine_usate = p + 1
+        _pagina(es, p, pag, p)
+    _fine(es)
+    return es
+
+
+def _decodifica_formato2(es, immagine):
+    if len(immagine) % BLOCCO:
+        es.avvisa("file troncato: %d byte non e' multiplo di %d" % (len(immagine), BLOCCO))
+    blocchi = []
+    for i in range(len(immagine) // BLOCCO):
+        b = immagine[i * BLOCCO:(i + 1) * BLOCCO]
+        h = b[:PAGINA]
+        valida = (h[0] == T_BLOCCO and h[1] in (2, FORMATO_FLASH)
+                  and struct.unpack_from("<H", h, 14)[0] == crc_blocco_pagina(h))
+        if not valida:
+            es.avvisa("blocco %d nel file: intestazione non valida (blocco scartato)" % i)
+            es.pagine_corrotte.append(i * PAGINE_BLOCCO)
+            continue
+        seq, id_tag = struct.unpack_from("<II", h, 17)
+        blocchi.append(dict(seq=seq, id_tag=id_tag, pagina0=struct.unpack_from("<H", h, 2)[0],
+                            confermato=e_confermato(h), dati=b, crc32=crc32_blocco(b)))
+    blocchi.sort(key=lambda x: x["seq"])
+    es.blocchi = [dict(seq=b["seq"], confermato=b["confermato"], crc32=b["crc32"]) for b in blocchi]
+    visti = set()
+    for a, b in zip(blocchi, blocchi[1:]):
+        if a["seq"] == b["seq"]:
+            es.avvisa("seq %d presente due volte (ultima copia: %s)" % (a["seq"], "uguale" if a["crc32"] == b["crc32"] else "DIVERSA"))
+        elif b["seq"] != a["seq"] + 1:
+            es.avvisa("buco di seq: da %d a %d (%d blocchi mancanti)" % (a["seq"], b["seq"], b["seq"] - a["seq"] - 1))
+    logico = 0
+    prec = None
+    for bl in blocchi:
+        if prec is not None and bl["seq"] != prec + 1:
+            logico += 100                                    # buco: le pagine non sono contigue
+        prec = bl["seq"]
+        for i in range(1, PAGINE_BLOCCO):
+            pag = bl["dati"][i * PAGINA:(i + 1) * PAGINA]
+            logico += 1
+            if pag == b"\xff" * PAGINA:
+                continue                                     # pagina vuota (valida)
+            es.pagine_usate += 1
+            _pagina(es, logico, pag, bl["pagina0"] + i)
+    _fine(es)
+    return es
+
+
+def _pagina(es, p, pag, numero_atteso):
+    if True:
         tipo, param, numero, millis, mv, temp, flag, seg, crc = struct.unpack_from("<BBHIHbBHH", pag, 0)
         if crc != crc_pagina(pag):
             es.pagine_corrotte.append(p)
             es.avvisa("pagina %d: CRC errata (pagina scartata)" % p)
-            continue
-        if numero != p:
+            return
+        if numero != numero_atteso:
             es.avvisa("pagina %d: numero interno %d diverso dalla posizione" % (p, numero))
         if tipo == T_SEGMENTO:
             odr, ug, mdps, bx, by, bz, causa, tocchi, ver = struct.unpack_from("<HHHhhhBB8s", pag, 16)
             es.segmenti[seg] = dict(idx=seg, pagina=p, millis=millis, mv_inizio=mv, odr_x10=odr, ug_lsb=ug, mdps_lsb=mdps,
                                     bias=(bx, by, bz), causa=causa, tocchi=tocchi, versione=ver.split(b"\0")[0].decode("ascii", "replace"),
                                     chiuso=False, motivo=None, campioni=None, pagine=None)
-            seg_corrente = seg
         elif tipo == T_DATI:
             if seg not in es.segmenti:
                 es.avvisa("pagina %d: dati del segmento %d senza pagina di segmento valida" % (p, seg))
-                continue
+                return
             try:
                 camp = decodifica_dati(pag)
             except (ValueError, struct.error) as e:
                 es.pagine_corrotte.append(p)
                 es.avvisa("pagina %d: dati non decodificabili (%s)" % (p, e))
-                continue
+                return
             es.pagine_dati.append(dict(pagina=p, seg=seg, millis=millis, mv=mv, temp=temp, flag=flag, campioni=camp))
             if flag & FLAG_GAP:
                 es.avvisa("pagina %d: interruzione dei dati (overrun del FIFO) prima di questa pagina" % p)
@@ -183,14 +298,20 @@ def decodifica(immagine):
             if seg in es.segmenti:
                 campioni, pagine = struct.unpack_from("<II", pag, 16)
                 es.segmenti[seg].update(chiuso=True, motivo=param, campioni=campioni, pagine=pagine, mv_fine=mv)
+                # misure facoltative della 0.6.0 (byte 24..30; 0xFF = assenti): gap massimo del FIFO, overrun, apertura blocco, confermati
+                if pag[24:26] != b"\xff\xff":
+                    gap, ovr, apri, conf = struct.unpack_from("<HBHH", pag, 24)
+                    es.segmenti[seg].update(gap_max_ms=gap, overrun=ovr, apri_max_ms=apri, confermati=conf)
             else:
                 es.avvisa("pagina %d: chiusura del segmento %d senza segmento" % (p, seg))
         else:
             es.avvisa("pagina %d: tipo 0x%02X sconosciuto" % (p, tipo))
+
+
+def _fine(es):
     for s in es.segmenti.values():
         if not s["chiuso"]:
-            es.avvisa("segmento %d senza chiusura (batteria scarica o spegnimento: la fine e' l'ultima pagina valida)" % s["idx"])
-    return es
+            es.avvisa("segmento %d senza chiusura (batteria scarica, memoria piena o spegnimento: la fine e' l'ultima pagina valida)" % s["idx"])
 
 
 def _adatta_tempi(pagine):
@@ -268,8 +389,12 @@ def riassunto(esito):
     ult = {}
     for pg in esito.pagine_dati:
         ult.setdefault(pg["seg"], []).append(pg)
-    out = ["pagine usate: %d (%.1f%% della memoria), segmenti: %d" % (
-        esito.pagine_usate, 100.0 * esito.pagine_usate / TOT_PAGINE, len(esito.segmenti))]
+    tot = getattr(esito, "totale_pagine", TOT_PAGINE)
+    out = ["formato %d, pagine usate: %d (%.1f%% della memoria), segmenti: %d" % (
+        getattr(esito, "formato", 1), esito.pagine_usate, 100.0 * esito.pagine_usate / tot, len(esito.segmenti))]
+    bl = getattr(esito, "blocchi", [])
+    if bl:
+        out.append("blocchi: %d (seq %d..%d), confermati %d" % (len(bl), bl[0]["seq"], bl[-1]["seq"], sum(1 for b in bl if b["confermato"])))
     for idx in sorted(esito.segmenti):
         s = esito.segmenti[idx]
         pagine = ult.get(idx, [])
@@ -278,6 +403,9 @@ def riassunto(esito):
             idx, camp, camp / ODR_HZ_NOMINALE, s["mv_inizio"],
             (" -> %d mV" % s["mv_fine"]) if s.get("mv_fine") else "",
             MOTIVI.get(s["motivo"], "senza chiusura") if s["chiuso"] else "senza chiusura"))
+        if s.get("gap_max_ms") is not None:
+            out.append("    tempi: massimo %d ms fra due letture del FIFO (capienza ~1600 ms), overrun %d, apertura blocco massima %d ms, "
+                       "blocchi confermati %d" % (s["gap_max_ms"], s["overrun"], s["apri_max_ms"], s["confermati"]))
     if esito.problemi:
         out.append("PROBLEMI (%d):" % len(esito.problemi))
         out.extend("  - " + p for p in esito.problemi)

@@ -1,4 +1,5 @@
 /* SwimTimer - decodificatore del formato .swr (gemello di firmware/xiao-stream/swr.py).
+ * Formati 1 (lineare) e 2 (blocchi da 16 pagine con seq e conferma, docs/SINCRONIZZAZIONE.md §8).
  * Stesse regole e stessi risultati: pagine da 256 byte, intestazione da 16 byte con CRC16, dati a delta,
  * tempo dei campioni ricavato dai millis di pagina con una regressione sulle pagine contigue.
  * Funziona nel browser (globale SWR) e con node (module.exports). Nessun dato reale. */
@@ -56,50 +57,117 @@
     return out;
   }
 
-  /** Decodifica un'immagine .swr (Uint8Array). Le pagine libere 0xFF alla fine sono ignorate. */
-  function decodifica(immagine) {
-    const es = { problemi: [], pagineCorrotte: [], segmenti: {}, pagineDati: [], pagineUsate: 0, dimensione: immagine.length };
-    if (immagine.length % PAGINA) es.problemi.push("file troncato: " + immagine.length + " byte non e' multiplo di " + PAGINA);
-    const nPag = Math.floor(immagine.length / PAGINA);
-    for (let p = 0; p < nPag; p++) {
-      const pag = immagine.subarray(p * PAGINA, (p + 1) * PAGINA);
-      let libera = true;
-      for (let i = 0; i < 16; i++) if (pag[i] !== 0xFF) { libera = false; break; }
-      if (libera) break;
-      es.pagineUsate = p + 1;
-      const dv = new DataView(pag.buffer, pag.byteOffset, PAGINA);
-      const tipo = pag[0], param = pag[1], numero = dv.getUint16(2, true), millis = dv.getUint32(4, true);
-      const mv = dv.getUint16(8, true), temp = dv.getInt8(10), flag = pag[11], seg = dv.getUint16(12, true), crc = dv.getUint16(14, true);
-      if (crc !== crcPagina(pag)) {
+  const T_BLOCCO = 0xB1, PAG_BLOCCO = 16, TOT_BLOCCHI = TOT_PAGINE / PAG_BLOCCO;
+
+  /** CRC16 dell'intestazione di blocco (formato 2): come crcPagina ma con il byte 16 (conferma) considerato 0xFF. */
+  // Campo conferma: formato 2 (solo 2026-11-10) byte 16; formato 3 parola 252..255 (la flash Puya riscrive l'intera parola)
+  function confermaFF(pag) {
+    const t = Uint8Array.from(pag.subarray ? pag.subarray(0, PAGINA) : pag.slice(0, PAGINA));
+    if (t[1] === 2) t[16] = 0xFF; else t.fill(0xFF, 252, 256);
+    return t;
+  }
+  function eConfermato(pag) {
+    if (pag[1] === 2) return pag[16] !== 0xFF;
+    for (let i = 252; i < 256; i++) if (pag[i] !== 0xFF) return true;
+    return false;
+  }
+  function crcBlocco(pag) {
+    const t = confermaFF(pag);
+    return crc16(t, crc16(t, 0xFFFF, 0, 14), 16, PAGINA);
+  }
+  const paginaVuota = pag => { for (let i = 0; i < PAGINA; i++) if (pag[i] !== 0xFF) return false; return true; };
+
+  /** Elabora una pagina .swr 1 (segmento/dati/chiusura). `p` = pagina fisica, `ordine` = posizione logica (contigue = consecutive). */
+  function elaboraPagina(es, pag, p, ordine) {
+    const dv = new DataView(pag.buffer, pag.byteOffset, PAGINA);
+    const tipo = pag[0], param = pag[1], numero = dv.getUint16(2, true), millis = dv.getUint32(4, true);
+    const mv = dv.getUint16(8, true), temp = dv.getInt8(10), flag = pag[11], seg = dv.getUint16(12, true), crc = dv.getUint16(14, true);
+    if (crc !== crcPagina(pag)) {
+      es.pagineCorrotte.push(p);
+      es.problemi.push('pagina ' + p + ': CRC errata (pagina scartata)');
+      return;
+    }
+    if (numero !== p) es.problemi.push('pagina ' + p + ': numero interno ' + numero + ' diverso dalla posizione');
+    if (tipo === T_SEGMENTO) {
+      let ver = '';
+      for (let i = 30; i < 38 && pag[i] !== 0; i++) ver += pag[i] < 128 ? String.fromCharCode(pag[i]) : '�';
+      es.segmenti[seg] = {
+        idx: seg, pagina: p, millis, mvInizio: mv, odrX10: dv.getUint16(16, true), ugLsb: dv.getUint16(18, true), mdpsLsb: dv.getUint16(20, true),
+        bias: [dv.getInt16(22, true), dv.getInt16(24, true), dv.getInt16(26, true)], causa: pag[28], tocchi: pag[29], versione: ver,
+        chiuso: false, motivo: null, campioni: null, pagine: null, mvFine: null
+      };
+    } else if (tipo === T_DATI) {
+      if (!(seg in es.segmenti)) { es.problemi.push('pagina ' + p + ': dati del segmento ' + seg + ' senza pagina di segmento valida'); return; }
+      let camp;
+      try { camp = decodificaDati(pag); } catch (e) {
         es.pagineCorrotte.push(p);
-        es.problemi.push('pagina ' + p + ': CRC errata (pagina scartata)');
+        es.problemi.push('pagina ' + p + ': dati non decodificabili (' + e.message + ')');
+        return;
+      }
+      es.pagineDati.push({ pagina: p, ordine, seg, millis, mv, temp, flag, campioni: camp });
+      if (flag & FLAG_GAP) es.problemi.push('pagina ' + p + ': interruzione dei dati (overrun del FIFO) prima di questa pagina');
+    } else if (tipo === T_CHIUSURA) {
+      if (seg in es.segmenti) {
+        Object.assign(es.segmenti[seg], { chiuso: true, motivo: param, campioni: dv.getUint32(16, true), pagine: dv.getUint32(20, true), mvFine: mv });
+      } else es.problemi.push('pagina ' + p + ': chiusura del segmento ' + seg + ' senza segmento');
+    } else {
+      es.problemi.push('pagina ' + p + ': tipo 0x' + tipo.toString(16).toUpperCase().padStart(2, '0') + ' sconosciuto');
+    }
+  }
+
+  /** Formato 2: blocchi da 16 pagine, pagina 0 = intestazione 0xB1 con seq; i blocchi si elaborano in ordine di seq. */
+  function decodificaFormato2(immagine, es) {
+    const nBlocchi = Math.floor(immagine.length / (PAGINA * PAG_BLOCCO));
+    const blocchi = [];
+    es.formato = 2;
+    es.blocchi = { totale: nBlocchi, validi: 0, confermati: 0, liberi: 0 };
+    for (let b = 0; b < nBlocchi; b++) {
+      const base = b * PAG_BLOCCO;
+      const h = immagine.subarray(base * PAGINA, (base + 1) * PAGINA);
+      if (paginaVuota(h)) { es.blocchi.liberi++; continue; }
+      const dv = new DataView(h.buffer, h.byteOffset, PAGINA);
+      if (h[0] !== T_BLOCCO || (h[1] !== 2 && h[1] !== 3) || dv.getUint16(14, true) !== crcBlocco(h)) {
+        es.pagineCorrotte.push(base);
+        es.problemi.push('blocco ' + b + ': intestazione non valida (blocco scartato)');
         continue;
       }
-      if (numero !== p) es.problemi.push('pagina ' + p + ': numero interno ' + numero + ' diverso dalla posizione');
-      if (tipo === T_SEGMENTO) {
-        let ver = '';
-        for (let i = 30; i < 38 && pag[i] !== 0; i++) ver += pag[i] < 128 ? String.fromCharCode(pag[i]) : '�';
-        es.segmenti[seg] = {
-          idx: seg, pagina: p, millis, mvInizio: mv, odrX10: dv.getUint16(16, true), ugLsb: dv.getUint16(18, true), mdpsLsb: dv.getUint16(20, true),
-          bias: [dv.getInt16(22, true), dv.getInt16(24, true), dv.getInt16(26, true)], causa: pag[28], tocchi: pag[29], versione: ver,
-          chiuso: false, motivo: null, campioni: null, pagine: null, mvFine: null
-        };
-      } else if (tipo === T_DATI) {
-        if (!(seg in es.segmenti)) { es.problemi.push('pagina ' + p + ': dati del segmento ' + seg + ' senza pagina di segmento valida'); continue; }
-        let camp;
-        try { camp = decodificaDati(pag); } catch (e) {
-          es.pagineCorrotte.push(p);
-          es.problemi.push('pagina ' + p + ': dati non decodificabili (' + e.message + ')');
-          continue;
-        }
-        es.pagineDati.push({ pagina: p, seg, millis, mv, temp, flag, campioni: camp });
-        if (flag & FLAG_GAP) es.problemi.push('pagina ' + p + ': interruzione dei dati (overrun del FIFO) prima di questa pagina');
-      } else if (tipo === T_CHIUSURA) {
-        if (seg in es.segmenti) {
-          Object.assign(es.segmenti[seg], { chiuso: true, motivo: param, campioni: dv.getUint32(16, true), pagine: dv.getUint32(20, true), mvFine: mv });
-        } else es.problemi.push('pagina ' + p + ': chiusura del segmento ' + seg + ' senza segmento');
-      } else {
-        es.problemi.push('pagina ' + p + ': tipo 0x' + tipo.toString(16).toUpperCase().padStart(2, '0') + ' sconosciuto');
+      if (dv.getUint16(2, true) !== base) es.problemi.push('blocco ' + b + ': pagina fisica interna ' + dv.getUint16(2, true) + ' diversa dalla posizione');
+      const seq = dv.getUint32(17, true), confermato = eConfermato(h);
+      blocchi.push({ b, base, seq, confermato, idTag: dv.getUint32(21, true) });
+      es.blocchi.validi++;
+      if (confermato) es.blocchi.confermati++;
+    }
+    blocchi.sort((x, y) => x.seq - y.seq || x.b - y.b);
+    for (let i = 1; i < blocchi.length; i++) if (blocchi[i].seq === blocchi[i - 1].seq) es.problemi.push('blocchi ' + blocchi[i - 1].b + ' e ' + blocchi[i].b + ': stesso seq ' + blocchi[i].seq);
+    es.listaBlocchi = blocchi;
+    for (const bl of blocchi) {
+      es.pagineUsate += 1;
+      for (let k = 1; k < PAG_BLOCCO; k++) {
+        const p = bl.base + k, pag = immagine.subarray(p * PAGINA, (p + 1) * PAGINA);
+        if (paginaVuota(pag)) continue;
+        es.pagineUsate++;
+        elaboraPagina(es, pag, p, bl.seq * PAG_BLOCCO + k);
+      }
+    }
+  }
+
+  /** Decodifica un'immagine .swr (Uint8Array), formato 1 o 2 (riconosciuto dalla pagina 0 = intestazione di blocco 0xB1, formato 2). */
+  function decodifica(immagine) {
+    const es = { problemi: [], pagineCorrotte: [], segmenti: {}, pagineDati: [], pagineUsate: 0, dimensione: immagine.length, formato: 1 };
+    if (immagine.length % PAGINA) es.problemi.push("file troncato: " + immagine.length + " byte non e' multiplo di " + PAGINA);
+    const nPag = Math.floor(immagine.length / PAGINA);
+    // formato 2/3: almeno un blocco inizia con l'intestazione 0xB1 (il blocco 0 puo' essere vuoto)
+    let anello = false;
+    for (let i = 0; i + 1 < immagine.length; i += PAGINA * PAG_BLOCCO) if (immagine[i] === T_BLOCCO && (immagine[i + 1] === 2 || immagine[i + 1] === 3)) { anello = true; break; }
+    if (nPag && anello) decodificaFormato2(immagine, es);
+    else {
+      for (let p = 0; p < nPag; p++) {
+        const pag = immagine.subarray(p * PAGINA, (p + 1) * PAGINA);
+        let libera = true;
+        for (let i = 0; i < 16; i++) if (pag[i] !== 0xFF) { libera = false; break; }
+        if (libera) break;
+        es.pagineUsate = p + 1;
+        elaboraPagina(es, pag, p, p);
       }
     }
     for (const k of Object.keys(es.segmenti)) {
@@ -142,7 +210,7 @@
     let cur = [pagine[0]];
     for (let i = 1; i < pagine.length; i++) {
       const pg = pagine[i];
-      if (pg.pagina !== cur[cur.length - 1].pagina + 1 || (pg.flag & FLAG_GAP)) { gruppi.push(cur); cur = []; }
+      if (pg.ordine !== cur[cur.length - 1].ordine + 1 || (pg.flag & FLAG_GAP)) { gruppi.push(cur); cur = []; }
       cur.push(pg);
     }
     gruppi.push(cur);
@@ -194,7 +262,7 @@
   }
 
   function riassunto(es) {
-    const out = ['pagine usate: ' + es.pagineUsate + ' (' + (100 * es.pagineUsate / TOT_PAGINE).toFixed(1) + '% della memoria), segmenti: ' + Object.keys(es.segmenti).length];
+    const out = ['pagine usate: ' + es.pagineUsate + ' (' + (100 * es.pagineUsate / TOT_PAGINE).toFixed(1) + '% della memoria), formato ' + es.formato + (es.blocchi ? ', blocchi ' + es.blocchi.validi + ' (' + es.blocchi.confermati + ' confermati)' : '') + ', segmenti: ' + Object.keys(es.segmenti).length];
     for (const k of Object.keys(es.segmenti).map(Number).sort((a, b) => a - b)) {
       const s = es.segmenti[k];
       const camp = es.pagineDati.filter(p => p.seg === k).reduce((a, p) => a + p.campioni.length / 6, 0);
@@ -205,7 +273,7 @@
     return out.join('\n');
   }
 
-  const API = { PAGINA, TOT_PAGINE, MOTIVI, ODR_HZ_NOMINALE, MS_PER_CAMPIONE, G_PER_LSB, DPS_PER_LSB, crc16, crcPagina, decodificaDati, decodifica, serie, segmentiConDati, scriviCsv, fondoScala, riassunto };
+  const API = { TOT_BLOCCHI, PAG_BLOCCO, PAGINA, TOT_PAGINE, MOTIVI, ODR_HZ_NOMINALE, MS_PER_CAMPIONE, G_PER_LSB, DPS_PER_LSB, crc16, crcPagina, crcBlocco, decodificaDati, decodifica, serie, segmentiConDati, scriviCsv, fondoScala, riassunto };
   if (typeof module !== 'undefined' && module.exports) module.exports = API;
   radice.SWR = API;
 })(typeof window !== 'undefined' ? window : globalThis);

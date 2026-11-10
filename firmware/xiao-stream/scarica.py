@@ -44,11 +44,11 @@ def _comando(ser, testo, attesa_riga=None, timeout=15):
 
 
 def leggi_dump(ser, avanzamento=None, timeout_riga=15):
-    """Invia DUMP e ritorna i byte delle pagine. Protocollo: riga 'SWR1 <n>', n*256 byte, riga vuota, 'END <n>'.
-    Eventuali righe di log prima dell'intestazione vengono ignorate."""
-    riga = _comando(ser, "DUMP", ["SWR1 "], timeout_riga)
+    """Invia DUMP e ritorna i byte. Protocollo: formato 1 'SWR1 <n>' + n pagine da 256 byte; formato 2 (0.6.0) 'SWR2 <n>' +
+    n blocchi da 4096 byte; poi riga vuota e 'END <n>'. Eventuali righe di log prima dell'intestazione vengono ignorate."""
+    riga = _comando(ser, "DUMP", ["SWR1 ", "SWR2 "], timeout_riga)
     n = int(riga.split()[1])
-    totale = n * swr.PAGINA
+    totale = n * (swr.BLOCCO if riga.startswith("SWR2") else swr.PAGINA)
     buf = bytearray()
     ultimo_dato = time.time()
     while len(buf) < totale:
