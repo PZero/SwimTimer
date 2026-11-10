@@ -36,15 +36,21 @@ Risolte: modulo E73 (Raytac a stock 0), IMU LSM6DSV16X, flash 16 MB, interruttor
 37. Taratura batteria: leggi col tester la tensione della cella e la inserisci in «Taratura» (il tag legge ~1% in meno).
 38. Soglie della sospensione automatica (rotazione 3 dps, inclinazione 3°, 60 s): da tarare con la scheda sotto la cuffia a riposo; poi provare i 4 tap e la sospensione a batteria bassa.
 39. Per il tag definitivo: firmware Zephyr con MCUboot e aggiornamento SMP (compatibile con Web Bluetooth) o proseguire con Arduino?
-40. Prova a secco della 0.5.0 (registrare a casa, scaricare via USB, `node tools/parita_swr.mjs <file>`): quando la fai? Poi la prima registrazione in piscina (5–10 min).
-41. Telefono per il video: confermi H.264 a 30 fps (evitare HEVC e frequenza variabile)?
-42. Compressione: quanti minuti entrano davvero nei dati veri (prevista ~25 min con dati regolari)? Dipende dai tratti con movimenti bruschi.
+40. ~~Prova a secco della 0.5.0~~: fatta, e la prima registrazione in vasca è stata il test 1 del 2026-11-09.
+41. ~~Telefono per il video a 30 fps~~: superato (Insta360, 50 fps).
+42. ~~Compressione~~: misurata sui dati veri, 17,6 min a 214 Hz, 31,5 a 104, 55 a 52, 102 a 26 (sotto i 52 Hz la compressione delta non basta).
 43. LED sotto la cuffia: se non si vede, serve un altro segnale (cicalino fuori dal tag) oppure basta controllare da PC?
 44. Caricare la 0.5.1 (lampo blu a ogni tocco): serve la tag in modalità normale (USB collegata).
-45. Il video di prova è a 25 fps: adattiamo l'Annotazione al frame rate reale del video o giri a 30 fps (telefono)? Per ora i tasti ±1f e il numero del fotogramma sono sbagliati con 25 fps.
-46. iPhone: giri in **H.264 a 30 fps** («Più compatibile» in Impostazioni › Fotocamera › Formati), che la pagina già gestisce, oppure a **60 fps** (tocco e spinta più precisi, ±17 ms invece di ±33 ms) adattando prima la pagina al frame rate (vedi 45)?
+45. ~~Frame rate dell'Annotazione~~: risolto il 2026-11-10, la pagina misura gli fps veri (50 fps nel test 1).
+46. ~~iPhone 30 o 60 fps~~: superato, l'editor segue gli fps reali; il test 1 è stato ripreso con Insta360 a 50 fps.
 47. Programma dei 4 giorni: quale combinazione di 100 e 50 (es. 4×100 + 8×50 = 12 partenze/arrivi e 4 virate al giorno; più 100 = più virate, più 50 = più partenze/arrivi)?
 48. Dati dei nuotatori sull'app online: quando si estende ad altri, serve un testo di consenso da mostrare al primo accesso? Vuoi un elenco delle persone ammesse con il motivo dell'approvazione?
 49. ~~Video su Drive~~: cartella condivisa con gli utenti approvati (2026-11-08). Automatizzare l'aggiunta alla cartella quando si approva (scope Drive, avviso «app non verificata» solo per l'admin)?
 50. Spam sul modulo contatti: se arriva, attiviamo reCAPTCHA (App Check, gratuito, da attivare in console)?
 51. Tradurre in inglese anche la pagina Strumenti?
+52. Frequenza di campionamento per le prossime sedute: restiamo a 208 Hz (≈17,6 min) o scendiamo a 52 Hz (≈55 min, stessi risultati sui rilevatori)? A 52 Hz una seduta intera sta su un tag.
+53. Prossima seduta: ripetute da 100 m con la camera attaccata al muro di partenza (partenza e arrivo davanti alla camera)? Hai una seconda camera in prestito per i 50 m (serve sync doppio e due video nell'editor)?
+54. Pausa di ~50 s tra 504 e 530 s del video del 9/11: ti sei fermato a lungo, oppure l'Insta360 ha tagliato un pezzo?
+55. Video v3: correggere la frase «deriva dello 0,24%» (probabilmente k ≈ 0,9993) e rigenerare IT/EN, oppure lasciare così?
+56. Pubblicare il pacchetto OTA 0.5.4 è fatto: lo provi sul tag (aggiornamento dalla pagina Strumenti) e controlli nel log `crc ok` e `boot xiao-0.5.4`?
+57. Video da Drive nell'editor: abiliti la Google Drive API nel progetto `swimtimer-pzero` (gratuita, ma il file va condiviso «chiunque abbia il link»), o lasciamo il file locale?

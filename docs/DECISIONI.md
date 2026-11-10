@@ -135,3 +135,6 @@
 | 2026-11-09 | Riferimento degli eventi dal video con OpenCV (verificato a mano), non più dalle etichette manuali | Le etichette manuali variavano fino a ±0,45 s tra due passate |
 | 2026-11-09 | Metodo strutturato: dataset, banco di prova in streaming, validazione su sessioni nuove; rete neurale solo per l'arrivo (notifica ≤ 1,5 s, tempo datato al tocco) | Le soglie tarate a mano su una sessione non dicevano nulla sulla successiva |
 | 2026-11-10 | Video YouTube v3 «Il primo test in vasca» (IT `J01CR2nldp8`, EN `bs7WDUuwb-A`) con dati e immagini reali dell'autore; in landing sopra il video v2 | Scelta dell'autore; i file con immagini reali restano fuori dal repo |
+| 2026-11-10 | Pacchetto di aggiornamento della pagina portato da 0.4.2 a 0.5.4 (`xiao.bin`/`xiao.json`, compilato senza percorsi locali) | Il tag del test 1 gira la 0.5.4; la pagina installava una versione più vecchia |
+| 2026-11-10 | Annotazione d'ora in poi nell'area riservata online; editor con fps reali, lista senza scroll e frecce che spostano l'evento selezionato | Salvataggio condiviso su Firestore; le etichette erano imprecise a 30 fps su video a 50 |
+| 2026-11-10 | Video da Google Drive nell'editor: lasciato stare | Serve la Drive API e la condivisione «chiunque abbia il link» |

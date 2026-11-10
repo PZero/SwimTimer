@@ -11,7 +11,7 @@ def lascia(te, salto=8):
             while jj > k and w[jj] > m + 3: jj -= 1
             return t[i0 + jj]
     return np.nan
-cap = cv2.VideoCapture(r'C:\Users\fnico\Downloads\815912470.855863_14121794219690.mp4')
+cap = cv2.VideoCapture(sys.argv[2])   # percorso del video (secondo argomento)
 def foto(tt, txt, col):
     cap.set(cv2.CAP_PROP_POS_MSEC, tt * 1000); ok, f = cap.read()
     c = cv2.resize(f[140:580, 0:560], (224, 176)); cv2.putText(c, txt, (4, 16), 0, 0.45, col, 2); return c

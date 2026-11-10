@@ -4,7 +4,7 @@ Automatic lap times in the pool: a tag under the swim cap and a poolside display
 
 ![Status](https://img.shields.io/badge/status-XIAO%20test%20tags%20in%20bench%20tests-yellow) ![Board](https://img.shields.io/badge/nRF52840%20tag-v0.6%20Rev0%20ready%20for%20preview-green) ![Repository](https://img.shields.io/badge/repository-public-blue) ![License](https://img.shields.io/badge/license-to%20be%20defined-lightgrey)
 
-Updated on **2026-11-08**. Single public repository `PZero/SwimTimer`: XIAO test tags and their firmware, tools page (GitHub Pages: https://pzero.github.io/SwimTimer/), online collaboration app (Firebase, Italian and English: https://swimtimer-pzero.web.app, with contact form and poolside display demo), ESP32 prototype, nRF52840 tag (KiCad, Gerber, JLCPCB and NextPCB files), programmer HAT, technical wallpapers and three videos (first pool test, progress update and first presentation).
+Updated on **2026-11-10**. Single public repository `PZero/SwimTimer`: XIAO test tags and their firmware, tools page (GitHub Pages: https://pzero.github.io/SwimTimer/), online collaboration app (Firebase, Italian and English: https://swimtimer-pzero.web.app, with contact form and poolside display demo), ESP32 prototype, nRF52840 tag (KiCad, Gerber, JLCPCB and NextPCB files), programmer HAT, technical wallpapers and three videos (first pool test, progress update and first presentation).
 
 > **Language.** This README is in English. Internal working documents in [`docs/`](docs/) (state, decisions, requirements, design) are written in Italian.
 
@@ -41,6 +41,7 @@ English: **https://youtu.be/EVrdSybpnE4**. Italian: https://youtu.be/_2UzpOqblVI
 - [nRF52840 tag](#nrf52840-tag)
 - [XIAO nRF52840 Sense test tags](#xiao-nrf52840-sense-test-tags)
 - [Tools page (`tools/index.html`)](#tools-page-toolsindexhtml)
+- [Analysis: video (OpenCV) and IMU test bench](#analysis-video-opencv-and-imu-test-bench)
 - [Online collaboration app](#online-collaboration-app)
 - [External reviews](#external-reviews-v04)
 - [Programmer HAT for Raspberry Pi 3/4](#programmer-hat-for-raspberry-pi-34)
@@ -392,7 +393,7 @@ BLE does not cross water, so for the first pool session the tag records the **ra
 - **Wake-up fix.** The 2-tap wake bug was caused by the Adafruit bootloader clearing `RESETREAS`; the firmware now writes a marker in `GPREGRET2` before every System OFF.
 - **Download over USB only.** [`scarica.py`](firmware/xiao-stream/scarica.py) (needs `pyserial`) or the "Recording" tab of the page (Web Serial). Output: a `.swr` file plus CSV.
 - **`.swr` format.** Specified in [`swr_formato.h`](firmware/xiao-stream/swr_formato.h); decoders [`swr.py`](firmware/xiao-stream/swr.py) and [`tools/swr.js`](tools/swr.js). 11 unit tests on invented data only (`python -m unittest test_swr`). The parity check [`tools/parita_swr.mjs`](tools/parita_swr.mjs) still has to be run on a real recording.
-- **Web page.** [`tools/index.html`](tools/index.html) has the *Recording* tab (Web Serial download and erase, open a `.swr` file) and the *Annotation* tab (raw-data charts with zoom, video at 30 fps (a 25 fps video is not yet handled: frame stepping is off; warns if the video has no decodable picture, e.g. HEVC), synchronisation with key X on the 5th tap, events B/R/V/F/P/A saved in video time, project JSON and CSV export). See [Tools page](#tools-page-toolsindexhtml).
+- **Web page.** [`tools/index.html`](tools/index.html) has the *Recording* tab (Web Serial download and erase, open a `.swr` file) and the *Annotation* tab (raw-data charts with zoom, video with the real frame rate measured while playing (frame steps; a clicked event is moved with the left/right arrow keys, Shift for 10 frames, Esc to release; warns if the video has no decodable picture, e.g. HEVC), synchronisation with key X on the 5th tap, events B/R/V/F/P/A saved in video time, project JSON and CSV export). See [Tools page](#tools-page-toolsindexhtml).
 - **Verification status.** 0.5.0 is flashed on the board: the 2-taps-blue-2-taps wake-up and the start of recording (green blink every 8 s) are confirmed; the download and the recorded data are **not yet checked**: FIFO order and burst reads, chip erase, QSPI without SoftDevice and power consumption (estimated 1.5-2 mA while recording) are unverified. 0.5.1 is superseded by 0.5.2, 0.5.3 and 0.5.4 (see above). The C++ encoder has never been run on a PC: C++/Python parity holds by construction only. The page tabs were tested with simulated data only. `.swr` files and CSV are health data and are ignored by git.
 - **Next steps.** Dry run of 0.5.0 at home, first pool session with video, hand annotation of all events, then filter development and comparison.
 
@@ -414,6 +415,23 @@ The panel shows link state, firmware version and battery level. The Recording ta
 - **Firmware**: update over Bluetooth with the XIAO OTA protocol. Only XIAO-signed images are accepted. The published image is `firmware/xiao-stream/release/xiao.bin` (version in `xiao.json`).
 
 **Verification status.** Tested in the browser with Demo mode and simulated USB and Bluetooth ports. Not yet tested end to end with the real XIAO over USB for a full download and annotation.
+
+## Analysis: video (OpenCV) and IMU test bench
+
+After the first pool test (9 November 2026: Insta360 X4 on the pool floor near the wall, 50 fps video of 8:50; XIAO tag under the cap, 17 minutes at 214 Hz, flash full) the hand-made labels proved too imprecise, so the video itself became the reference. Data, videos and results contain personal (health) data and stay **outside** the repository; only the code is published.
+
+**`analisi/video/`** (Python + OpenCV): `estrai.py` (frames), `stabilizza.py` (ECC stabilisation), `segnali.py` (median background, body signals), `pelle.py` (skin-colour filter against bubbles), `classifica.py` (automatic classification of starts P, turns V and finishes A, distance from the wall frame by frame), `taratura.py`/`taratura2.py` (tuning), `confronto.py` (comparison with the hand labels).
+
+**`analisi/imu/`** (Python 3, numpy, scipy): streaming test bench that replays a session sample by sample with a **causality check** for the finish, dataset format (see [`analisi/imu/README.md`](analisi/imu/README.md), Italian), evaluation per event type, video-to-data time mapping, sample-rate experiment (104/52/26 Hz). Run `python analisi/imu/valuta.py --sessioni <folder>`; tests on synthetic data: `python analisi/imu/test_banco.py` (5 tests).
+
+**First results (one session, one swimmer: indicative only, not a validation).**
+- Starting-point IMU filters (hand labels): finish A 10/15, error within +/-0.88 s.
+- OpenCV reference: starts 14/14 within +/-0.14 s, finishes within +/-0.4 s, turns within +/-0.45 s, no event-type errors.
+- IMU detectors against that reference: finish A recall 57%, +/-0.8 s, notification in 0.9 s.
+- At 52 Hz no loss was observed and about 55 minutes fit in the 2 MiB flash (17.6 minutes at 214 Hz).
+- Video/tag clock ratio k about 0.9993: the 0.24% drift suspected earlier probably does not exist.
+
+**Decision:** structured method (dataset, test bench, leave-one-session-out validation) and a neural network only for the finish (notification within 1.5 s, time dated back to the touch), to be compared with a classical method.
 
 ## Online collaboration app
 
@@ -554,7 +572,9 @@ SwimTimer/
 │   ├── xiao-stream/              XIAO nRF52840 Sense: BLE streaming + OTA, pool recording 0.5.x, .swr tools (release/ xiao.bin, xiao.json = 0.5.4)
 │   └── display-prova/            T-RGB display
 ├── tools/                        index.html (XIAO tools page: Live, Recording, Annotation, Firmware), annotazione.js/.css, registrazione.js, swr.js, parita_swr.mjs, display.html (poolside display mockup)
-├── media/video/                  videos: first presentation and progress update (generators genera_video*.py, music, texts, thumbnails, img_v2/ screenshots; .mp4 not in git)
+├── analisi/video/                OpenCV analysis of the underwater video (stabilisation, background, skin filter, classification, tuning, comparison)
+├── analisi/imu/                  IMU test bench: dataset, streaming simulator, evaluation, validation, sample-rate experiment, 5 tests
+├── media/video/                  three videos: first presentation, progress update, first pool test (generators genera_video*.py, music, texts, STORYBOARD_v3.md, prepara_img_v3.py; .mp4 and real images not in git)
 ├── media/display/                screenshots of the poolside display mockup
 ├── hardware/
 │   ├── bom.md, schema.md         ESP32 prototype
@@ -628,6 +648,9 @@ The v0.5 board is verified (DRC/ERC, `verifica_v05.py`). **Do not order** before
 
 **XIAO test tags**
 - Order 2 boards and the cells (1000 mAh in use for the tests), dry-run the waterproofing. Firmware ported (`firmware/xiao-stream`): published release is 0.5.4 (the version used in the first pool test on 9 November 2026; the OTA install of this release package from the page is not yet tested). Still to do: dry run at home (2-taps-blue-2-taps wake, recording and download over USB), low-battery sleep, Battery panel and VCAL calibration, then **test campaign 1** (one swimmer, 50 m pool, wall drills, then a training session for verification, with hand annotation of all events).
+
+**Analysis**
+- Build the labelled dataset from the OpenCV reference, validate with one session left out, train the finish network and compare it with a classical method; more sessions and more swimmers needed.
 
 **Tools page and online app**
 - Check the real XIAO end to end on the tools page over USB (download, `.swr` decoding, annotation) and run `tools/parita_swr.mjs` on a real recording.

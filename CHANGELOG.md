@@ -6,6 +6,8 @@
 - **Annotation editor** (members' area and tools page): the event list no longer scrolls the page; the real video frame rate is measured while playing (50 fps instead of a fixed 30) for frame steps and frame numbers; a clicked event is moved frame by frame with the arrow keys (Shift ±10, Esc releases it).
 - **OpenCV on the underwater video** (`analisi/video/`): stabilisation (ECC), median background, skin-colour filter against bubbles, distance of the body from the wall frame by frame; automatic classification of starts, turns and finishes used as the new reference.
 - **IMU test bench** (`analisi/imu/`): session loader and dataset format, streaming simulator with a causality check for the finish, evaluation per event type, video-data time mapping, sample-rate experiment (104/52/26 Hz) and recording minutes in 2 MiB. Data and results stay out of the repository.
+- **Pool test notes:** results (one session, one swimmer, indicative only): IMU finish filters 10/15 within +/-0.88 s; OpenCV reference starts 14/14 +/-0.14 s, finishes +/-0.4 s, turns +/-0.45 s; IMU finish detector recall 57% +/-0.8 s, notification in 0.9 s; at 52 Hz no loss and about 55 minutes in 2 MiB (17.6 at 214 Hz); clock ratio k about 0.9993. Decision: structured method with leave-one-session-out validation and a neural network only for the finish (notification <= 1.5 s, time dated back to the touch), compared with a classical method.
+- **README:** updated date, new "Analysis" section, folder tree and roadmap.
 
 ## 2026-11-08 (bilingual site, contacts, online tools, progress video)
 - **Bilingual site (IT/EN):** language selector on the landing page and the members' area; the choice is kept in the browser (`app/comune/i18n.js`).
