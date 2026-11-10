@@ -55,5 +55,5 @@ Risolte: modulo E73 (Raytac a stock 0), IMU LSM6DSV16X, flash 16 MB, interruttor
 56. Pubblicare il pacchetto OTA 0.5.4 è fatto: lo provi sul tag (aggiornamento dalla pagina Strumenti) e controlli nel log `crc ok` e `boot xiao-0.5.4`?
 57. Video da Drive nell'editor: abiliti la Google Drive API nel progetto `swimtimer-pzero` (gratuita, ma il file va condiviso «chiunque abbia il link»), o lasciamo il file locale?
 58. Segnale del display: facciamo le misure a 10 cm / 1 m / 3 m (e tag ruotata) per tarare la scala in %? Se il margine a bordo vasca è scarso, valutiamo un'antenna esterna o un ricevitore diverso.
-59. Verifica della SD del display dal PC: quando puoi inserirla nel lettore, controllo i file con `swr.py`.
+59. ~~Verifica della SD dal PC~~: fatta il 2026-11-10 (nessun buco, nessun errore). Cancelli le cartelle della DEMO nella SD (`1000a3f2`, `20007c10`, `3000e95b`)?
 60. Display T-RGB come display «di sviluppo» per 1–3 nuotatori e Pi 4 + dongle per 10: confermi questa divisione?

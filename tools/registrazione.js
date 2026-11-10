@@ -81,11 +81,32 @@
   window.SwimDati = SwimDati;
 
   const ingressoFile = document.createElement('input');
-  ingressoFile.type = 'file'; ingressoFile.accept = '.swr,application/octet-stream';
+  ingressoFile.type = 'file'; ingressoFile.accept = '.swr,application/octet-stream'; ingressoFile.multiple = true;
+  // Piu' file insieme (es. i file sNNNN.swr della SD del display del 2026-11-10, uno per avvio): si uniscono i blocchi da 4 KB
+  // per seq, senza doppioni, cosi' una registrazione spezzata su piu' file torna intera.
+  function uniscifile(lista) {
+    const B = SWR.PAGINA * SWR.PAG_BLOCCO, perSeq = new Map();
+    for (const { nome, bytes } of lista) {
+      if (bytes.length % B || bytes[0] !== 0xB1) throw new Error(nome + ': non è un file a blocchi (formato 2/3); i file del formato 1 si aprono uno alla volta');
+      for (let i = 0; i < bytes.length / B; i++) {
+        const b = bytes.subarray(i * B, (i + 1) * B);
+        if (b[0] !== 0xB1) continue;
+        const seq = (b[17] | (b[18] << 8) | (b[19] << 16) | (b[20] << 24)) >>> 0;
+        if (!perSeq.has(seq)) perSeq.set(seq, b);
+      }
+    }
+    const seqs = [...perSeq.keys()].sort((x, y) => x - y), out = new Uint8Array(seqs.length * B);
+    seqs.forEach((q, i) => out.set(perSeq.get(q), i * B));
+    return out;
+  }
   ingressoFile.addEventListener('change', async () => {
-    const f = ingressoFile.files[0]; ingressoFile.value = '';
-    if (!f) return;
-    try { await SwimDati.carica(f.name, new Uint8Array(await f.arrayBuffer())); } catch (e) { stato('Impossibile leggere ' + f.name + ': ' + e.message, 'err'); }
+    const files = [...ingressoFile.files]; ingressoFile.value = '';
+    if (!files.length) return;
+    try {
+      const lista = await Promise.all(files.map(async f => ({ nome: f.name, bytes: new Uint8Array(await f.arrayBuffer()) })));
+      if (lista.length === 1) await SwimDati.carica(lista[0].nome, lista[0].bytes);
+      else await SwimDati.carica(lista.length + ' file uniti (' + lista.map(x => x.nome).sort().join(', ') + ')', uniscifile(lista));
+    } catch (e) { stato('Impossibile leggere: ' + e.message, 'err'); }
   });
 
   // ---------------------------------------------------------------- porta seriale
@@ -139,11 +160,11 @@
       while (n === null) {
         const r = await this.riga(Math.max(1, fine - Date.now()));
         if (r === null) throw new Error('nessuna risposta a DUMP');
-        const m = /^SWR1 (\d+)/.exec(r);
-        if (m) n = Number(m[1]);
+        const m = /^SWR([123]) (\d+)/.exec(r);   // SWR1 <pagine> (formato 1) oppure SWR2 <blocchi da 4096 byte> (formati 2 e 3, 0.6.0)
+        if (m) { n = Number(m[2]); this.unita = m[1] === '1' ? SWR.PAGINA : SWR.PAGINA * SWR.PAG_BLOCCO; }
       }
       if (n === 0) return new Uint8Array(0);
-      const tot = n * SWR.PAGINA;
+      const tot = n * this.unita;
       let visto = -1, ultimo = Date.now();
       while (this.len < tot) {
         if (this.chiusa) throw new Error('porta chiusa durante lo scarico');
@@ -156,7 +177,17 @@
       let fineOk = false;
       for (let k = 0; k < 3 && !fineOk; k++) { const r = await this.riga(3000); if (r === null) break; fineOk = r === 'END ' + n; }
       this.fineOk = fineOk;
-      return dati;
+      if (this.unita === SWR.PAGINA) return dati;
+      // Formati 2/3: arrivano solo i blocchi non vuoti, in ordine fisico. Si ricostruisce l'immagine da 2 MB mettendo ogni blocco
+      // al suo posto (pagina fisica nell'intestazione, byte 2..3); un blocco senza intestazione valida va nel primo posto libero.
+      const B = SWR.PAGINA * SWR.PAG_BLOCCO, img = new Uint8Array(SWR.TOT_PAGINE * SWR.PAGINA).fill(0xFF), usato = new Uint8Array(SWR.TOT_BLOCCHI);
+      const resto = [];
+      for (let i = 0; i < n; i++) {
+        const b = dati.subarray(i * B, (i + 1) * B), pos = (b[2] | (b[3] << 8)) / SWR.PAG_BLOCCO;
+        if (b[0] === 0xB1 && Number.isInteger(pos) && pos < SWR.TOT_BLOCCHI && !usato[pos]) { img.set(b, pos * B); usato[pos] = 1; } else resto.push(b);
+      }
+      for (const b of resto) { const pos = usato.indexOf(0); if (pos < 0) break; img.set(b, pos * B); usato[pos] = 1; }
+      return img;
     }
   }
 
@@ -205,9 +236,17 @@
   }
   async function leggiMem() {
     const r = await porta.comando('MEM', ['K mem', 'X'], 15000);
-    const m = /^K mem (\d+) (\d+)/.exec(r);
-    if (!m) throw new Error('risposta a MEM: ' + r);
-    const usate = Number(m[1]), tot = Number(m[2]);
+    // 0.6.0: "K mem formato3 da_validare N confermati N liberi N anomali N seq N" (blocchi da 16 pagine); 0.5.x: "K mem <usate> <totali>"
+    const a = /^K mem formato\d da_validare (\d+) confermati (\d+) liberi (\d+) anomali (\d+) seq (\d+)/.exec(r);
+    const m = a ? null : /^K mem (\d+) (\d+)/.exec(r);
+    if (!a && !m) throw new Error('risposta a MEM: ' + r);
+    const usate = a ? (SWR.TOT_BLOCCHI - Number(a[3])) * SWR.PAG_BLOCCO : Number(m[1]), tot = a ? SWR.TOT_PAGINE : Number(m[2]);
+    if (a) {
+      const p = 100 * usate / tot;
+      $('rgMemInfo').innerHTML = '<b>Memoria</b> (anello di ' + SWR.TOT_BLOCCHI + ' blocchi): ' + a[1] + ' da validare · ' + a[2] + ' validati dal display · ' + a[3] + ' liberi' +
+        (Number(a[4]) ? ' · <b>' + a[4] + ' anomali</b>' : '') + ' · ultimo seq ' + a[5] + '<span class="barra"><div style="width:' + p.toFixed(1) + '%"></div></span>';
+      return { usate, tot };
+    }
     const p = tot ? 100 * usate / tot : 0;
     let extra = '';
     const D = SwimDati;

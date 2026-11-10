@@ -107,7 +107,8 @@ static volatile uint32_t ultimoComando = 0;   // millis dell'ultimo comando rice
 static bool imuOk = false;
 static uint8_t causaReset = 0;      // codici come la pagina: 0 accensione, 1 tap, 3 watchdog, 5 software, 6 altro, 7 USB, 8 pin reset
 static uint16_t connHdl = BLE_CONN_HANDLE_INVALID;   // collegamento della pagina web (servizio 7a1e0001): quello che abilita le notifiche su 0005
-static bool inVasca = false;           // modalita' vasca (registrazione): niente LED di collegamento, niente comandi
+static bool inVasca = false;           // modalita' vasca (registrazione): niente LED di collegamento, solo il comando SLEEP
+static volatile bool sonnoRichiesto = false;   // SLEEP ricevuto in registrazione: chiude il segmento e va in sonno
 static bool advAbilitato = false;      // l'annuncio deve restare acceso (spento prima di dormire e durante l'installazione OTA)
 static bool bleOk = false;             // Bluefruit.begin riuscito
 static uint16_t ultimaMv = 0;          // ultima tensione letta
@@ -855,11 +856,17 @@ static void eseguiComandi() {
   while (cmdTesta != cmdCodaI) {
     char c[CMD_LEN]; strcpy(c, cmdCoda[cmdCodaI & 3]); cmdCodaI = cmdCodaI + 1;
     char *arg = strchr(c, ','); if (arg) *arg++ = 0;   // il comando e' fino alla prima virgola
-    if (inVasca) rispondi('X', "registrazione in corso");   // in vasca nessun comando (OTA e sospensione compresi)
+    if (inVasca) {                                     // in registrazione: solo SLEEP (chiude il segmento e dorme), il resto no
+      if (!strcmp(c, "SLEEP")) { sonnoRichiesto = true; logRiga("sospensione da comando: chiudo la registrazione"); rispondi('K', "sospensione: chiudo la registrazione"); }
+      else rispondi('X', "registrazione in corso");
+    }
     else if (!strcmp(c, "SLEEP")) vaInSospensione();
     else if (!strcmp(c, "LIST")) rispondi('Z', "");   // nessuna registrazione: fine elenco
     else if (!strcmp(c, "VCAL")) comandoVcal(arg);
-    else if (!strcmp(c, "NOME")) comandoNome(arg ? arg : "");
+    else if (!strcmp(c, "NOME")) {                    // NOME (senza virgola) = chiede il nome attuale; NOME,<testo> lo imposta; NOME, lo cancella
+      if (!arg) { char r[24]; snprintf(r, sizeof(r), "nome %s", tagNome); rispondi('K', r); }
+      else comandoNome(arg);
+    }
     else if (!strcmp(c, "COLORE")) comandoColore(arg);
     else if (!strcmp(c, "OTA")) otaAvvia(arg ? arg : (char *)"");
     else if (!strcmp(c, "OTAEND")) otaFine();
@@ -1597,6 +1604,8 @@ static void modalitaVasca() {
       vServi();
     }
     syncServi();                                         // invio a pezzi dei blocchi: non blocca la registrazione
+    eseguiComandi();                                     // solo SLEEP e' accettato in registrazione
+    if (sonnoRichiesto && !vMotivo) vMotivo = SWR_STOP_COMANDO;
     annuncioAggiorna(false);
     statoSyncServi(false);
     ora = millis();

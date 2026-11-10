@@ -1,6 +1,6 @@
 # Stato del progetto
 
-**Ultimo aggiornamento:** 2026-11-10 (sera). Repository unico e pubblico `PZero/SwimTimer` (`main`). Fase: **sincronizzazione tag → display funzionante a secco** con 2 tag; ora si punta a una versione «super stabile» di tag e display prima di nuove funzioni.
+**Ultimo aggiornamento:** 2026-11-10 (notte). Repository unico e pubblico `PZero/SwimTimer` (`main`). Fase: **sincronizzazione tag → display funzionante a secco** con 2 tag; ora si punta a una versione «super stabile» di tag e display prima di nuove funzioni.
 
 ## Fotografia
 - **Protocollo di sincronizzazione** (`docs/SINCRONIZZAZIONE.md`): blocchi da 4 KB; la tag spinge il più vecchio non confermato; il display lo scrive su SD, lo rilegge, e solo allora conferma; nessun rinvio a tempo; finestra 2; seq mai riusato (anche dopo azzeramento, base in `/seq.bin`).
@@ -9,11 +9,13 @@
 - **Prova a secco 2026-11-10:** 2 tag × 15 min: 666 blocchi salvati e confermati, 0 errori CRC, 0 anomalie, memoria di entrambe ad anello, nessun riavvio del display. Velocità vista fino a 8 KB/s (i dati nascono a ~1,25 KB/s).
 - **Pagina `tools/index.html`**: riquadro Sincronizzazione (stato, mappa, nome e colore), lettura `.swr` formati 1/2/3. **Usare Edge**: Chrome su Windows tiene un collegamento BLE appeso.
 - Guasto trovato e corretto oggi: con il formato 2 la conferma rovinava il seq → intestazioni non valide, seq riusati (185 anomalie al display). Dati non persi (copie in `C:\Temp\swimtimer-backup`, fuori dal repo).
+- **SD del display verificata dal PC** (2408 blocchi delle due tag vere, 0 buchi di seq, 0 overrun, 1,27 M campioni decodificati). Il display ora scrive **un file per tag** (`/swim/<id>/tag.swr`); la pagina apre più `.swr` insieme e li unisce per seq (i file `sNNNN.swr` di oggi tornano interi). Cartelle DEMO nella SD (`1000a3f2`, `20007c10`, `3000e95b`) = dati inventati, da cancellare.
+- Correzioni dopo la prova: **Sospendi** funziona anche in registrazione (motivo di fine 6 «comando SLEEP»); la pagina chiede nome e colore alla tag; `MEM`/`DUMP` via USB nel formato 3. Firmware aggiornato su entrambe le tag.
 - Invariati: scheda v0.6 (preventivo NextPCB 216,39 $, attesa Viviane fino a mer 11/11), analisi video/IMU del test 1, app online, video v3.
 
 ## Prossimi passi
 1. **Stabilità** (priorità dell'utente): annuncio ERRORE prima del sonno (memoria da azzerare, batteria, IMU) visibile sul display; timeout sul `connect()` e watchdog del display; la pagina chiude il collegamento BLE alla chiusura.
-2. Verifica indipendente della SD dal PC (`swr.py` sui file `/swim/<id>/sNNNN.swr`: nessun buco di seq, CRC ok).
+2. Provare dalla pagina (Edge, Ctrl+F5): scarico USB formato 3, apertura di più file, Sospendi in registrazione.
 3. Tarare il segnale: RSSI a 10 cm, 1 m, 3 m e tag ruotata; 0% = dove lo scarico smette.
 4. Prova di durata 30–60 min e casi limite (display spento a metà blocco, SD tolta, memoria piena, display + pagina insieme); misure FIFO/overrun nella pagina di chiusura.
 5. Poi: release 0.6.0 (`release/xiao.bin`), metodo filtri (fase 3), seconda seduta in vasca, decisione NextPCB.

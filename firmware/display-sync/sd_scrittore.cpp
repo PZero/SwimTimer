@@ -1,6 +1,7 @@
 // Scrittore SD. Regola: CONFERMA solo dopo scrittura + flush/chiusura + rilettura dalla SD + CRC32 uguale.
-// Struttura: /swim/sessione.txt, /swim/<id 8 hex>/sNNNN.swr (blocchi da 4096 B in coda),
-// sNNNN.idx (una riga "seq,offset,crc32,stato"), sNNNN.anomalia (stesso seq con CRC diverso).
+// Struttura: /swim/sessione.txt (numero di avvio, per avvii.txt), /swim/<id 8 hex>/tag.swr (TUTTI i blocchi della tag, in coda;
+// fino al 2026-11-10 un file sNNNN.swr per avvio),
+// tag.idx (una riga "seq,offset,crc32,stato"), tag.anomalia (stesso seq con CRC diverso).
 #include <Arduino.h>
 #include <SD_MMC.h>
 #include "sd_scrittore.h"
@@ -241,8 +242,9 @@ static void salvaBlocco(const Lavoro &w) {
   p->uso = true; p->seq = h.seq; p->crc = h.crc; p->off = UINT32_MAX;
 
   if (dup != 1) {  // doppione = solo conferma, niente scrittura
-    snprintf(idx, sizeof(idx), "%s/s%04lu.idx", dir, (unsigned long)sessione);
-    snprintf(path, sizeof(path), dup == 2 ? "%s/s%04lu.anomalia" : "%s/s%04lu.swr", dir, (unsigned long)sessione);
+    // un file per tag (non per avvio del display): la registrazione resta intera e si legge da sola
+    snprintf(idx, sizeof(idx), "%s/tag.idx", dir);
+    snprintf(path, sizeof(path), dup == 2 ? "%s/tag.anomalia" : "%s/tag.swr", dir);
     uint8_t e = SD_OK;
     uint32_t off = 0;
     if (!scriviVerifica(path, b, h.crc, off, e)) {
@@ -270,7 +272,7 @@ static void confermato(const Lavoro &w) {
     if (x.uso && x.seq == w.seq) {
       char dir[32], idx[64];
       percorsoTag(w.tag, dir);
-      snprintf(idx, sizeof(idx), "%s/s%04lu.idx", dir, (unsigned long)sessione);
+      snprintf(idx, sizeof(idx), "%s/tag.idx", dir);
       riga(idx, x.seq, x.off, x.crc, "confermato");
       x.uso = false;
       return;

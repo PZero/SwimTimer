@@ -24,10 +24,12 @@ Ambiente identico a `display-prova` (espressif32@6.9.0, core Arduino 2.0.17, Ada
 
 ## Struttura sulla SD
 ```
-/swim/sessione.txt                 numero di sessione, +1 a ogni avvio
-/swim/<id 8 hex>/sNNNN.swr         blocchi da 4096 B in coda (NNNN = sessione)
-/swim/<id 8 hex>/sNNNN.idx         righe  seq,offset,crc32,scritto|confermato|anomalia
-/swim/<id 8 hex>/sNNNN.anomalia    stesso seq con CRC diverso (si salva e si segnala)
+/swim/sessione.txt                 numero di avvio del display (+1 a ogni avvio), usato in avvii.txt
+/swim/avvii.txt                    una riga per avvio con il motivo (accensione, watchdog, panic, calo di tensione...)
+/swim/<id 8 hex>/tag.swr           TUTTI i blocchi della tag, da 4096 B, in coda (si legge da solo, anche dopo riavvii
+                                   del display; fino al 2026-11-10 un file sNNNN.swr per avvio: aprirli insieme nella pagina)
+/swim/<id 8 hex>/tag.idx           righe  seq,offset,crc32,scritto|confermato|anomalia
+/swim/<id 8 hex>/tag.anomalia      stesso seq con CRC diverso (si salva e si segnala)
 ```
 Nessuna conferma se la SD manca, ha meno di 50 MB liberi, o la scrittura/rilettura fallisce: STOP con motivo e errore a schermo. Doppioni (stesso seq e CRC) = solo CONFERMA; per riconoscerli, alla prima connessione di una tag si rileggono i suoi `.idx` (fino a 1024 voci).
 

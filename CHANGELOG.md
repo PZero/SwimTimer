@@ -6,7 +6,11 @@
 - **Display firmware** `firmware/display-sync` (LilyGO T-RGB, PlatformIO, Adafruit GFX, no LVGL): dial in 3 sectors of 120 degrees with the 512-block map, tag name and colour, battery, signal; up to 3 tags at once; single SD writer task; never in standby; boot log on SD; DEMO mode with 3 simulated tags. Mockup: `docs/img/mockup-stato-tag.png` (invented data).
 - **Tools page:** Synchronization panel (state, block map, name and colour), `.swr` reader for formats 1/2/3 (`tools/swr.js`, copies in `app/`), test `tools/test_swr2.mjs`. Edge recommended.
 - **Dry run:** 2 tags x 15 min next to the display: 666 blocks saved and confirmed, 0 CRC errors, 0 anomalies, ring memory on both tags, no display restart; up to 8 KB/s against 1.25 KB/s in production. Weak signal on the T-RGB (-57/-64 dBm at 10 cm), to be tuned.
-- **Next:** stability (ERROR advertisement before sleep, display timeout/watchdog), SD check from the PC, signal tuning, long-duration test and edge cases.
+- **Display SD layout:** one folder per tag (`/swim/<tag id>/` with `tag.swr`, `tag.idx`, `tag.anomalia`) instead of one per display boot; the boot log, with the reset reason, goes to `/swim/avvii.txt`.
+- **Tools page, multi-file and sync:** several `.swr` files can be opened at once (merged by block sequence number, duplicates dropped); the page reads the format-3 `MEM` and `DUMP` over USB; on connect it asks the tag for its real name and colour; position warnings only for full flash images.
+- **Tag firmware 0.6.0, SLEEP during recording:** the SLEEP command works while recording; it closes the segment with stop reason 6 ("SLEEP command"). `NOME` and `COLORE` without argument return the current value.
+- **SD check from the PC:** the display SD card read on a PC gave 2408 blocks from two real tags, no sequence gaps, no overruns, about 1.27 M samples decoded.
+- **Next:** stability (ERROR advertisement before sleep, display timeout/watchdog), signal tuning, long-duration test and edge cases.
 - **README:** new "Tag to display synchronization" section, status, firmware, tools, folder tree and roadmap updated.
 
 ## 2026-11-09/10 (first pool test: OpenCV, IMU test bench, video v3)

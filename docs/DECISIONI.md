@@ -150,3 +150,5 @@
 | 2026-11-10 | La tag non cancella mai da sola una memoria non riconosciuta (4 lampi viola, azzeramento esplicito) | Nessun dato perso; prima un contenuto «estraneo» si cancellava automaticamente |
 | 2026-11-10 | Batteria sul display con la stessa curva LiPo della pagina; segnale in % al posto di «vista N s fa» (scala provvisoria −95…−55 dBm) | I due numeri non coincidevano; il segnale dice il margine per lo scarico |
 | 2026-11-10 | Pagina dei tool con Edge (Chrome su Windows tiene un collegamento BLE appeso) | Con Edge il collegamento funziona |
+| 2026-11-10 | Il display scrive un file per tag (`/swim/<id>/tag.swr`) invece di uno per avvio; la pagina apre più `.swr` e li unisce per seq | Una registrazione spezzata su più file non si leggeva (solo il primo aveva la pagina di segmento) |
+| 2026-11-10 | In registrazione la tag accetta il comando SLEEP (chiude il segmento, motivo 6) e risponde a NOME/COLORE senza argomento | Il pulsante Sospendi non faceva niente; la pagina mostrava il nome in cache |

@@ -1546,6 +1546,8 @@ async function collegaBt() {
       try { conn.bt.ota = await servizio.getCharacteristic(BLE_OTA); } catch {}
       try { versioneTag = new TextDecoder().decode(await (await servizio.getCharacteristic(BLE_VERSIONE)).readValue()); } catch { versioneTag = null; }
       aggiornaConn();
+      // Nome e colore veri dalla tag (il nome del dispositivo del browser puo' essere quello vecchio, in cache)
+      syncInterrogo = 2; conn.bt.invia('NOME'); conn.bt.invia('COLORE');
     } catch {
       $('xiaoFwNota').textContent = 'Il firmware del tag non supporta i comandi (aggiornalo via cavo)';
     }
@@ -1651,15 +1653,24 @@ function syncColoreScegli(n) {
   $('syncSalva').addEventListener('click', () => {
     const nome = $('syncNome').value.trim();
     if (!/^[ -~]{0,11}$/.test(nome) || nome.includes(',')) { syncEsito('Nome non valido: max 11 caratteri ASCII stampabili, senza virgola', true); return; }
+    syncInterrogo = 0;   // da qui le risposte sono esiti del salvataggio
     if (!comando('NOME,' + nome)) { syncEsito('Collega il tag via Bluetooth', true); return; }
     comando('COLORE,' + syncColore);
     syncEsito('Invio…');
   });
 })();
+let syncInterrogo = 0;   // risposte attese alle domande NOME e COLORE fatte al collegamento (non sono salvataggi)
 function syncRisposta(t, err) { // true se la risposta riguarda nome/colore
   const m = /^(nome|colore)(?![a-z])\s*(.*)$/i.exec(t);
   if (!m) return false;
   const che = m[1].toLowerCase();
+  if (syncInterrogo > 0) {
+    syncInterrogo--;
+    if (err) return true;   // firmware vecchio: si resta con il nome del dispositivo
+    if (che === 'nome') { $('syncNomeAtt').textContent = m[2] || '(nessuno: ST-xxxx)'; $('syncNome').value = m[2] || ''; }
+    else { const n = parseInt(m[2], 10); syncColoreScegli(Number.isInteger(n) && n >= 0 && n <= 9 ? n : -1); }
+    return true;
+  }
   if (err) syncEsito('Non riuscito (' + che + '): ' + (m[2] || 'errore') + (/comando|sconosc|unknown/i.test(m[2]) ? ' - firmware vecchio?' : ''), true);
   else { syncEsito('Salvato: ' + che + ' ' + (m[2] || '(cancellato)')); if (che === 'nome') $('syncNomeAtt').textContent = m[2] || ''; }
   return true;

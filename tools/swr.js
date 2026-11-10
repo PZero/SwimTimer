@@ -8,7 +8,7 @@
   const PAGINA = 256, TOT_PAGINE = 8192;
   const T_SEGMENTO = 0xA5, T_DATI = 0xD1, T_CHIUSURA = 0xE0;
   const FLAG_PRIMA = 0x01, FLAG_GAP = 0x02;
-  const MOTIVI = { 1: 'quiete', 2: 'memoria piena', 3: 'batteria', 4: 'USB collegata', 5: 'errore flash/IMU' };
+  const MOTIVI = { 1: 'quiete', 2: 'memoria piena', 3: 'batteria', 4: 'USB collegata', 5: 'errore flash/IMU', 6: 'comando SLEEP' };
   const ODR_HZ_NOMINALE = 2083 / 10.0;
   const MS_PER_CAMPIONE = 1000.0 / ODR_HZ_NOMINALE;
   const G_PER_LSB = 488 / 1e6;
@@ -87,7 +87,7 @@
       es.problemi.push('pagina ' + p + ': CRC errata (pagina scartata)');
       return;
     }
-    if (numero !== p) es.problemi.push('pagina ' + p + ': numero interno ' + numero + ' diverso dalla posizione');
+    if (numero !== p && es.dimensione === TOT_PAGINE * PAGINA) es.problemi.push('pagina ' + p + ': numero interno ' + numero + ' diverso dalla posizione');
     if (tipo === T_SEGMENTO) {
       let ver = '';
       for (let i = 30; i < 38 && pag[i] !== 0; i++) ver += pag[i] < 128 ? String.fromCharCode(pag[i]) : '�';
@@ -131,7 +131,7 @@
         es.problemi.push('blocco ' + b + ': intestazione non valida (blocco scartato)');
         continue;
       }
-      if (dv.getUint16(2, true) !== base) es.problemi.push('blocco ' + b + ': pagina fisica interna ' + dv.getUint16(2, true) + ' diversa dalla posizione');
+      if (immagine.length === TOT_PAGINE * PAGINA && dv.getUint16(2, true) !== base) es.problemi.push('blocco ' + b + ': pagina fisica interna ' + dv.getUint16(2, true) + ' diversa dalla posizione');
       const seq = dv.getUint32(17, true), confermato = eConfermato(h);
       blocchi.push({ b, base, seq, confermato, idTag: dv.getUint32(21, true) });
       es.blocchi.validi++;

@@ -388,7 +388,8 @@ Source in [`firmware/xiao-stream`](firmware/xiao-stream/); the published release
 - **Ring flash.** The 2 MB flash is a ring of **512 blocks of 4 KB**. A block is overwritten only after the display has confirmed it. Recording stops when the memory is full of unconfirmed blocks. A memory that is not recognised is never erased automatically.
 - **`.swr` format 3.** Each block has a header (marker `0xB1`) with a global sequence number that is never reused, even after an erase. The confirmation flag is stored in the last word of the block (bytes 252..255): the Puya flash replaces a 4-byte word instead of ANDing it, so format 2 (confirmation in byte 16) corrupted the sequence number. Found and fixed with no data lost. Decoders [`swr.py`](firmware/xiao-stream/swr.py) and [`tools/swr.js`](tools/swr.js) read formats 1, 2 and 3.
 - **BLE always on.** Also while recording: 200 ms advertising with state, battery, memory and colour; up to 2 connections.
-- **Settings.** Tag name (up to 11 characters) and colour (palette of 10) can be set from the tools page. LEDs are off on battery.
+- **Settings.** Tag name (up to 11 characters) and colour (palette of 10) can be set from the tools page. `NOME` and `COLORE` without argument return the current value. LEDs are off on battery.
+- **Sleep during recording (0.6.0).** The `SLEEP` command works while recording: it closes the current segment with stop reason 6 ("SLEEP command").
 - **Sync service** `7a1e0101`: see [Tag to display synchronization](#tag-to-display-synchronization).
 
 #### Pool recording mode (firmware 0.5.0 to 0.5.4)
@@ -442,14 +443,17 @@ sequenceDiagram
 
 **Display firmware** [`firmware/display-sync`](firmware/display-sync/) (PlatformIO, espressif32 6.9.0, Adafruit GFX, no LVGL; details in [`LEGGIMI.md`](firmware/display-sync/LEGGIMI.md), Italian):
 - Dial in **3 sectors of 120 degrees**, one per tag, with the **map of the 512 blocks** (validated / transmitting / to validate / open / free), tag name and colour, battery (LiPo curve) and signal in %.
-- Up to **3 tags connected at once**; a single task writes to the SD card; the display never goes to standby; a boot log is kept on the SD card.
+- Up to **3 tags connected at once**; a single task writes to the SD card; the display never goes to standby.
+- **SD card layout.** One folder per tag, `/swim/<tag id>/`, with `tag.swr` (the data), `tag.idx` (the index) and `tag.anomalia` (anomalies). A boot log with the reset reason is kept in `/swim/avvii.txt`.
 - **DEMO mode** with 3 simulated tags.
 
 ![Mockup of the tag status screen (invented data)](docs/img/mockup-stato-tag.png)
 
 **Dry run (2026-11-10).** 2 tags x 15 minutes next to the display: **666 blocks saved and confirmed, 0 CRC errors, 0 anomalies**, memory of both tags working as a ring, no display restart. Measured throughput up to 8 KB/s against 1.25 KB/s produced at 208 Hz. Signal on the T-RGB is weak (about -57 / -64 dBm at 10 cm) and still to be tuned.
 
-**Tools page.** The *Synchronization* panel shows the state and the block map and sets name and colour; the `.swr` reader opens formats 1, 2 and 3 (test [`tools/test_swr2.mjs`](tools/test_swr2.mjs)). Use Edge: on Windows Chrome keeps a stale BLE connection.
+**SD card check from the PC (2026-11-10).** The display SD card was read on a PC: **2408 blocks** from two real tags, **no gaps in the sequence numbers, no overruns**, about **1.27 million samples** decoded.
+
+**Tools page.** The *Synchronization* panel shows the state and the block map and sets name and colour; on connect it asks the tag for its real name and colour. The `.swr` reader opens formats 1, 2 and 3 and accepts **several files at once** (merged by block sequence number, duplicates dropped); it reads the format-3 `MEM` and `DUMP` over USB. Position warnings are shown only for full flash images. Test [`tools/test_swr2.mjs`](tools/test_swr2.mjs). Use Edge: on Windows Chrome keeps a stale BLE connection.
 
 ## Tools page (`tools/index.html`)
 
