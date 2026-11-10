@@ -1,6 +1,7 @@
 # Changelog
 
 ## 2026-11-09/10 (first pool test: OpenCV, IMU test bench, video v3)
+- **Published firmware release 0.5.4:** `firmware/xiao-stream/release/xiao.bin` + `xiao.json` (155,684 bytes, CRC32 `b771d198`), built from the same source as the tag used in the pool test, with `-fmacro-prefix-map` for both C and C++ (no local paths in the binary). The page's BLE update now installs 0.5.4 instead of 0.4.2; the OTA install of this package is not yet tested.
 - **First pool test video (2.5 minutes, original generated music):** YouTube IT https://youtu.be/J01CR2nldp8, EN https://youtu.be/bs7WDUuwb-A; shown first in the landing page and at the top of the README. Real images and data from the author's own session (author's choice): images, thumbnails and `.mp4` files stay out of the repository. Sources: `media/video/genera_video_v3.py`, `musica_v3.py`, `testi_v3_en.py`, `prepara_img_v3.py`, `STORYBOARD_v3.md`.
 - **Annotation editor** (members' area and tools page): the event list no longer scrolls the page; the real video frame rate is measured while playing (50 fps instead of a fixed 30) for frame steps and frame numbers; a clicked event is moved frame by frame with the arrow keys (Shift ±10, Esc releases it).
 - **OpenCV on the underwater video** (`analisi/video/`): stabilisation (ECC), median background, skin-colour filter against bubbles, distance of the body from the wall frame by frame; automatic classification of starts, turns and finishes used as the new reference.

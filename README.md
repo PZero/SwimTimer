@@ -368,7 +368,7 @@ Arduino sketch (core Seeeduino:nrf52 + Bluefruit) that makes the XIAO speak the 
 
 - **Data.** 16-byte packets at 25 Hz; the IMU runs at 208 Hz and is averaged down. Gyroscope bias calibration reduces head drift.
 - **Status.** 12-byte extended status: charge state, VBUS, die temperature, battery divider. Commands, tag log and version are as on the ESP32 tag. The page has a "Tag log" panel over BLE and a rebuilt Battery panel (charge state, % from a LiPo curve, time to full / runtime, chart, VCAL calibration against a multimeter).
-- **OTA over BLE.** Own protocol on characteristic `0006`: staging in flash, CRC32, board signature check, installer running from RAM. Nordic legacy DFU cannot be used from the browser because it is on the Web Bluetooth blocklist. The binary `firmware/xiao-stream/release/xiao.bin` + `xiao.json` is published by GitHub Pages (workflow updated); the "Tag firmware" dialog of the page handles the XIAO too. The release binary is built with `-fmacro-prefix-map` so that no local build paths (e.g. the Windows user folder) end up inside it; the published `xiao.bin` is still **0.4.2** (BLE streaming + OTA), while 0.5.x (pool recording) is flashed only after the dry run on the bench.
+- **OTA over BLE.** Own protocol on characteristic `0006`: staging in flash, CRC32, board signature check, installer running from RAM. Nordic legacy DFU cannot be used from the browser because it is on the Web Bluetooth blocklist. The binary `firmware/xiao-stream/release/xiao.bin` + `xiao.json` is published by GitHub Pages (workflow updated); the "Tag firmware" dialog of the page handles the XIAO too. The release binary is built with `-fmacro-prefix-map` so that no local build paths (e.g. the Windows user folder) end up inside it; the published `xiao.bin` is **0.5.4** (BLE streaming + OTA, pool recording, 100 mA charge), 155,684 bytes, CRC32 `b771d198`.
 - **Sleep.** "Sleep" command, and automatic sleep after 60 s of "still enough" (1 s averages: rotation < 3 dps and tilt < 3 deg). Never during an OTA or with the serial port open. Wake with 2 taps, blue LED, 2 taps (or by USB). Forced sleep when the battery is low (< 3.3 V).
 - **0.5.2: no sleep on USB power.** While VBUS is present the tag does not go to automatic sleep, even with no serial port open. Before, it slept after 60 s on the desk and disappeared from USB.
 - **0.5.3: USB during a recording.** Plugging USB in during a pool recording closes it cleanly (new stop reason 4, "USB connected", also decoded by `swr.py` and `tools/swr.js`) and restarts the tag in normal mode, so it can be read from the tools page. Before, the recording loop ignored serial commands and the page reported "MEM does not respond".
@@ -551,7 +551,7 @@ SwimTimer/
 ├── firebase.json, .firebaserc    Firebase Hosting and Firestore configuration
 ├── firmware/
 │   ├── test-collegamenti/        ESP32-S3 tag: firmware 0.4.3
-│   ├── xiao-stream/              XIAO nRF52840 Sense: BLE streaming + OTA, pool recording 0.5.x, .swr tools (release/ xiao.bin, xiao.json = 0.4.2)
+│   ├── xiao-stream/              XIAO nRF52840 Sense: BLE streaming + OTA, pool recording 0.5.x, .swr tools (release/ xiao.bin, xiao.json = 0.5.4)
 │   └── display-prova/            T-RGB display
 ├── tools/                        index.html (XIAO tools page: Live, Recording, Annotation, Firmware), annotazione.js/.css, registrazione.js, swr.js, parita_swr.mjs, display.html (poolside display mockup)
 ├── media/video/                  videos: first presentation and progress update (generators genera_video*.py, music, texts, thumbnails, img_v2/ screenshots; .mp4 not in git)
@@ -627,7 +627,7 @@ The v0.5 board is verified (DRC/ERC, `verifica_v05.py`). **Do not order** before
 - Agree the reference test for the Effort 1-10 indicator.
 
 **XIAO test tags**
-- Order 2 boards and the cells (1000 mAh in use for the tests), dry-run the waterproofing. Firmware ported (`firmware/xiao-stream`): published release is 0.4.2; 0.5.2, 0.5.3 and 0.5.4 are flashed on the bench (0.5.4: full charge at 100 mA still to be verified), the download of a pool recording is not yet checked. Still to do: dry run at home (2-taps-blue-2-taps wake, recording and download over USB), low-battery sleep, Battery panel and VCAL calibration, then **test campaign 1** (one swimmer, 50 m pool, wall drills, then a training session for verification, with hand annotation of all events).
+- Order 2 boards and the cells (1000 mAh in use for the tests), dry-run the waterproofing. Firmware ported (`firmware/xiao-stream`): published release is 0.5.4 (the version used in the first pool test on 9 November 2026; the OTA install of this release package from the page is not yet tested). Still to do: dry run at home (2-taps-blue-2-taps wake, recording and download over USB), low-battery sleep, Battery panel and VCAL calibration, then **test campaign 1** (one swimmer, 50 m pool, wall drills, then a training session for verification, with hand annotation of all events).
 
 **Tools page and online app**
 - Check the real XIAO end to end on the tools page over USB (download, `.swr` decoding, annotation) and run `tools/parita_swr.mjs` on a real recording.
