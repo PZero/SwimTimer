@@ -10,8 +10,8 @@
   const radice = document.getElementById('vistaAnn');
   if (!radice || !SWR || !SD) return;
 
-  const FPS = 30;
-  const BIAS = 0.25 / FPS;                       // per cadere dentro il fotogramma cercato
+  let FPS = 30;                                  // fotogrammi/s del video: misurati in riproduzione (rVFC), 30 finche' non noti
+  const FPS_NOTI = [23.976, 24, 25, 29.97, 30, 48, 50, 59.94, 60, 100, 119.88, 120];
   const VEL = [0.1, 0.25, 0.5, 1, 2];
   const TIPI = {
     B: { col: '#38bdf8' }, R: { col: '#2dd4bf' }, V: { col: '#f5b041' }, F: { col: '#fb923c' }, P: { col: '#4cc38a' }, A: { col: '#ff6b6f' }, X: { col: '#a78bfa' }
@@ -118,16 +118,27 @@
 
   // ---------------------------------------------------------------- tempo del video
   const haRvfc = 'requestVideoFrameCallback' in HTMLVideoElement.prototype;
-  function cbFotogramma(ora, meta) { S.video.t = meta.mediaTime; el.requestVideoFrameCallback(cbFotogramma); }
+  // fps: passo minimo di mediaTime tra due fotogrammi mostrati di fila durante la riproduzione, agganciato ai valori comuni
+  const stimaFps = { prec: null, dtMin: Infinity, n: 0, misurati: false };
+  function azzeraFps(f) { FPS = f > 0 && f <= 240 ? f : 30; stimaFps.prec = null; stimaFps.dtMin = Infinity; stimaFps.n = 0; stimaFps.misurati = false; }
+  function misuraFps(meta) {
+    const p = stimaFps.prec; stimaFps.prec = el.paused || el.seeking ? null : { n: meta.presentedFrames, t: meta.mediaTime };
+    if (!p || !stimaFps.prec || meta.presentedFrames !== p.n + 1) return;
+    const dt = meta.mediaTime - p.t; if (!(dt > 0.003 && dt < 0.2)) return;
+    stimaFps.dtMin = Math.min(stimaFps.dtMin, dt); if (++stimaFps.n < 15) return;
+    const f = 1 / stimaFps.dtMin, noto = FPS_NOTI.find(x => Math.abs(x - f) / x < 0.01), nuovo = noto || Math.round(f * 100) / 100;
+    if (!stimaFps.misurati || nuovo !== FPS) { FPS = nuovo; stimaFps.misurati = true; aggiornaTutto(); }
+  }
+  function cbFotogramma(ora, meta) { S.video.t = meta.mediaTime; misuraFps(meta); el.requestVideoFrameCallback(cbFotogramma); }
   if (haRvfc) el.requestVideoFrameCallback(cbFotogramma);
-  /** Tempo del fotogramma mostrato (mediaTime reale; senza rVFC currentTime arrotondato alla griglia a 30 fps). */
+  /** Tempo del fotogramma mostrato (mediaTime reale; senza rVFC currentTime arrotondato alla griglia degli fps). */
   const tFrame = () => haRvfc ? S.video.t : Math.floor(el.currentTime * FPS + 1e-3) / FPS;
   const haVideo = () => !!S.video.url && S.video.durata > 0;
   function cerca(t) {
     if (!haVideo()) return;
     t = clamp(t, 0, S.video.durata);
     S.video.nominale = t;
-    el.currentTime = Math.min(t + BIAS, S.video.durata);
+    el.currentTime = Math.min(t + 0.25 / FPS, S.video.durata);   // per cadere dentro il fotogramma cercato
   }
   function passo(n) {
     if (!haVideo()) return;
@@ -138,6 +149,7 @@
   el.addEventListener('seeked', () => { if (!haRvfc) rich(); });
   el.addEventListener('loadedmetadata', () => {
     S.video.durata = el.duration; S.video.t = 0; S.video.nominale = 0;
+    azzeraFps(S.fpsArchivio);
     aggiornaTutto();
   });
   el.addEventListener('error', () => { $('anInfo').textContent = t('n.videoErr'); });
@@ -228,14 +240,15 @@
     snapshot();
     if (tipo === 'X') S.eventi = S.eventi.filter(e => e.tipo !== 'X');
     const e = { id: S.nextId++, t_video_s: t, tipo, nota: '' };
-    S.eventi.push(e); ordina(); S.sel = e.id;
+    S.eventi.push(e); ordina(); S.sel = e.id; S.sposta = false;   // appena aggiunto: le frecce restano al video
     ricalcolaOffset(); dopo();
   }
   const selezionato = () => S.eventi.find(e => e.id === S.sel);
-  function seleziona(id, salta) { S.sel = id; const e = selezionato(); if (e && salta) cerca(e.t_video_s); dopo(true); }
+  function seleziona(id, salta) { S.sel = id; S.sposta = S.sel !== null;   // evento cliccato: le frecce lo spostano
+    const e = selezionato(); if (e && salta) cerca(e.t_video_s); dopo(true); }
   function elimina() {
     const e = selezionato(); if (!e) return;
-    snapshot(); S.eventi = S.eventi.filter(x => x.id !== e.id); S.sel = null; dopo();
+    snapshot(); S.eventi = S.eventi.filter(x => x.id !== e.id); S.sel = null; S.sposta = false; dopo();
   }
   function spostaSel(n) {
     const e = selezionato(); if (!e || !haVideo()) return;
@@ -389,7 +402,7 @@
   function aggiornaInfo() {
     const parti = [];
     parti.push(t('n.info.dati') + ': ' + (SD.es ? '<b>' + esc(SD.nome) + '</b>' + (S.D ? ' · ' + t('n.info.segmento') + ' ' + SD.seg + ' · ' + S.D.tMax.toFixed(1) + ' s · ' + S.D.fs.toFixed(1) + ' Hz' : ' · ' + t('n.info.nessunDato')) : t('n.info.nessunSwr')));
-    parti.push(t('n.video') + ': ' + (S.video.nome ? '<b>' + esc(S.video.nome) + '</b> · ' + S.video.durata.toFixed(1) + ' s' : t('n.info.nessunVideo')));
+    parti.push(t('n.video') + ': ' + (S.video.nome ? '<b>' + esc(S.video.nome) + '</b> · ' + S.video.durata.toFixed(1) + ' s · ' + FPS + ' fps' + (stimaFps.misurati ? '' : ' (?)') : t('n.info.nessunVideo')));
     const c = coerenza();
     // solo audio (videoWidth 0): tipico di un MP4 HEVC/H.265 da telefono che il browser non decodifica
     const soloAudio = haVideo() && el.readyState >= 1 && !el.videoWidth
@@ -424,8 +437,11 @@
     const sel = selezionato(), nota = $('anNota');
     nota.disabled = !sel; if (document.activeElement !== nota) nota.value = sel ? sel.nota || '' : '';
     $('anUndo').disabled = !S.undo.length; $('anRedo').disabled = !S.redo.length; $('anElimina').disabled = !sel;
-    $('anLista').innerHTML = S.eventi.map(e => `<li data-id="${e.id}" class="${e.id === S.sel ? 'sel' : ''}" style="--c:${TIPI[e.tipo].col}"><b>${e.tipo}</b> <span class="mono">${e.t_video_s.toFixed(3)} s</span> <span class="tenue">f${Math.round(e.t_video_s * FPS)}</span>${e.nota ? ' · ' + esc(e.nota) : ''}</li>`).join('');
-    if (sel) { const li = $('anLista').querySelector('li.sel'); if (li) li.scrollIntoView({ block: 'nearest' }); }
+    $('anLista').innerHTML = S.eventi.map(e => `<li data-id="${e.id}" class="${e.id === S.sel ? (S.sposta ? 'sel sposta' : 'sel') : ''}" style="--c:${TIPI[e.tipo].col}"><b>${e.tipo}</b> <span class="mono">${e.t_video_s.toFixed(3)} s</span> <span class="tenue">f${Math.round(e.t_video_s * FPS)}</span>${e.nota ? ' · ' + esc(e.nota) : ''}</li>`).join('');
+    if (sel) { const li = $('anLista').querySelector('li.sel'); if (li) {   // scorre solo la lista, non la pagina
+      const ul = $('anLista'), r = li.getBoundingClientRect(), q = ul.getBoundingClientRect();
+      if (r.top < q.top) ul.scrollTop += r.top - q.top; else if (r.bottom > q.bottom) ul.scrollTop += r.bottom - q.bottom;
+    } }
   }
   function aggiornaTutto() { aggiornaInfo(); aggiornaSegmenti(); aggiornaTesti(); aggiornaEventi(); $('anVuoto').hidden = !!S.video.url; rich(); }
   function dopo() { aggiornaTutto(); autosalva(); }
@@ -704,8 +720,8 @@
     let ok = true;
     if (k === 'ArrowLeft' || k === 'ArrowRight') {
       const s = k === 'ArrowLeft' ? -1 : 1;
-      if (e.altKey) spostaSel(s); else passo(s * (e.shiftKey ? 10 : 1));
-    } else if (e.altKey) ok = false;
+      if (e.altKey || (S.sposta && selezionato())) spostaSel(s * (e.shiftKey ? 10 : 1)); else passo(s * (e.shiftKey ? 10 : 1));
+    } else if (k === 'Escape' && S.sposta) { S.sposta = false; S.sel = null; dopo(); } else if (e.altKey) ok = false;
     else if (kl === 'j' || kl === 'l') cerca((el.seeking ? S.video.nominale : tFrame()) + (kl === 'j' ? -5 : 5));
     else if (k === ' ') { if (haVideo()) { if (el.paused) el.play(); else el.pause(); } }
     else if (k === ',') velocita(-1); else if (k === '.') velocita(1);
@@ -741,5 +757,5 @@
   requestAnimationFrame(ciclo);
   // visibilita' della scheda: ridisegna quando torna visibile
   new MutationObserver(() => { S.pan = null; rich(); }).observe(radice, { attributes: true, attributeFilter: ['hidden'] });
-  window.SwimAnnotazione = { stato: S, carica: caricaAnnotazione, azzera, salvaOra: () => salvaOnline(false), controllaCopiaLocale: controllaAutosalvataggio, aggiorna: () => { aggiornaTutto(); aggiornaOnline(); } };
+  window.SwimAnnotazione = { stato: S, impostaFps: f => { S.fpsArchivio = Number(f) || 30; azzeraFps(S.fpsArchivio); }, carica: caricaAnnotazione, azzera, salvaOra: () => salvaOnline(false), controllaCopiaLocale: controllaAutosalvataggio, aggiorna: () => { aggiornaTutto(); aggiornaOnline(); } };
 })();

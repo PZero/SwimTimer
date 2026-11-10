@@ -60,3 +60,6 @@ app/versione.json
 # Copiati dal predeploy (firebase/prepara-strumenti.mjs): non versionare
 app/strumenti/
 app/display/
+
+# Video v3: miniature con fotogrammi reali dell autore (dati personali), generate in locale
+media/video/miniatura_test1_*.png

@@ -4,11 +4,19 @@ Automatic lap times in the pool: a tag under the swim cap and a poolside display
 
 ![Status](https://img.shields.io/badge/status-XIAO%20test%20tags%20in%20bench%20tests-yellow) ![Board](https://img.shields.io/badge/nRF52840%20tag-v0.6%20Rev0%20ready%20for%20preview-green) ![Repository](https://img.shields.io/badge/repository-public-blue) ![License](https://img.shields.io/badge/license-to%20be%20defined-lightgrey)
 
-Updated on **2026-11-08**. Single public repository `PZero/SwimTimer`: XIAO test tags and their firmware, tools page (GitHub Pages: https://pzero.github.io/SwimTimer/), online collaboration app (Firebase, Italian and English: https://swimtimer-pzero.web.app, with contact form and poolside display demo), ESP32 prototype, nRF52840 tag (KiCad, Gerber, JLCPCB and NextPCB files), programmer HAT, technical wallpapers and two videos (progress update and first presentation).
+Updated on **2026-11-08**. Single public repository `PZero/SwimTimer`: XIAO test tags and their firmware, tools page (GitHub Pages: https://pzero.github.io/SwimTimer/), online collaboration app (Firebase, Italian and English: https://swimtimer-pzero.web.app, with contact form and poolside display demo), ESP32 prototype, nRF52840 tag (KiCad, Gerber, JLCPCB and NextPCB files), programmer HAT, technical wallpapers and three videos (first pool test, progress update and first presentation).
 
 > **Language.** This README is in English. Internal working documents in [`docs/`](docs/) (state, decisions, requirements, design) are written in Italian.
 
-### Progress update video (2 minutes, latest)
+### The first pool test (2.5 minutes, latest)
+
+[![SwimTimer: the first pool test, video on YouTube](https://img.youtube.com/vi/bs7WDUuwb-A/maxresdefault.jpg)](https://youtu.be/bs7WDUuwb-A)
+
+Watch the English version on YouTube: **https://youtu.be/bs7WDUuwb-A**. Italian version: https://youtu.be/J01CR2nldp8.
+
+The first real pool test (9 November 2026): IMU filters on the raw data, why the hand-made labels were not precise enough, OpenCV on the underwater video as the new reference, and the decision for a structured method with a small neural network only for the finish. Real images and data from the author's own session (author's choice). Sources in [`media/video/`](media/video/) (`genera_video_v3.py`, `musica_v3.py`); the video files and thumbnails are not in the repository.
+
+### Progress update video (2 minutes)
 
 [![SwimTimer progress update: video on YouTube](media/video/miniatura_avanzamento_en.png)](https://youtu.be/JLs5JJG4JG8)
 

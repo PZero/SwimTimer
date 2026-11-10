@@ -132,3 +132,6 @@
 | 2026-11-08 | Strumenti della tag pubblicati anche su `/strumenti/` del sito Firebase (copiati al deploy) con «Carica online»; GitHub Pages resta come copia senza upload | Un solo portale; i file raw finiscono subito nell'archivio condiviso |
 | 2026-11-08 | Video condivisi tramite una cartella Google Drive condivisa (Visualizzatore) con gli utenti approvati, mai «chiunque abbia il link» | Sono riprese di persone: accesso solo ai membri |
 | 2026-11-08 | Nuovo video YouTube di avanzamento (IT `_Htx2DawnF8`, EN `JLs5JJG4JG8`), musica originale generata da codice; in landing sopra la prima presentazione | Mostrare l'avanzamento; nessun diritto di terzi |
+| 2026-11-09 | Riferimento degli eventi dal video con OpenCV (verificato a mano), non più dalle etichette manuali | Le etichette manuali variavano fino a ±0,45 s tra due passate |
+| 2026-11-09 | Metodo strutturato: dataset, banco di prova in streaming, validazione su sessioni nuove; rete neurale solo per l'arrivo (notifica ≤ 1,5 s, tempo datato al tocco) | Le soglie tarate a mano su una sessione non dicevano nulla sulla successiva |
+| 2026-11-10 | Video YouTube v3 «Il primo test in vasca» (IT `J01CR2nldp8`, EN `bs7WDUuwb-A`) con dati e immagini reali dell'autore; in landing sopra il video v2 | Scelta dell'autore; i file con immagini reali restano fuori dal repo |

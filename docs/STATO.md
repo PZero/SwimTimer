@@ -10,6 +10,7 @@
 - **App online** (Firebase Spark, nessun Storage/Functions): https://swimtimer-pzero.web.app — landing pubblica **IT/EN** (selettore, scelta in localStorage) con sezione display, video YouTube e **modulo contatti** (SmartSwimTimer@gmail.com; i messaggi finiscono in Firestore `contatti` e si leggono nella pagina admin «Messaggi»); `/area/` (login Google, approvazione solo admin per UID, sessioni raw a chunk, video come link Drive con sha256, annotazioni con autore); `/strumenti/` (pagina della tag copiata al deploy, pulsante «Carica online» della registrazione); `/display/` (demo del display). Aggiornamento automatico della cache con `versione.json`. Regole: 17 test emulatore verdi. **Non provati dal vivo:** caricamento online di un `.swr` vero, pagina Messaggi da admin, approvazione in inglese. Video condivisi tramite cartella Drive condivisa a mano con gli utenti approvati.
 - **Display a bordo vasca** (da confermare): Pi 4 + dongle nRF52840 + monitor 15,6" + power bank; mockup `tools/display.html`.
 
+- **Video YouTube «Il primo test in vasca»** (v3, 150 s, `media/video/genera_video_v3.py`, dati e immagini reali dell'autore fuori dal repo): IT https://youtu.be/J01CR2nldp8, EN https://youtu.be/bs7WDUuwb-A; primo in landing e nel README.
 - **Video YouTube aggiornamento novembre 2026** (`media/video/genera_video_v2.py`, musica originale `musica_v2.py`): IT https://youtu.be/_Htx2DawnF8, EN https://youtu.be/JLs5JJG4JG8; i `.mp4` restano fuori dal repo.
 
 ## Prossimi passi

@@ -38,6 +38,7 @@ select, input[type=number], input[type=text] { font: 500 12.5px Inter, system-ui
 .ann-lista { margin: 0; padding: 0; list-style: none; max-height: 220px; overflow: auto; font-size: 12.5px; }
 .ann-lista li { padding: 3px 6px; border-left: 4px solid var(--c); cursor: pointer; border-radius: 4px; }
 .ann-lista li:hover { background: var(--card-2); } .ann-lista li.sel { background: var(--accento-tenue); outline: 1px solid var(--accento); }
+.ann-lista li.sposta { outline-width: 2px; } .ann-lista li.sposta::after { content: '  ← → sposta · Esc'; color: var(--accento); font-size: 11px; }
 .ann-lista b { color: var(--c); }
 .ann-tasti { margin-top: 10px; font-size: 12.5px; color: var(--tenue); }
 @media (min-width: 1000px) and (min-height: 600px) {

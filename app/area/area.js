@@ -337,8 +337,8 @@ async function apriEditor(sid, vid, aid) {
   window.SwimAnnotazione.azzera();
   await SD.carica(s.titolo + '.swr', bytes);
   window.SwimAnnotazione.carica(ann);
-  window.SwimAnnotazione.stato.avviso = (sha !== s.sha256 ? t('a.ed.shaDiverso') + ' ' : '')
-    + (Number(v.fps) !== 30 ? t('a.ed.fps', { fps: v.fps }) : '');
+  window.SwimAnnotazione.impostaFps(v.fps);      // valore iniziale; in riproduzione l'editor misura gli fps veri
+  window.SwimAnnotazione.stato.avviso = sha !== s.sha256 ? t('a.ed.shaDiverso') : '';
   intestaEditor();
   $('vistaAnn').hidden = false;
   window.SwimAnnotazione.aggiorna();

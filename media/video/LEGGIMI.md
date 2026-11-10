@@ -1,6 +1,6 @@
 # Video di presentazione di SwimTimer
 
-**Pubblicati su YouTube** — aggiornamento novembre 2026 (v2): italiano https://youtu.be/_Htx2DawnF8 · inglese https://youtu.be/JLs5JJG4JG8. Prima presentazione (v0.5): italiano https://youtu.be/_2UzpOqblVI · inglese https://youtu.be/EVrdSybpnE4.
+**Pubblicati su YouTube** — primo test in vasca (v3): italiano https://youtu.be/J01CR2nldp8 · inglese https://youtu.be/bs7WDUuwb-A. Aggiornamento novembre 2026 (v2): italiano https://youtu.be/_Htx2DawnF8 · inglese https://youtu.be/JLs5JJG4JG8. Prima presentazione (v0.5): italiano https://youtu.be/_2UzpOqblVI · inglese https://youtu.be/EVrdSybpnE4.
 
 Video da 120 s (1920x1080, 30 fps, H.264 + AAC 192 kbps 48 kHz) con musica originale.
 
@@ -137,3 +137,72 @@ Site: https://swimtimer-pzero.web.app · Contact: SmartSwimTimer@gmail.com · Co
 Original music generated for this video. Recordings, swimmers and times shown are made up.
 
 **Tags:** SwimTimer, swimming, lap timer, swimming pool, BLE tag, nRF52840, XIAO, IMU, sensor fusion, Madgwick filter, signal processing, Firebase, open source project, wearable
+
+---
+
+# Video «Il primo test in vasca» (v3, novembre 2026)
+
+**Pubblicato su YouTube:** italiano https://youtu.be/J01CR2nldp8 · inglese https://youtu.be/bs7WDUuwb-A.
+
+150 s, 1920x1080, 30 fps, H.264 + AAC 192 kbps 48 kHz, italiano ed inglese, musica originale `musica_v3.py` (stessi strumenti di v2,
+sezioni ridistribuite: drop a 76 s sulla parte OpenCV, stacco a 148 s). Sequenza approvata: `STORYBOARD_v3.md`.
+**Dati reali** della sessione del 9/11/2026 dell'autore (scelta dell'autore): fotogrammi del video subacqueo, grafici IMU, schermate
+dell'editor e della pagina di analisi. Per questo le immagini, il video e le miniature **non stanno nel repository**: si generano in una cartella locale.
+
+## Come si rigenera
+```
+python media/video/prepara_img_v3.py --video VIDEO.mp4 --swr SESSIONE.swr --viz viz.json --segnali video_segnali.npz --pelle pelle.npz --v160 v160.npy --out CARTELLA_IMG
+python media/video/genera_video_v3.py --img CARTELLA_IMG                         # musica + miniatura + video IT
+python media/video/genera_video_v3.py --img CARTELLA_IMG --lingua en --no-musica # versione EN
+python media/video/genera_video_v3.py --img CARTELLA_IMG --anteprima 6 46 106 --dir CARTELLA
+```
+I file `video_segnali.npz`, `pelle.npz` e `v160.npy` vengono dagli script di `analisi/video/` (estrai, stabilizza, segnali, pelle);
+`viz.json` è il blocco di dati della pagina di analisi IMU. Gli screenshot della pagina di analisi e dell'editor si fanno con Chrome headless.
+
+## Scene (tagli sui battiti, 120 BPM)
+0 gancio: il tocco fotogramma per fotogramma · 8 la prova del 9/11 · 18 sincronia (picco di 11,4 g) · 26 etichette a mano (78 eventi) ·
+36 filtri sui dati IMU · 52 risultati dei filtri (arrivo ±0,88 s, obiettivo ±0,3 s non raggiunto) · 62 colpo di scena: etichette imprecise ·
+**76 drop: OpenCV** (stabilizzazione, maschera, filtro pelle) · 88 distanza dal muro e chimografo · 100 un arrivo, tre viste ·
+110 risultati OpenCV · 118 la decisione: metodo strutturato e rete neurale solo per l'arrivo · 132 prossimi passi · 142 chiusura.
+
+## YouTube - italiano
+**Titolo:** SwimTimer: il primo test in vasca - filtri IMU, OpenCV e rete neurale (novembre 2026)
+
+**Descrizione:**
+Primo test vero in vasca di SwimTimer, il progetto aperto per prendere i tempi senza fermarsi e senza premere pulsanti.
+Una Insta360 sul fondo vicino al muro, un tag XIAO nRF52840 Sense sotto la cuffia: 8:50 di video a 50 fps e 17 minuti di dati IMU a 214 Hz.
+In questo video:
+- la sincronia video-dati con un colpo sul tag (picco di 11,4 g);
+- 78 eventi etichettati a mano e i filtri sui dati IMU (orientamento della testa con il filtro di Mahony, viso al cielo, capriola, scivolata);
+- i risultati: arrivi trovati 10 su 15, errore ±0,88 s, obiettivo ±0,3 s non raggiunto;
+- il colpo di scena: lo stesso arrivo etichettato due volte cambia fino a 0,45 s, il riferimento era impreciso;
+- OpenCV: stabilizzazione, sottrazione dello sfondo, filtro colore pelle contro le bolle, distanza dal muro fotogramma per fotogramma;
+  partenze trovate 14 su 14 con ±0,14 s, nessun errore sul tipo di evento;
+- la decisione: metodo strutturato (dataset, banco di prova in streaming, validazione su sessioni nuove) e una piccola rete neurale
+  solo per l'arrivo, con notifica entro 1,5 s e tempo datato all'istante del tocco;
+- i prossimi passi: ripetute da 100 m, camera sul muro, sincronia a inizio e fine.
+Sito: https://swimtimer-pzero.web.app · Contatti: SmartSwimTimer@gmail.com · Codice: GitHub PZero/SwimTimer
+Musica originale generata per questo video. Le immagini e i dati sono della sessione reale dell'autore.
+
+**Tag:** SwimTimer, nuoto, cronometro, piscina, IMU, OpenCV, visione artificiale, rete neurale, TinyML, nRF52840, XIAO, Insta360, wearable, progetto open source
+
+## YouTube - English
+**Title:** SwimTimer: the first pool test - IMU filters, OpenCV and a neural network (November 2026)
+
+**Description:**
+The first real pool test of SwimTimer, the open project to time your swim without stopping and without pressing buttons.
+An Insta360 on the pool floor next to the wall, a XIAO nRF52840 Sense tag under the swim cap: 8:50 of video at 50 fps and 17 minutes of IMU data at 214 Hz.
+In this video:
+- video-data sync with one tap on the tag (11.4 g peak);
+- 78 hand-labelled events and the filters on the IMU data (head orientation with a Mahony filter, face up, flip turn, glide);
+- the results: 10 of 15 finishes found, ±0.88 s error, the ±0.3 s target not reached;
+- the plot twist: the same finish labelled twice moves by up to 0.45 s, the reference itself was inaccurate;
+- OpenCV: stabilisation, background subtraction, a skin-colour filter against bubbles, distance from the wall frame by frame;
+  14 of 14 starts found within ±0.14 s, no event-type errors;
+- the decision: a structured method (dataset, streaming test bench, validation on new sessions) and a small neural network
+  only for the finish, notifying within 1.5 s with the time back-dated to the touch;
+- next steps: 100 m repeats, a camera on the wall, sync at start and end.
+Site: https://swimtimer-pzero.web.app · Contact: SmartSwimTimer@gmail.com · Code: GitHub PZero/SwimTimer
+Original music generated for this video. Images and data come from the author's real session.
+
+**Tags:** SwimTimer, swimming, lap timer, swimming pool, IMU, OpenCV, computer vision, neural network, TinyML, nRF52840, XIAO, Insta360, wearable, open source project
