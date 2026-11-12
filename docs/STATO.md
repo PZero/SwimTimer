@@ -16,6 +16,7 @@ Struttura definitiva: tag XIAO nRF52840 → **XIAO ricevente** (USB) → host (o
 - **Ricevitore 0.1.6** (`firmware/ricevitore/`, XIAO Sense): central per 2 tag, frame USB con CRC (`PROTOCOLLO-USB.md`), conferma alla tag solo dopo l'OK dell'host.
 - **Host** `stazione/ricevitore_host.py` (`--porta COMx --cartella --log`): salva `dati/<tag>/tag.swr` + `.idx` (scritto, fsync, riletto).
 - Pi 3 configurato (`swimtimer-pi`, solo chiave SSH, display Waveshare 4″): note in `stazione/rpi/`.
+- **Video v4** «Houston, abbiamo un problema» (3 min, solo scritte) pubblicato: IT `85RNvPnFV1E`, EN `mj6OTWkjgwk`; sul portale e nel README. Sorgenti `media/video/genera_video_v4.py`.
 
 ## Prove a banco del 2026-11-12 (sera)
 Porte sul PC: ricevitore COM21; tag 4a510689 e 447b0247 (COM cambiano). Con l'USB la tag **non registra**: per avere dati servono i 4 tocchi a batteria; l'host chiuso impedisce al ricevitore di collegarsi.
