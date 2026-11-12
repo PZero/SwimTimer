@@ -57,3 +57,32 @@ Cosa non è andato bene col prototipo e che cosa deve garantire la scheda miniat
 
 13. **Il BLE non attraversa l'acqua.**
     → La logica e la memoria stanno sul tag; antenna lontana da batteria e corpo, area libera da rame come da datasheet.
+
+## Firmware, prove e metodo (incidente in vasca del 2026-11-11 e giornata di correzioni)
+
+Ogni voce: **cosa è successo → regola**.
+
+14. **Lo stato «sto registrando» viveva solo in RAM.** La tag si è riavviata dopo 10:42 e il ramo predefinito di `setup()` era la modalità normale (PRONTA, tocchi ignorati): tutto il nuoto perso.
+    → Ogni stato importante deve sopravvivere al riavvio (marca in GPREGRET2 **e** file in flash: il reset del watchdog azzera la marca, la seconda rete ha salvato la ripresa).
+    → Il ramo predefinito di ogni decisione è quello sicuro (registrare o dormire), mai quello comodo al banco.
+15. **Nessuno stato deve essere silenzioso.** LED spenti a batteria + memoria piena = la tag non partiva e nessuno lo sapeva.
+    → A batteria i LED si accendono solo nella gestione dei tocchi (blu, verde, rosso 2 s, 3 lampi verdi) e negli errori all'avvio; la pagina della scheda mostra gli avvisi con l'azione da fare.
+16. **Memoria piena = la tag non registra più** (decisione: si ferma, non sovrascrive). Prima di ogni seduta controllare «Da scaricare 0 %» o `MEM` via USB.
+17. **FIFO dell'LSM6 disallineato** (acc e giro scambiati) e lettura I2C oltre 32 byte che perde dati. Un controllo che sposta dati va provato con **urti e movimento reali** e non deve poter creare l'errore che cura. Con la scheda collegata i riallineamenti salgono a ~40/min (da capire).
+18. **La quiete non scattava** (bias del giroscopio imparato solo in quiete: se > 3 °/s non si impara mai). Correzione caricata ma **non ancora verificata**.
+19. **USB: una lettura di 0,5 s non basta.** Un disturbo mandava in sonno la tag collegata, e al risveglio da USB VBUS non era ancora assestato → di nuovo a dormire. Regole: 2 s per «USB staccata», attesa fino a 1 s all'avvio da USB, mai System OFF con VBUS presente (`NOTA 11`). Conseguenza non voluta: dalla pagina del PC la tag su USB non si spegne più (si riavvia).
+20. **Scritture in flash interna con il BLE collegato bloccano fino a 2 s** (overrun). Si misurano sempre con il BLE collegato e lo scarico attivo, non in annuncio.
+21. **Wi-Fi e BLE sulla stessa radio (ESP32-S3):** con la scansione BLE all'80 % la rete SwimTimer spariva; ora al 30 %. L'iPhone su una rete senza internet manda le richieste in cellulare: **disattivare Dati cellulari e Assistenza Wi-Fi**.
+22. **Collegamento BLE sempre aperto** (tag vicina): la tag annuncia SINCRONIZZA e la pagina mostrava SCARICA invece di REGISTRA; la mappa non si aggiornava. La prova che i dati arrivano è «Ultimo blocco salvato su SD».
+23. **Hardware fragile:** smontando il display per le misure si è strappata la piattina → schermo perso. Non smontare i moduli con piattine senza un motivo; fotografare e misurare da montati.
+24. **Prima di caricare una pagina web, controllare la sintassi del JavaScript** (un apostrofo ha rotto tutta la pagina).
+25. **Sapere sempre quale tag e quale firmware.** Due tag con firmware diversi hanno confuso le prove: prima di provare, controllare `DIARIO` (riga `AVV … PROVE`) e il seriale USB (`…4A510689`, `…447B0247`).
+26. **Il diario è il primo strumento di diagnosi**: ha risolto in pochi minuti USB instabile, memoria piena, riprese. Svuotarlo prima di una prova (`DIARIO,CANC`).
+
+## Gestione dei token (PRIORITÀ: dimezzare il costo)
+
+27. **Un agente ripreso porta con sé tutta la sua cronologia**: tre giri dello stesso agente sono costati 420k, 600k e 740k token. → Per ogni nuovo giro un agente **nuovo** con un incarico breve; mai riprendere un agente lungo.
+28. **File enormi riletti più volte** (`xiao-stream.ino` > 2600 righe). → Grep + lettura a righe; dividere il file in moduli.
+29. **Prove hardware senza limite** e revisioni con simulazioni non richieste. → Al massimo 3 tentativi, poi rapporto; revisore solo su `git diff`, un giro per modifica.
+30. **Sessioni troppo lunghe**: la conversazione del coordinatore cresce e ogni passo costa di più. → Un obiettivo per sessione, `/clear` tra un obiettivo e l'altro, lettura iniziale solo di `docs/STATO.md`.
+31. **Molti passaggi a mano per caricare il display** (BOT+RST, poi RST, ogni volta). → Raggruppare le modifiche e caricare una volta; valutare l'aggiornamento senza pulsanti.

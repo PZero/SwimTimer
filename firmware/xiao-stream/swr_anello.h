@@ -24,6 +24,7 @@ class SwrAnello {
   int16_t ultimo = -1;                 // ultimo blocco aperto: la ricerca del successivo parte da qui (ordine ad anello)
   uint16_t nDaValidare = 0, nConfermati = 0, nAnomali = 0, nLiberi = 0;
   uint8_t ultimoErrore = AN_OK;
+  void (*ciclo)() = nullptr;           // chiamata durante la scansione (serve il watchdog)
   volatile uint32_t chiusure = 0;      // contatore dei blocchi chiusi (serve a riprendere l'invio dopo FINE)
 
   void inizia(FlashQspi *flash, uint32_t id) { f = flash; idTag = id; }
@@ -35,6 +36,7 @@ class SwrAnello {
     uint16_t validi = 0, vecchio = 0, strani = 0;
     maxSeq = 0; aperto = -1; ultimo = -1; paginaNext = 0;
     for (uint16_t i = 0; i < SWR_N_BLOCCHI; i++) {
+      if (ciclo && !(i & 31)) ciclo();
       seq[i] = 0; st[i] = BL_LIBERO;
       f->readBuffer((uint32_t)i * SWR_BLOCCO_BYTE, b, SWR_PAGINA);
       bool ff = true;

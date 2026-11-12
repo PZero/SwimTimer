@@ -57,3 +57,7 @@ Risolte: modulo E73 (Raytac a stock 0), IMU LSM6DSV16X, flash 16 MB, interruttor
 58. Segnale del display: facciamo le misure a 10 cm / 1 m / 3 m (e tag ruotata) per tarare la scala in %? Se il margine a bordo vasca è scarso, valutiamo un'antenna esterna o un ricevitore diverso.
 59. ~~Verifica della SD dal PC~~: fatta il 2026-11-10 (nessun buco, nessun errore). Cancelli le cartelle della DEMO nella SD (`1000a3f2`, `20007c10`, `3000e95b`)?
 60. Display T-RGB come display «di sviluppo» per 1–3 nuotatori e Pi 4 + dongle per 10: confermi questa divisione?
+61. **Stati della tag con l'USB:** sul caricatore deve andare in idle da sola (come la svegli: tocchi? scollegando?); al PC resta sveglia per lavorarci. E dalla pagina del PC, con la tag su USB, «spegni» deve davvero spegnerla (oggi si riavvia)? Da progettare insieme prima del codice.
+62. Ordini un **T-RGB 2,8″** nuovo (circa 45 €)? E un'antenna 2,4 GHz **U.FL/IPEX-1** dopo aver controllato lo schema?
+63. Il **Raspberry Pi 3 con monitor HDMI**: lo teniamo come idea per una stazione con corrente (più nuotatori, tabellone), da valutare con l'architettura definitiva?
+64. Diario nella memoria esterna della tag (niente blocchi con il BLE collegato): accetti di riservare uno dei 512 blocchi (cambia la mappa del display)?

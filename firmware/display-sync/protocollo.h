@@ -36,7 +36,7 @@ enum StatoAnnuncio : uint8_t {
 };
 
 // Messaggi D->T (CONTROLLO)
-enum : uint8_t { M_PRONTO = 0x10, M_CONFERMA = 0x11, M_RIPETI = 0x12, M_STOP = 0x13 };
+enum : uint8_t { M_PRONTO = 0x10, M_CONFERMA = 0x11, M_RIPETI = 0x12, M_STOP = 0x13, M_SONNO = 0x14 };   // M_SONNO: 1 byte, senza argomenti, solo dopo PRONTO
 // Messaggi T->D (DATI)
 enum : uint8_t {
   M_MAPPA = 0x01, M_BLOCCO = 0x02, M_FRAMMENTO = 0x03, M_CONFERMATO = 0x04, M_FINE = 0x05, M_ERRORE = 0x06
@@ -151,7 +151,7 @@ static inline bool annuncioLeggi(const uint8_t *md, size_t n, Annuncio &a) {
 // ---- comandi display -> tag ----
 struct Comando {
   uint8_t tag;     // indice dello spicchio (0..2)
-  uint8_t tipo;    // M_PRONTO, M_CONFERMA, M_RIPETI, M_STOP
+  uint8_t tipo;    // M_PRONTO, M_CONFERMA, M_RIPETI, M_STOP, M_SONNO
   uint8_t motivo;  // solo STOP
   uint32_t seq, crc;
 };
@@ -164,6 +164,7 @@ static inline size_t comandoCodifica(const Comando &c, uint8_t *o) {
     case M_CONFERMA: scrivi32(o + 1, c.seq); scrivi32(o + 5, c.crc); return 9;
     case M_RIPETI: scrivi32(o + 1, c.seq); return 5;
     case M_STOP: o[1] = c.motivo; return 2;
+    case M_SONNO: return 1;
   }
   return 1;
 }

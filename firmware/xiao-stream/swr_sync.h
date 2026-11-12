@@ -15,7 +15,7 @@
 // Stato annunciato
 enum : uint8_t { ST_SONNO = 0, ST_PRONTA = 1, ST_REGISTRA = 2, ST_PIENA = 4, ST_ERRORE = 5, ST_SINCRONIZZA = 6 };
 // Messaggi D->T (CONTROLLO)
-enum : uint8_t { M_PRONTO = 0x10, M_CONFERMA = 0x11, M_RIPETI = 0x12, M_STOP = 0x13 };
+enum : uint8_t { M_PRONTO = 0x10, M_CONFERMA = 0x11, M_RIPETI = 0x12, M_STOP = 0x13, M_SONNO = 0x14 };   // M_SONNO: D->T, 1 byte, valido solo dopo PRONTO
 // Messaggi T->D (DATI)
 enum : uint8_t { M_MAPPA = 0x01, M_BLOCCO = 0x02, M_FRAMMENTO = 0x03, M_CONFERMATO = 0x04, M_FINE = 0x05, M_ERRORE = 0x06 };
 // Codici dell'ERRORE T->D

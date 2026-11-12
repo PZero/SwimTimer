@@ -26,6 +26,13 @@ Proponi miglioramenti e segnala rischi e incongruenze tra le aree.
 - Un passo alla volta: prima un prototipo funzionante, poi le rifiniture.
 - Se una scelta tocca più aree (es. cambia il sensore → cambiano firmware, alimentazione, involucro), dillo esplicitamente.
 
+## PRIORITÀ: dimezzare i token (richiesta dell'utente, 2026-11-12)
+- Un obiettivo per sessione; `/clear` fra un obiettivo e l'altro.
+- Agenti sempre **nuovi**, con incarico breve e rapporto ≤ 20 righe: **mai riprendere un agente con una cronologia lunga** (un giro è arrivato a 740k token).
+- `haiku` per compilare, caricare e lanciare i test; `sonnet` per scrivere codice; revisore solo sul `git diff`, un giro per modifica.
+- Niente letture intere dei file grandi (Grep + righe). Prove hardware: al massimo 3 tentativi, poi rapporto.
+- Raggruppare le modifiche al firmware prima di chiedere all'utente un caricamento (BOT+RST, cavi).
+
 ## Memoria e uso dei token
 - A inizio sessione leggi `docs/STATO.md` (e nient'altro, finché non serve).
 - Decisioni in `docs/DECISIONI.md`, una riga di motivazione ciascuna. Domande per l'utente in `docs/DOMANDE-APERTE.md`.

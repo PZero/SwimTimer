@@ -97,9 +97,12 @@ class FlashQspi {
       if (!leggiCmd(0x05, &st, 1)) return false;
       if (!(st & 0x01)) return true;
       if (millis() - t0 > timeoutMs) return false;
+      if (ciclo) ciclo();                               // 0.6.1: l'attesa lunga (cancellazione chip, fino a 15 s) serve il watchdog
       delay(1);
     }
   }
+
+ void (*ciclo)() = nullptr;      // chiamata a ogni giro delle attese (watchdog)
 
  private:
   bool attiva = false;

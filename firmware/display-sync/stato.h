@@ -7,6 +7,8 @@
 // Log sulla seriale solo se c'e' spazio (con il core 2.x la seriale USB blocca se nessuno legge)
 #define LOGF(...) do { if (Serial.availableForWrite() > 120) Serial.printf(__VA_ARGS__); } while (0)
 
+enum CmdStato : uint8_t { CMD_NESSUNO = 0, CMD_ATTESA, CMD_INVIATO, CMD_ERRORE };   // comando SLEEP verso la tag (pulsante Standby)
+
 enum ErrSd : uint8_t { SD_OK = 0, SD_ASSENTE, SD_PIENA, SD_ERR_SCRITTURA, SD_ERR_RILETTURA };
 
 struct TagStato {
@@ -31,6 +33,9 @@ struct TagStato {
   uint32_t errCrc;         // blocchi scartati (CRC o frammenti mancanti)
   uint32_t anomalie;       // stesso seq con CRC diverso
   uint8_t ultimoStop;      // ultimo motivo di STOP inviato (0 = nessuno)
+  uint8_t cmd;             // CmdStato: richiesta di standby dalla pagina web
+  uint8_t cmdTent;         // tentativi falliti o senza effetto (3 = errore)
+  uint32_t cmdMs;          // millis dell'ultimo invio riuscito
 };
 
 struct SdStato {

@@ -262,25 +262,28 @@ static void disegnaDisco(GFXcanvas16 &t, const SdStato &sd) {
   }
 }
 
+static bool uiOk = false;   // senza schermo o senza tele la scheda continua (scarico BLE, SD, pagina Wi-Fi): niente blocchi all'avvio
 void uiInit() {
-  if (!panel.begin()) {
-    Serial.println("Display non riconosciuto");
-    while (true) delay(1000);
+  if (!panel.begin(LILYGO_T_RGB_2_8_INCHES)) {   // pannello fisso: senza il touch la libreria non sa quale pannello e va in assert (visto il 2026-11-11)
+    Serial.println("Display non riconosciuto: si continua senza schermo");
+    return;
   }
   panel.setBrightness(16);
   sfondo = new GFXcanvas16(480, 480);
   composto = new GFXcanvas16(480, 480);
   if (!sfondo->getBuffer() || !composto->getBuffer()) {
-    Serial.println("Memoria insufficiente per le tele (PSRAM?)");
-    while (true) delay(1000);
+    Serial.println("Memoria insufficiente per le tele (PSRAM?): si continua senza schermo");
+    return;
   }
   geometria();
   composto->fillScreen(C_NERO);
   testo(*composto, "SwimTimer sync", CX, CY, &FreeSansBold12pt7b, C_BIANCO);
   panel.pushColors(0, 0, 480, 480, composto->getBuffer());
+  uiOk = true;
 }
 
 void uiAggiorna() {
+  if (!uiOk) return;
   static uint32_t ultimo = 0;
   uint32_t ora = millis();
   if (ora - ultimo < 200) return;  // ~5 volte al secondo

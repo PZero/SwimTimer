@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="it"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0b0f14">
+<title>SwimTimer</title>
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html{background:#0b0f14;overflow-x:hidden}
+.top,.pill,.card,.k,.mini{min-width:0;overflow-wrap:anywhere}
+body{margin:0;color:#f4f7fb;font:18px/1.25 -apple-system,BlinkMacSystemFont,"SF Pro Text",Roboto,Arial,sans-serif;
+ padding:calc(10px + env(safe-area-inset-top)) calc(12px + env(safe-area-inset-right)) calc(20px + env(safe-area-inset-bottom)) calc(12px + env(safe-area-inset-left));
+ -webkit-text-size-adjust:100%}
+.top{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;background:#161d27;border-radius:16px;padding:10px 14px;margin-bottom:10px;font-size:16px;color:#c8d2de}
+.top b{color:#fff;font-weight:700}
+.dot{display:inline-block;width:14px;height:14px;border-radius:7px;background:#2ecc71;margin-right:6px;vertical-align:-1px;transition:background .3s}
+.dot.off{background:#ff3b30;animation:pul 1s infinite}
+.mini{flex:1 1 90px;min-width:90px}
+.bar{height:10px;border-radius:5px;background:#2a3441;overflow:hidden;margin-top:4px}
+.bar>i{display:block;height:100%;border-radius:5px;background:#4da3ff;transition:width .6s,background .6s}
+.pills{display:flex;flex-direction:column;gap:8px;margin-bottom:10px}
+.pill{font-size:22px;font-weight:800;padding:12px 16px;border-radius:999px;text-align:center;animation:ent .3s}
+.pill.r{background:#e5281e;color:#fff;box-shadow:0 0 0 2px #fff inset}
+.pill.g{background:#ffd60a;color:#1a1500}
+.pill small{font-weight:600;font-size:15px;display:block;opacity:.85}
+.card{background:#161d27;border-radius:22px;padding:14px;margin-bottom:12px;border-top:8px solid #888;transition:border-color .5s}
+.nome{font-size:32px;font-weight:800;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.nome small{font-size:15px;font-weight:500;color:#8b97a7}
+.sw{width:22px;height:22px;border-radius:11px;border:2px solid #fff;flex:none}
+.badge{font-size:44px;font-weight:900;text-align:center;padding:12px 6px;margin:10px 0;border-radius:18px;color:#08121a;letter-spacing:.5px;transition:background .4s}
+.b-REGISTRA{background:#ff453a;color:#fff;animation:pul 1.2s infinite}
+.b-PRONTA{background:#30d158}.b-SCARICA{background:#0a84ff;color:#fff}.b-SPENTA{background:#636a75;color:#fff}
+.b-NONVISTA{background:#ffd60a}.b-MEMPIENA{background:#ff9f0a}.b-ERRORE{background:#ff2d78;color:#fff}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-bottom:8px}
+.k{background:#1f2834;border-radius:14px;padding:8px 10px}
+.k span{display:block;font-size:13px;color:#8b97a7;text-transform:uppercase;letter-spacing:.4px}
+.k b{font-size:24px;font-weight:800;font-variant-numeric:tabular-nums}
+.k.w{grid-column:span 2}
+.sig{display:inline-flex;gap:3px;align-items:flex-end;height:22px;vertical-align:middle;margin-right:8px}
+.sig i{width:6px;border-radius:2px;background:#2f3a49;transition:background .4s}
+.sig i.on{background:#30d158}
+canvas{width:100%;max-width:100%;height:auto;display:block;margin-top:6px;border-radius:8px}
+.leg{font-size:14px;color:#aab4c2;margin-top:6px}
+.leg i{display:inline-block;width:12px;height:12px;border-radius:3px;margin:0 4px 0 10px;vertical-align:-1px}
+.leg i:first-child{margin-left:0}
+.cmd{margin-top:10px}
+.cmd button{width:100%;font:inherit;font-size:24px;font-weight:800;padding:16px 8px;border:0;border-radius:16px;background:#3a4556;color:#fff}
+.cmd button:active{background:#56647a}
+.cmd button:disabled{opacity:.5}
+.cmd p{margin:8px 2px 0;font-size:17px;font-weight:700;color:#aab4c2;min-height:22px}
+.cmd p.e{color:#ff453a}.cmd p.o{color:#30d158}.cmd p.a{color:#ffd60a}
+@keyframes pul{50%{opacity:.55}}
+@keyframes ent{from{opacity:0;transform:scale(.96)}}
+</style></head><body>
+<div class="top">
+ <div><span class="dot off" id="dot"></span><b id="conn">connessione...</b></div>
+ <div>Accesa da <b id="up">-</b></div>
+ <div class="mini">SD <b id="sdt">-</b><div class="bar"><i id="sdb" style="width:0"></i></div></div>
+ <div class="mini">Batt. tag <b id="bt">-</b><div class="bar"><i id="bb" style="width:0"></i></div></div>
+</div>
+<div class="pills" id="av"></div>
+<div id="tag"></div>
+<div class="leg" id="piede" style="text-align:center;margin-top:6px"></div>
+<script>(function(){var D={"up": 412, "avvii": 51, "causa": "accensione", "heap": 150000, "sd": {"ok": 1, "err": 0, "liberi": 15152, "tot": 15193, "sess": 51}, "tag": [{"i": 1, "nome": "Anna", "id": "A1B2C3D4", "col": "#3b82f6", "st": "REGISTRA", "vista": 2, "reg": 754, "pronta": 0, "batt": 78, "mv": 3960, "rssi": -62, "rssip": 63, "mem": 23, "att": 0, "salv": 0, "crc": 0, "anom": 0, "seq": 120, "bps": 0, "coll": 0, "cmd": "attesa", "tx": [-1, -1], "mappa": "ffffffffffffffffffffffffffffffffffffffffffffffffff01000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"}, {"i": 2, "nome": "ST-77AA", "id": "0000A177", "col": "#f97316", "st": "PRONTA", "vista": 1, "reg": 0, "pronta": 45, "batt": 15, "mv": 3700, "rssi": -85, "rssip": 25, "mem": 3, "att": 0, "salv": 0, "crc": 0, "anom": 0, "seq": 5, "bps": 0, "coll": 0, "cmd": "inviato", "tx": [-1, -1], "mappa": "0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"}, {"i": 3, "nome": "Marco", "id": "0000BEEF", "col": "#84cc16", "st": "NON VISTA", "vista": 95, "reg": 300, "pronta": 0, "batt": 55, "mv": 3850, "rssi": -95, "rssip": 8, "mem": 71, "att": 40, "salv": 200, "crc": 2, "anom": 0, "seq": 900, "bps": 3200, "coll": 0, "cmd": "errore", "tx": [290, 291], "mappa": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa05000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"}]};function X(){this.timeout=0;}X.prototype.open=function(){};X.prototype.setRequestHeader=function(){};X.prototype.send=function(){var t=this;setTimeout(function(){D.up+=1;t.responseText=JSON.stringify(D);t.onload();},50);};window.XMLHttpRequest=X;})();</script>
+<script>
+var CL=['#2c3542','#ffffff','#ffb020','#30d158','#0a84ff'];
+var ult=0;
+function q(i){return document.getElementById(i);}
+function pul(s){return String(s).replace(/[^A-Za-z0-9 _.-]/g,'?');}
+function mmss(s){var m=Math.floor(s/60),r=s%60;return (m<10?'0':'')+m+':'+(r<10?'0':'')+r;}
+function dur(s){return s>=3600?Math.floor(s/3600)+' h '+Math.floor(s%3600/60)+' min':s>=60?Math.floor(s/60)+' min '+(s%60)+' s':s+' s';}
+function hh(d){function z(n){return (n<10?'0':'')+n;}return z(d.getHours())+':'+z(d.getMinutes())+':'+z(d.getSeconds());}
+function colBatt(p){return p<0?'#636a75':p<20?'#ff453a':p<40?'#ffd60a':'#30d158';}
+function barre(p){var h='<span class="sig">';for(var i=0;i<4;i++)h+='<i style="height:'+(7+i*5)+'px" class="'+(p>=15+i*25?'on':'')+'"></i>';return h+'</span>';}
+function mappa(cv,hex,tx){
+  var c=cv.getContext('2d');c.clearRect(0,0,cv.width,cv.height);
+  for(var b=0;b<512;b++){
+    var v=hex?(parseInt(hex.substr((b>>2)*2,2),16)>>(2*(b&3)))&3:0;
+    if(v==2&&(tx[0]==b||tx[1]==b))v=4;
+    c.fillStyle=CL[v];
+    c.fillRect((b%32)*12,Math.floor(b/32)*12,10,10);
+  }
+}
+function standby(id,nome){
+  if(!confirm('Mettere in standby '+nome+'? Se sta registrando, la registrazione si chiude e la tag si spegne.'))return;
+  var r=new XMLHttpRequest();r.timeout=3000;
+  r.open('POST','/comando');r.setRequestHeader('Content-Type','application/x-www-form-urlencoded');
+  r.onload=function(){giro();};
+  r.onerror=r.ontimeout=function(){alert('Comando non inviato: nessuna risposta dal display');};
+  r.send('tag='+id+'&c=sonno');
+}
+function mostra(d){
+  var av=[],t=d.tag,i,x,n;
+  if(d.up<60)av.push(['r','SCHEDA RIAVVIATA da '+d.up+' s','causa: '+d.causa]);
+  if(!d.sd.ok)av.push(['r',{1:'SD ASSENTE',2:'SD PIENA',3:'SD: ERRORE DI SCRITTURA',4:'SD: ERRORE DI RILETTURA'}[d.sd.err]||'SD NON PRONTA','']);
+  else if(d.sd.liberi<500)av.push(['g','SD QUASI PIENA','solo '+d.sd.liberi+' MB liberi']);
+  for(i=0;i<t.length;i++){
+    x=t[i];n=pul(x.nome);
+    if(x.st=='PRONTA'&&x.pronta>30)av.push(['r','NON REGISTRA: '+n,'pronta da '+x.pronta+' s · rifai i tocchi: 2 tocchi, verde, 2 tocchi, 3 lampi verdi']);
+    if(x.st=='MEM. PIENA')av.push(['r','MEM. PIENA: '+n,'non registra più: a casa collegala al PC per scaricarla e azzerarla']);
+    if(x.st=='ERRORE')av.push(['r','ERRORE: '+n,'collega la tag al PC via USB e leggi il diario']);
+    if(x.st=='NON VISTA')av.push(['g','NON VISTA da '+dur(x.vista)+': '+n,'normale in acqua · al bordo avvicina la testa alla scheda']);
+    if(x.st=='REGISTRA'&&x.ultsalv>180&&x.vista<5)av.push(['g',n+': registra ma non salva da '+dur(x.ultsalv),'avvicina la tag alla scheda per qualche secondo']);
+    if(x.crc>0||x.anom>0)av.push(['g',n+': '+x.crc+' errori CRC, '+x.anom+' anomalie','']);
+  }
+  if(!t.length)av.push(['g','Nessuna tag vista finora','']);
+  var h='';
+  for(i=0;i<av.length;i++)h+='<div class="pill '+av[i][0]+'">'+av[i][1]+(av[i][2]?'<small>'+av[i][2]+'</small>':'')+'</div>';
+  q('av').innerHTML=h;
+  q('up').textContent=dur(d.up);
+  var sd=d.sd,pc=sd.tot?Math.round(100*sd.liberi/sd.tot):0;
+  q('sdt').textContent=sd.ok||sd.err==2?sd.liberi+' MB liberi':'NON PRONTA';
+  q('sdb').style.width=pc+'%';q('sdb').style.background=sd.ok?'#4da3ff':'#ff453a';
+  var mn=-1;
+  for(i=0;i<t.length;i++)if(t[i].batt>=0&&(mn<0||t[i].batt<mn))mn=t[i].batt;
+  q('bt').textContent=mn<0?'?':mn+'%';q('bb').style.width=Math.max(mn,0)+'%';q('bb').style.background=colBatt(mn);
+  var cont=q('tag');
+  for(i=0;i<t.length;i++){
+    x=t[i];
+    var el=q('t'+x.i);
+    if(!el){
+      el=document.createElement('div');el.id='t'+x.i;el.className='card';
+      el.innerHTML='<div class="nome"></div><div class="badge"></div><div class="grid"></div><canvas width="384" height="192"></canvas>'+
+       '<div class="leg"><i style="background:#2c3542"></i>libero<i style="background:#fff"></i>aperto<i style="background:#ffb020"></i>da validare<i style="background:#30d158"></i>confermato<i style="background:#0a84ff"></i>in trasmissione</div>'+
+       '<div class="cmd"><button type="button"></button><p></p></div>';
+      cont.appendChild(el);
+    }
+    el.style.borderTopColor=x.col;
+    el.children[0].innerHTML='<span class="sw" style="background:'+x.col+'"></span>'+pul(x.nome)+' <small>'+x.id+'</small>';
+    var b=el.children[1];b.className='badge b-'+x.st.replace(/[^A-Z]/g,'');b.textContent=x.st;
+    el.children[2].innerHTML=
+     '<div class="k"><span>Registrazione</span><b>'+mmss(x.reg)+'</b></div>'+
+     '<div class="k"><span>Vista</span><b>'+(x.vista<2?'ora':dur(x.vista)+' fa')+'</b></div>'+
+     '<div class="k w"><span>Ultimo blocco salvato su SD</span><b>'+(x.ultsalv<0?'nessuno':(x.ultsalv<2?'ora':dur(x.ultsalv)+' fa'))+'</b>'+(x.scar&&x.st=='REGISTRA'?' <small style="color:#4da3ff">· scarico in corso</small>':'')+'</div>'+
+     '<div class="k"><span>Batteria</span><b style="color:'+colBatt(x.batt)+'">'+(x.batt<0?'?':x.batt+'%')+'</b><div class="bar"><i style="width:'+Math.max(x.batt,0)+'%;background:'+colBatt(x.batt)+'"></i></div></div>'+
+     '<div class="k"><span>Segnale</span><b>'+barre(x.rssip)+x.rssi+'</b></div>'+
+     '<div class="k w"><span>Da scaricare '+x.mem+'% della memoria</span><div class="bar" style="height:14px"><i style="width:'+x.mem+'%;background:'+(x.mem>=90?'#ff453a':x.mem>=70?'#ffb020':'#4da3ff')+'"></i></div></div>'+
+     '<div class="k"><span>Salvati</span><b>'+x.salv+'</b></div>'+
+     '<div class="k"><span>In attesa</span><b>'+x.att+'</b></div>'+
+     '<div class="k"><span>Errori CRC</span><b style="color:'+(x.crc?'#ffd60a':'#fff')+'">'+x.crc+'</b></div>'+
+     '<div class="k"><span>Velocit&agrave;</span><b>'+x.bps+' B/s</b></div>';
+    mappa(el.children[3],x.mappa,x.tx);
+    var cm=el.children[5],bt=cm.children[0],ms=cm.children[1];
+    bt.textContent='Metti in standby';bt.disabled=x.cmd=='attesa';
+    bt.onclick=(function(id,nm){return function(){standby(id,nm);};})(x.id,pul(x.nome));
+    ms.className=x.cmd=='errore'?'e':x.cmd=='inviato'?'o':x.cmd=='attesa'?'a':'';
+    ms.textContent=x.cmd=='attesa'?'In attesa di contatto con la tag'+(x.coll?' (aspetta la fine dello scarico)':''):x.cmd=='inviato'?'Inviato':x.cmd=='errore'?'Errore: la tag non ha risposto (3 tentativi)':'';
+  }
+  q('piede').textContent='Sessione SD '+sd.sess+' - avvii '+d.avvii+' - ultima causa: '+d.causa;
+}
+function giro(){
+  var r=new XMLHttpRequest();r.timeout=2500;
+  r.open('GET','/stato?'+Date.now());
+  r.onload=function(){try{mostra(JSON.parse(r.responseText));ult=Date.now();}catch(e){}};
+  r.send();
+}
+function conn(){
+  var ok=ult&&Date.now()-ult<3000;
+  q('dot').className='dot'+(ok?'':' off');
+  q('conn').textContent=ult?(ok?'collegato ':'NON COLLEGATO ')+'- ultimo agg. '+hh(new Date(ult)):'connessione...';
+}
+giro();setInterval(giro,1000);setInterval(conn,500);
+</script></body></html>

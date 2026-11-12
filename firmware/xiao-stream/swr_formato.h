@@ -1,4 +1,4 @@
-// SwimTimer - formato .swr della registrazione in vasca (formato 1 dalla 0.5.0, formato 2 dalla 0.6.0). Solo C++ standard, senza Arduino:
+// SwimTimer - formato .swr della registrazione in vasca (formato 1 dalla 0.5.0, formato 2 dalla 0.6.0, campi aggiunti in 0.6.1). Solo C++ standard, senza Arduino:
 // il decodificatore Python (swr.py) fa l'operazione inversa byte per byte.
 //
 // La flash e' una sequenza di pagine da 256 byte, scritte una sola volta, in ordine, da 0 in avanti:
@@ -18,6 +18,30 @@
 // Segmento (payload): [16..17] ODR x10 (2083), [18..19] ug/LSB acc (488), [20..21] mdps/LSB giro (35), [22..27] bias giro raw 3 x int16,
 //   [28] causa reset, [29] tocchi extra del risveglio, [30..37] versione firmware (testo, 0-terminata)
 // Chiusura (payload): [16..19] uint32 campioni totali del segmento, [20..23] uint32 pagine del segmento
+//   (0.6.0) [24..25] gap massimo FIFO ms, [26] overrun, [27..28] apertura blocco massima ms, [29..30] blocchi confermati
+//   (0.6.1) [31..32] uint16 disallineamenti del FIFO (eventi con dati scartati), [33..34] uint16 parole scartate (saturato a 0xFFFE)
+//   0xFF/0xFFFF = campo assente (file di versioni precedenti): i lettori vecchi ignorano i byte oltre quelli che conoscono.
+//
+// CAMPI AGGIUNTI DALLA 0.6.1 nella pagina di segmento (payload byte 38..63; 0xFF in [38] = assenti, file vecchi). Il segmento nasce da un
+// risveglio a tocchi (origine 0) oppure da una RIPRESA AUTOMATICA dopo un riavvio inatteso durante la registrazione (origine 1 o 2):
+//   [38] flag segmento: bit0 ripresa dopo riavvio (marca GPREGRET2), bit1 ripresa dalla seconda rete (flash, marca persa),
+//        bit2 contesto del guasto valido (PC/LR/CFSR/HFSR salvati prima del reset)
+//   [39] riprese consecutive senza chiusura ordinata (0 = avvio a tocchi)
+//   [40] marca letta in GPREGRET2 all'avvio (0 = nessuna)
+//   [41] tipo di guasto: 0 nessuno noto, 1 HardFault, 2 stack overflow, 3 malloc fallita, 4 watchdog, 5 altro
+//   [42..45] uint32 RESETREAS grezzo (bit0 pin, bit1 watchdog, bit2 reset software, bit3 lockup, bit16 uscita da System OFF, bit20 VBUS)
+//   [46..49] uint32 PC al guasto (0 se non catturato)  [50..53] uint32 LR  [54..57] uint32 CFSR  [58..61] uint32 HFSR
+//   [62] fase del programma al guasto (0 = ignota)  [63] origine: 0 tocchi, 1 marca, 2 seconda rete
+//
+// TEMPO DI SESSIONE CONTINUO (0.6.1, per la sincronizzazione con il video): dopo una ripresa millis() riparte da 0. Byte 64..73 della pagina di
+// segmento (0xFF in [68] = file senza questi campi):
+//   [64..67] uint32 SCARTO in ms: tempo di sessione = millis (di qualunque pagina del segmento) + scarto. Vale 0 se il segmento e' partito a tocchi.
+//            scarto = scarto del segmento precedente + istante del reset (millis del vecchio avvio) + T_AVVIO (reset -> millis() = 0)
+//   [68] origine dello scarto: 0 nessuna (partenza a tocchi), 1 gestore (HardFault/IRQ del watchdog: istante esatto), 2 ultimo vivo (ultimo
+//        servizio del watchdog, +8 s se il reset e' del watchdog), 3 SCONOSCIUTA (RAM persa/brownout: il tempo NON e' continuo, scarto non valido)
+//   [69..70] uint16 margine d'errore in ms (cumulato su tutti i riavvii della catena, saturato a 0xFFFE)
+//   [71] uint8 numero di avvii della catena (1 = nessun riavvio; conta anche gli avvii andati in crash prima di scrivere il segmento)
+//   [72..73] uint16 T_AVVIO in ms usato dal firmware (permette di correggere lo scarto a posteriori: scarto + (avvii-1) * (T_nuovo - T_usato))
 //
 // FORMATO 2 (0.6.0, docs/SINCRONIZZAZIONE.md §8): la flash e' un anello di 512 blocchi da 4 KB (= settore) di 16 pagine.
 //   Pagina 0 del blocco = intestazione di blocco, tipo 0xB1:
@@ -58,6 +82,38 @@
 #define SWR_STOP_USB 4        // USB collegata durante la registrazione: chiude e riparte in modalita' normale
 #define SWR_STOP_ERRORE 5
 #define SWR_STOP_COMANDO 6    // SLEEP dalla pagina (o da un altro client BLE) durante la registrazione
+// 0.6.1: campi aggiuntivi (vedi sopra)
+#define SWR_SEG_OFF_FLAG 38
+#define SWR_SEG_OFF_RIPRESE 39
+#define SWR_SEG_OFF_MARCA 40
+#define SWR_SEG_OFF_GUASTO 41
+#define SWR_SEG_OFF_RESETREAS 42
+#define SWR_SEG_OFF_PC 46
+#define SWR_SEG_OFF_LR 50
+#define SWR_SEG_OFF_CFSR 54
+#define SWR_SEG_OFF_HFSR 58
+#define SWR_SEG_OFF_FASE 62
+#define SWR_SEG_OFF_ORIGINE 63
+#define SWR_SEGF_RIPRESA 0x01
+#define SWR_SEGF_RIPRESA_FLASH 0x02
+#define SWR_SEGF_CONTESTO 0x04
+#define SWR_SEG_OFF_SCARTO 64
+#define SWR_SEG_OFF_TORIG 68
+#define SWR_SEG_OFF_MARGINE 69
+#define SWR_SEG_OFF_NAVVII 71
+#define SWR_SEG_OFF_TAVVIO 72
+#define SWR_TORIG_NESSUNA 0
+#define SWR_TORIG_GESTORE 1
+#define SWR_TORIG_VIVO 2
+#define SWR_TORIG_SCONOSCIUTA 3
+#define SWR_GUASTO_NESSUNO 0
+#define SWR_GUASTO_HARDFAULT 1
+#define SWR_GUASTO_STACK 2
+#define SWR_GUASTO_MALLOC 3
+#define SWR_GUASTO_WDT 4
+#define SWR_GUASTO_ALTRO 5
+#define SWR_CHIUS_OFF_DISALL 31
+#define SWR_CHIUS_OFF_SCARTATE 33
 
 static inline uint16_t swrCrc16(const uint8_t *p, uint32_t n, uint16_t crc = 0xFFFF) {
   while (n--) {

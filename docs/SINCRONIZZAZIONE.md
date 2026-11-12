@@ -142,6 +142,7 @@ Tavolozza (la stessa di `tools/display.html`): 0 blu `#3b82f6`, 1 arancione `#f9
 | 0x11 | CONFERMA | D→T | seq u32, crc32 u32 |
 | 0x12 | RIPETI | D→T | seq u32 |
 | 0x13 | STOP | D→T | motivo u8 (1 SD piena, 2 errore SD, 3 troppi errori) |
+| 0x14 | SONNO | D→T | nessun argomento (1 byte). Accettato solo dopo PRONTO. In registrazione la tag chiude il segmento (motivo 6, attende lo scarico in corso, max 60 s) e dorme; in modalità normale va in sospensione (con l'USB riavvia, NOTA 11). Diario/log tag: `sync: SONNO ricevuto`. Sostituisce la scrittura SLEEP sulla 0004 aperta |
 | 0x01 | MAPPA | T→D | millis tag u32, blocco aperto u16, 128 B (512 × 2 bit, blocco *i* nei bit 2·(i%4) del byte i/4: 0 libero, 1 aperto, 2 da validare, 3 validato) |
 | 0x02 | BLOCCO | T→D | seq u32, blocco fisico u16, crc32 u32, millis del primo campione u32 |
 | 0x03 | FRAMMENTO | T→D | seq u32, indice u8 (0..31), 128 B (frammento *k* = byte 128·k … del blocco da 4096 B) |

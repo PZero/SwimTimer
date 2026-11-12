@@ -27,6 +27,7 @@ int statoAnnuncio(const Annuncio &a, int rssi) {
   if (idx < 0) return -1;
   TagStato &t = gStato.tag[idx];
   t.stato = a.stato;
+  if (a.stato == ST_SONNO && t.cmd == CMD_ATTESA) { t.cmd = CMD_INVIATO; t.cmdMs = millis() ? millis() : 1; }   // gia' in sonno: standby ottenuto
   t.batt20 = a.batt20;
   t.pctMem = a.pctMem;
   t.errori = a.errori;

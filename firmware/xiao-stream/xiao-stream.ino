@@ -10,11 +10,23 @@
 #include "flash_qspi.h"          // flash QSPI da 2 MB della XIAO (registrazione in vasca), sopra nrfx_qspi
 #include "swr_formato.h"
 #include "swr_anello.h"        // memoria ad anello di 512 blocchi (formato 2)
+#include "swr_tipi.h"          // struct CtxGuasto e RecDiario (fuori dallo sketch: il generatore di prototipi di Arduino le userebbe prima di definirle)
+#include "swr_fifo.h"          // lettura del FIFO con controllo dell'allineamento (provata con fifo_sim.py)
 #include "swr_sync.h"          // costanti e messaggi del protocollo di sincronizzazione (identici a display-sync/protocollo.h)
 #include <flash/flash_nrf5x.h>   // scrittura flash compatibile con il SoftDevice (sd_flash_*)
 
-#define VER_NUM "0.6.0"
-#define VERSIONE "xiao-" VER_NUM
+#ifndef PROVE_GUASTI
+#define PROVE_GUASTI 0          // predefinito 0 (rilascio). Per la prova a secco: compilare con -DPROVE_GUASTI=1 (versione "0.6.1-prove")
+#endif
+#define VER_NUM "0.6.1"
+#if PROVE_GUASTI
+#define VER_SUF "-prove"        // la build di prova si riconosce da VERSIONE, dal diario (AVV ... PROVE) e dalla pagina di segmento ("0.6.1p")
+#define VER_SEG "p"
+#else
+#define VER_SUF ""
+#define VER_SEG ""
+#endif
+#define VERSIONE "xiao-" VER_NUM VER_SUF
 // Marcatore cercato nel binario dalla pagina (come per l'ESP32) e dall'OTA del tag
 __attribute__((used)) static const char marcatoreVersione[] = "SWIMTAG_VER=" VER_NUM ";";
 // Firma della scheda: l'OTA rifiuta le immagini che non la contengono (es. il firmware dell'ESP32)
@@ -51,12 +63,25 @@ __attribute__((used)) static const char marcatoreScheda[] = FIRMA_SCHEDA;
 #define RISVEGLIO_GAP_MS 900     // dal 2o tocco extra in poi: tempo massimo fra due tocchi (poi la sequenza e' finita)
 #define RISVEGLIO_DEBOUNCE_MS 100 // due eventi piu' vicini di cosi' sono lo stesso tocco (rimbalzo)
 // Modalita' vasca (0.5.0): 4 tocchi senza USB = sveglia e registra su flash, BLE spento.
+#define VBUS_ATTESA_AVVIO_MS 1000  // avvio causato dall'USB: attesa massima perche' VBUSDETECT si assesti
+#define VBUS_ASSENZA_N 20          // USB staccata = 20 letture consecutive senza VBUS, una ogni 100 ms (2 s)
 #define QUIETE_REG_S 180         // la registrazione si chiude dopo tanti secondi "abbastanza fermo" (soglie QUIETE_*)
 #define BAT_MIN_AVVIO_MV 3400    // sotto questa tensione al risveglio non si registra
 #define BAT_STOP_MV 3300         // sotto questa tensione (3 letture di fila, ogni 5 s) la registrazione si chiude
-// Il bootloader Adafruit azzera RESETREAS prima di lanciare l'app: la causa "uscita da System OFF" non e' leggibile.
+// (Correzione 0.6.1: RESETREAS lo azzera il core in init(), non il bootloader; la copia e' in readResetReason(), vedi setup().)
 // Prima di ogni System OFF si scrive questa marca in GPREGRET2 (che il bootloader non tocca); all'avvio la si legge.
 #define MARCA_SLEEP 0xB7
+// ---- 0.6.1: regole di modo, ripresa automatica, watchdog, diario, prove (vedi LEGGIMI.md, sezione "0.6.1") ----
+// Marca "registrazione in corso" in GPREGRET2 (0xD0 | numero di riprese consecutive, 0..15): scritta all'avvio della registrazione, sostituita da
+// MARCA_SLEEP alla chiusura ordinata. Se al boot (senza USB) c'e' ancora, la tag si e' riavviata registrando: riprende da sola.
+// Il bootloader Adafruit NON usa GPREGRET2 (solo GPREGRET, con i valori 0xB1 0xA8 0x4E 0x57 0x6D): fonte main.c 0.6.2.
+#define MARCA_REGISTRA 0xD0
+#define MAX_RIPRESE 3            // riprese automatiche consecutive senza una chiusura ordinata, poi sonno con annuncio ERRORE
+#define WDT_SECONDI 8            // timeout del watchdog hardware (servito da cane() in ogni loop e attesa lunga)
+// PROVE_GUASTI = 1: comandi di prova PROVA_CRASH (HardFault vero), PROVA_BLOCCO (ciclo infinito: scatta il watchdog), PROVA_RESET
+// (reset software). Si accettano sulla caratteristica COMANDI 0004 (APERTA: chiunque in portata puo' mandarli) anche in registrazione, e
+// sulla seriale. Servono alla prova a secco: PORTARE A 0 PER IL RILASCIO.
+
 #define LOG_RIGHE 50
 #define LOG_LEN 44
 
@@ -108,7 +133,8 @@ static bool imuOk = false;
 static uint8_t causaReset = 0;      // codici come la pagina: 0 accensione, 1 tap, 3 watchdog, 5 software, 6 altro, 7 USB, 8 pin reset
 static uint16_t connHdl = BLE_CONN_HANDLE_INVALID;   // collegamento della pagina web (servizio 7a1e0001): quello che abilita le notifiche su 0005
 static bool inVasca = false;           // modalita' vasca (registrazione): niente LED di collegamento, solo il comando SLEEP
-static volatile bool sonnoRichiesto = false;   // SLEEP ricevuto in registrazione: chiude il segmento e va in sonno
+static volatile bool sonnoDaSync = false;      // M_SONNO ricevuto in modalita' normale: il loop chiama vaInSospensione()
+static volatile bool sonnoRichiesto = false;  // SLEEP ricevuto in registrazione: chiude il segmento e va in sonno
 static bool advAbilitato = false;      // l'annuncio deve restare acceso (spento prima di dormire e durante l'installazione OTA)
 static bool bleOk = false;             // Bluefruit.begin riuscito
 static uint16_t ultimaMv = 0;          // ultima tensione letta
@@ -119,8 +145,137 @@ static void annuncioAggiorna(bool forza);
 static void scanRispostaImposta();
 static void sonnoAnnuncia(bool piena);
 static void bleSpegni();
+static bool annErrore = false;         // annuncia ST_ERRORE (riprese esaurite) prima di dormire
+static volatile uint16_t diaInvioN = 0;   // record del diario ancora da mandare via BLE (comando DIARIO)
 static void notificaTutti(BLECharacteristic &c, const void *p, uint16_t n);
 static bool sdAttivo() { uint8_t e = 0; sd_softdevice_is_enabled(&e); return e != 0; }
+
+// ================= 0.6.1: watchdog hardware e contesto del guasto =================
+// WDT dell'nRF52: una volta avviato non si ferma fino al reset; CONFIG.SLEEP = Run (continua a contare mentre la CPU dorme nel
+// FreeRTOS idle, altrimenti non scatterebbe mai), HALT = Pause. Timeout = (CRV+1)/32768 s. Si serve scrivendo 0x6E524635 in RR[0].
+// ---- Tempo di sessione continuo dopo le riprese (0.6.1) ----
+// Dopo un riavvio millis() riparte da 0. Per mantenere la sincronizzazione con il video ogni segmento ripreso salva nella pagina di segmento
+// lo SCARTO (ms) da sommare ai suoi millis per avere il tempo di sessione: scarto = scarto del segmento precedente + istante del reset
+// (millis del vecchio avvio) + T_AVVIO_MS (tempo fra il reset e millis() = 0 del nuovo avvio, bootloader compreso, MISURATO con
+// misura_avvio.py). L'istante del reset lo salvano HardFault_Handler e l'IRQ del watchdog (origine "gestore", esatto); senza gestore
+// (assert del SoftDevice, reset software, lockup) si usa l'ultimo servizio del watchdog (cane(): "ultimo vivo") piu' 8 s se la causa
+// e' il watchdog. RAM persa (brownout, System OFF) = origine "sconosciuta": il tempo NON e' continuo. Il blocco sta in RAM NOBITS come il
+// contesto del guasto; i contatori cambiano solo all'avvio (checksum), msReset e msVivo si aggiornano senza checksum.
+#define TEMPO_MAGIC 0x54454D50UL
+#define TF_RESET_VALIDO 1                  // msReset scritto da un gestore di guasto
+#define TF_PERSO 2                         // continuita' persa nella catena di riprese
+#ifndef T_AVVIO_MS
+#define T_AVVIO_MS 500                     // MISURATO 2026-11-11 con USB seriale (misura_avvio.py): crash 495,0-518,1 ms (media 499,8, n=10), watchdog 495,2-496,0 (media 495,6, n=6)
+#endif
+#define T_AVVIO_ERR_MS 30                  // incertezza di T_AVVIO_MS: scarto massimo misurato da 500 ms e variazione min-max (23 ms)
+static CtxTempo ctxTempo __attribute__((section(".noinit,\"aw\",%nobits@")));
+static uint32_t tempoChk(const CtxTempo &t) { return t.magic ^ t.nAvvii ^ t.scarto ^ t.margine ^ 0x5A5A1234UL; }
+static volatile bool wdtSospeso = false;   // vero = non si serve piu' il watchdog (flusso dati fermo in registrazione): scattera' il reset e la ripresa
+static inline void cane() {                // serve il watchdog (ricarica) e segna "ultimo vivo" per il tempo di sessione
+  if (wdtSospeso) return;
+  NRF_WDT->RR[0] = 0x6E524635UL;
+  ctxTempo.msVivo = millis();
+}
+static void wdtAvvia() {
+  NRF_WDT->CONFIG = (WDT_CONFIG_SLEEP_Run << WDT_CONFIG_SLEEP_Pos) | (WDT_CONFIG_HALT_Pause << WDT_CONFIG_HALT_Pos);
+  NRF_WDT->CRV = WDT_SECONDI * 32768UL - 1;
+  NRF_WDT->RREN = WDT_RREN_RR0_Enabled << WDT_RREN_RR0_Pos;
+  NRF_WDT->EVENTS_TIMEOUT = 0;
+  NRF_WDT->INTENSET = WDT_INTENSET_TIMEOUT_Msk;       // l'evento TIMEOUT arriva ~2 cicli di LFCLK (61 us) prima del reset: basta a salvare PC e LR
+  NVIC_SetPriority(WDT_IRQn, 3);                      // 0, 1 e 4 sono del SoftDevice
+  NVIC_ClearPendingIRQ(WDT_IRQn);
+  NVIC_EnableIRQ(WDT_IRQn);
+  NRF_WDT->TASKS_START = 1;
+  cane();
+}
+
+// Contesto del guasto in RAM "noinit" (fuori da .data/.bss: lo startup non lo azzera; con il reset la RAM si conserva se il
+// bootloader non la sporca: verificato in prova, vedi LEGGIMI). Valido solo se magic e checksum tornano. Letto e azzerato al boot.
+#define CTX_MAGIC 0x53474C31UL
+static CtxGuasto ctxRam __attribute__((section(".noinit,\"aw\",%nobits@")));
+static uint32_t faseRam __attribute__((section(".noinit,\"aw\",%nobits@")));      // ultima "fase" del programma (0x5A5A5A00 | n): dove si trovava prima del guasto
+#define FASE(n) (faseRam = 0x5A5A5A00UL | (uint32_t)(n))
+static uint32_t ctxChk(const CtxGuasto &c) { return c.magic ^ c.tipo ^ c.pc ^ c.lr ^ c.cfsr ^ c.hfsr ^ c.fase ^ 0xA5A5A5A5UL; }
+static void ctxSalva(uint32_t tipo, uint32_t pc, uint32_t lr) {
+  ctxRam.tipo = tipo; ctxRam.pc = pc; ctxRam.lr = lr;
+  ctxRam.cfsr = SCB->CFSR; ctxRam.hfsr = SCB->HFSR;
+  ctxRam.fase = ((faseRam & 0xFFFFFF00UL) == 0x5A5A5A00UL) ? (faseRam & 0xFF) : 0;
+  ctxRam.magic = CTX_MAGIC;
+  ctxRam.chk = ctxChk(ctxRam);
+  if (ctxTempo.magic == TEMPO_MAGIC) { ctxTempo.msReset = millis(); ctxTempo.flags |= TF_RESET_VALIDO; }   // istante del reset (tempo di sessione)
+}
+static inline bool spValido(const uint32_t *sp) { return (uint32_t)sp >= 0x20000000UL && (uint32_t)sp < 0x2003FFE0UL && !((uint32_t)sp & 3); }
+// HardFault: sostituisce quello del core (che faceva solo NVIC_SystemReset). Salva PC e LR del frame di eccezione e riavvia.
+extern "C" __attribute__((used, noreturn)) void guastoC(uint32_t *sp) {
+  if (spValido(sp)) ctxSalva(SWR_GUASTO_HARDFAULT, sp[6], sp[5]); else ctxSalva(SWR_GUASTO_HARDFAULT, 0, 0);
+  NVIC_SystemReset();
+  while (true) {}
+}
+extern "C" __attribute__((naked)) void HardFault_Handler(void) {
+  __asm volatile("tst lr, #4\n\t"
+                 "ite eq\n\t"
+                 "mrseq r0, msp\n\t"
+                 "mrsne r0, psp\n\t"
+                 "b guastoC\n\t");
+}
+// Watchdog: l'IRQ TIMEOUT scatta pochi microsecondi prima del reset; salva PC e LR di dove era bloccato il programma
+extern "C" __attribute__((used)) void wdtIsrC(uint32_t *sp) {
+  NRF_WDT->EVENTS_TIMEOUT = 0;
+  if (spValido(sp)) ctxSalva(SWR_GUASTO_WDT, sp[6], sp[5]); else ctxSalva(SWR_GUASTO_WDT, 0, 0);
+}
+extern "C" __attribute__((naked)) void WDT_IRQHandler(void) {
+  __asm volatile("tst lr, #4\n\t"
+                 "ite eq\n\t"
+                 "mrseq r0, msp\n\t"
+                 "mrsne r0, psp\n\t"
+                 "push {r4, lr}\n\t"
+                 "bl wdtIsrC\n\t"
+                 "pop {r4, pc}\n\t");
+}
+// Dati del boot corrente (compilati in setup(), usati nel diario e nella pagina di segmento)
+static uint32_t bootRr = 0;                 // RESETREAS grezzo (letto dal core in init() prima di azzerarlo: readResetReason())
+static uint8_t bootMarca = 0;               // GPREGRET2 all'avvio
+static CtxGuasto bootCtx;                   // contesto salvato dal guasto precedente (se valido)
+static bool bootCtxValido = false;
+static uint8_t bootGuasto = SWR_GUASTO_NESSUNO, bootFase = 0;
+// tempo di sessione di questo avvio (calcolato in tempoAvvio(), scritto nella pagina di segmento)
+static uint32_t bootScarto = 0, bootResetMs = 0;         // scarto (ms) e istante del reset precedente usato (millis del vecchio avvio)
+static uint16_t bootMargine = 0;                         // margine d'errore cumulato (ms)
+static uint8_t bootNAvvii = 1, bootOrigScarto = SWR_TORIG_NESSUNA;
+static bool bootGestore = false;                         // l'istante del reset precedente l'ha scritto un gestore di guasto (anche se la catena e' persa)
+// Calcola lo scarto di questo avvio dal blocco lasciato dall'avvio precedente e lo riscrive per il prossimo.
+static void tempoAvvio(uint32_t rr) {
+  CtxTempo &t = ctxTempo;
+  bool valido = t.magic == TEMPO_MAGIC && t.chk == tempoChk(t);
+  uint32_t scarto = 0, margine = 0, avvii = 1, flags = 0;
+  if (!valido) {                                           // RAM persa: prima accensione, brownout, uscita da System OFF
+    bootOrigScarto = SWR_TORIG_SCONOSCIUTA; flags = TF_PERSO; bootResetMs = 0;
+  } else {
+    avvii = t.nAvvii + 1;
+    margine = t.margine;
+    bootGestore = (t.flags & TF_RESET_VALIDO) != 0;
+    if (t.flags & TF_RESET_VALIDO) { bootOrigScarto = SWR_TORIG_GESTORE; bootResetMs = t.msReset; margine += T_AVVIO_ERR_MS; }
+    else {
+      bootOrigScarto = SWR_TORIG_VIVO;
+      bootResetMs = t.msVivo + ((rr & POWER_RESETREAS_DOG_Msk) ? WDT_SECONDI * 1000UL : 0);       // il watchdog scatta 8 s dopo l'ultimo servizio
+      margine += T_AVVIO_ERR_MS + 60;
+    }
+    if (t.flags & TF_PERSO) { bootOrigScarto = SWR_TORIG_SCONOSCIUTA; flags = TF_PERSO; }         // la catena aveva gia' perso la continuita'
+    else scarto = t.scarto + bootResetMs + T_AVVIO_MS;
+  }
+  bootScarto = scarto; bootMargine = margine > 0xFFFE ? 0xFFFE : (uint16_t)margine; bootNAvvii = avvii > 255 ? 255 : (uint8_t)avvii;
+  t.magic = TEMPO_MAGIC; t.nAvvii = avvii; t.scarto = scarto; t.margine = margine; t.flags = flags; t.msReset = 0; t.msVivo = 0;
+  t.chk = tempoChk(t);
+}
+// Partenza a tocchi: una nuova sessione, il tempo comincia da qui (scarto 0, nessun margine)
+static void tempoNuovaCatena() {
+  CtxTempo &t = ctxTempo;
+  bootScarto = 0; bootMargine = 0; bootNAvvii = 1; bootOrigScarto = SWR_TORIG_NESSUNA; bootResetMs = 0;
+  t.magic = TEMPO_MAGIC; t.nAvvii = 1; t.scarto = 0; t.margine = 0; t.flags = 0; t.msReset = 0; t.msVivo = 0;
+  t.chk = tempoChk(t);
+}
+static bool bootWdtGiaAttivo = false;       // il WDT risultava gia' avviato al boot (sopravvissuto al reset?)
+static uint8_t sonnoMotivo = 0;             // perche' si va in sonno (diario): 1 comando, 2 quiete, 3 batteria, 4 USB staccata
 
 // ---------------- Log circolare ----------------
 static char logBuf[LOG_RIGHE][LOG_LEN];
@@ -141,6 +296,7 @@ static void logRiga(const char *fmt, ...) {
 static void inviaLog() {
   if (connHdl == BLE_CONN_HANDLE_INVALID || !risposteAttive) return;
   if (logN - logInvio > LOG_RIGHE) logInvio = logN - LOG_RIGHE;
+  if (diaInvioN) return;               // DIARIO in corso: prima si manda quello (diarioInvioServi)
   if (logInvio >= logN) return;
   BLEConnection *c = Bluefruit.Connection(connHdl);
   if (!c) return;
@@ -152,6 +308,184 @@ static void inviaLog() {
   uint16_t n = strlen(out);
   if (n > massimo) n = massimo;
   if (carRisposte.notify(connHdl, out, n)) logInvio++;
+}
+
+// ---------------- Diario persistente (0.6.1) ----------------
+// File /dia.bin dell'InternalFS (stessa flash interna di bonding, nome, vcal), record fissi da 12 byte, al massimo DIARIO_FILE_MAX byte:
+// quando sta per superarlo si tiene la coda piu' recente (meta') e si riparte. Gli eventi si accodano in RAM (diario()) e si scrivono
+// in flash solo in diarioFlush(): al boot, ai cambi di modo, a fine registrazione e, in registrazione, al massimo ogni 120 s (una
+// scrittura da 400-800 ms, misurato: il FIFO dell'IMU tiene ~1,6 s). Mai scritture flash dalle callback BLE. diario() puo' essere chiamato
+// anche dalle callback BLE (altro task): la coda in RAM si tocca solo dentro una sezione critica; diarioFlush copia e svuota la coda nella
+// sezione critica e scrive la copia fuori: gli eventi che arrivano durante la scrittura restano nella coda nuova, nessuno si perde.
+#define DIARIO_FILE "/dia.bin"
+static const char *diaFile = DIARIO_FILE;               // PROVA_TEMPI lo cambia per misurare senza toccare il diario vero
+#define DIARIO_REC 12
+#define DIARIO_FILE_MAX 2400            // 200 record
+#define DIARIO_RAM 40
+enum : uint8_t { DIA_AVVIO = 1, DIA_MODO, DIA_USB, DIA_REG_INIZIO, DIA_REG_FINE, DIA_OVERRUN, DIA_DISALL, DIA_BATT, DIA_CONN, DIA_GUASTO,
+                 DIA_GUASTO2, DIA_FALSO, DIA_RIPRESA, DIA_NOTA, DIA_WDT, DIA_PERSI, DIA_SYNC };
+static RecDiario diaRam[DIARIO_RAM];
+static uint8_t diaIni = 0, diaPend = 0;
+static uint16_t diaPersi = 0;
+static uint16_t diaInvioIdx = 0;
+
+static void diario(uint8_t tipo, uint8_t p1 = 0, uint16_t p2 = 0, uint16_t p3 = 0, uint32_t p4 = 0);
+static const char *diaModo(uint8_t m) { return m == 0 ? "normale" : m == 1 ? "vasca" : "sonno"; }
+static void diarioTesto(const RecDiario &r, char *o, size_t n) {
+  switch (r.tipo) {
+    case DIA_AVVIO: snprintf(o, n, "AVV causa%u rr%03X marca%02X vbus%u%s", r.p1, r.p2, r.p3 >> 8, r.p3 & 1, (r.p3 & 2) ? " PROVE" : ""); break;
+    case DIA_MODO: snprintf(o, n, "MODO %s mot%u %umV", diaModo(r.p1), r.p2, r.p3); break;
+    case DIA_USB: snprintf(o, n, "USB %s %umV", r.p1 == 0 ? "staccata" : r.p1 == 1 ? "PC" : "caricatore", r.p2); break;
+    case DIA_REG_INIZIO: snprintf(o, n, "REG+ or%u seg%u %umV rip%lu", r.p1, r.p2, r.p3, (unsigned long)r.p4); break;
+    case DIA_REG_FINE: snprintf(o, n, "REG- mot%u seg%u %umV %lus", r.p1, r.p2, r.p3, (unsigned long)r.p4); break;
+    case DIA_OVERRUN: snprintf(o, n, "OVERRUN n%u gapmax%u", r.p1, r.p2); break;
+    case DIA_DISALL: snprintf(o, n, r.p1 ? "FIFO iniz scarto%uw" : "FIFO riall +%u tot%u", r.p2, r.p3); break;
+    case DIA_BATT: snprintf(o, n, "BAT %umV usb%u carica%u", r.p2, r.p1 & 1, (r.p1 >> 1) & 1); break;
+    case DIA_CONN: snprintf(o, n, "CONN %s h%u 0x%02X", r.p1 ? "su" : "giu", r.p2, r.p3); break;
+    case DIA_GUASTO: snprintf(o, n, "GUASTO t%u fase%u pc%08lX", r.p1, r.p2, (unsigned long)r.p4); break;
+    case DIA_GUASTO2: snprintf(o, n, "  lr%08lX cfsr%04X%04X", (unsigned long)r.p4, r.p3, r.p2); break;
+    case DIA_FALSO: snprintf(o, n, "FALSO risveglio tocchi%u marca%02X", r.p1, r.p2); break;
+    case DIA_RIPRESA: snprintf(o, n, "RIPRESA %u/%u or%u", r.p1, r.p2, r.p3); break;
+    case DIA_NOTA: snprintf(o, n, "NOTA %u %u %u %lu", r.p1, r.p2, r.p3, (unsigned long)r.p4); break;
+    case DIA_WDT: snprintf(o, n, "WDT gia' attivo al boot=%u", r.p1); break;
+    case DIA_PERSI: snprintf(o, n, "PERSI %u eventi (RAM piena)", r.p2); break;
+    case DIA_SYNC: snprintf(o, n, "SYNC ev%u h%u %u", r.p1, r.p2, r.p3); break;
+    default: snprintf(o, n, "?%u", r.tipo);
+  }
+}
+static void diarioLinea(const RecDiario &r, char *o, size_t n) {
+  char t[40];
+  diarioTesto(r, t, sizeof(t));
+  snprintf(o, n, "%us %s", r.sec, t);
+}
+static void diario(uint8_t tipo, uint8_t p1, uint16_t p2, uint16_t p3, uint32_t p4) {
+  RecDiario r;
+  uint32_t s = millis() / 1000;
+  r.sec = s > 65535 ? 65535 : (uint16_t)s; r.tipo = tipo; r.p1 = p1; r.p2 = p2; r.p3 = p3; r.p4 = p4;
+  taskENTER_CRITICAL();
+  if (diaPend >= DIARIO_RAM) { diaIni = (diaIni + 1) % DIARIO_RAM; diaPend--; diaPersi++; }   // RAM piena: si perde il piu' vecchio
+  diaRam[(diaIni + diaPend) % DIARIO_RAM] = r;
+  diaPend++;
+  taskEXIT_CRITICAL();
+  char l[48];
+  diarioTesto(r, l, sizeof(l));
+  logRiga("D %s", l);                                   // lo stesso evento nel log (seriale e pagina BLE)
+}
+static uint8_t diaTamp[DIARIO_FILE_MAX / 2];
+static RecDiario diaCopia[DIARIO_RAM];                  // copia della coda per la scrittura (fuori dalla sezione critica)
+static uint16_t statDiaMs = 0, statRegMs = 0;           // durata massima di una scrittura del diario / di /reg.bin (nel diario a fine registrazione)
+static void diarioFlush() {
+  if (!diaPend) return;
+  uint32_t tIni = millis();
+  if (diaPersi) { uint16_t p = diaPersi; diaPersi = 0; diario(DIA_PERSI, 0, p); }
+  taskENTER_CRITICAL();                                  // copia e svuota la coda: i nuovi eventi vanno nella coda vuota
+  uint8_t nCopia = diaPend;
+  for (uint8_t i = 0; i < nCopia; i++) diaCopia[i] = diaRam[(diaIni + i) % DIARIO_RAM];
+  diaPend = 0; diaIni = 0;
+  taskEXIT_CRITICAL();
+  InternalFS.begin();
+  using namespace Adafruit_LittleFS_Namespace;
+  uint32_t n = (uint32_t)nCopia * DIARIO_REC;
+  uint32_t size = 0;
+  { File f(InternalFS); if (f.open(diaFile, FILE_O_READ)) { size = f.size(); f.close(); } }
+  uint32_t tieni = 0;
+  if (size + n > DIARIO_FILE_MAX) {                      // fa posto: si tiene la coda piu' recente (la meta')
+    tieni = DIARIO_FILE_MAX / 2 / DIARIO_REC * DIARIO_REC;
+    if (tieni > size) tieni = size;
+    File f(InternalFS);
+    if (f.open(diaFile, FILE_O_READ)) { f.seek(size - tieni); f.read(diaTamp, tieni); f.close(); } else tieni = 0;
+    InternalFS.remove(diaFile);
+  }
+  File f(InternalFS);
+  if (f.open(diaFile, FILE_O_WRITE)) {
+    if (tieni) f.write(diaTamp, tieni);
+    for (uint8_t i = 0; i < nCopia; i++) f.write((const uint8_t *)&diaCopia[i], DIARIO_REC);
+    f.close();
+  }
+  uint32_t dt = millis() - tIni;
+  if (dt > statDiaMs) statDiaMs = dt > 65535 ? 65535 : (uint16_t)dt;
+}
+static uint32_t diarioRecord() {                          // numero di record in flash
+  InternalFS.begin();
+  Adafruit_LittleFS_Namespace::File f(InternalFS);
+  uint32_t s = 0;
+  if (f.open(diaFile, Adafruit_LittleFS_Namespace::FILE_O_READ)) { s = f.size(); f.close(); }
+  return s / DIARIO_REC;
+}
+static bool diarioLeggi(uint32_t idx, RecDiario *r) {
+  Adafruit_LittleFS_Namespace::File f(InternalFS);
+  bool ok = false;
+  if (f.open(diaFile, Adafruit_LittleFS_Namespace::FILE_O_READ)) {
+    if (f.seek(idx * DIARIO_REC)) ok = f.read((uint8_t *)r, DIARIO_REC) == DIARIO_REC;
+    f.close();
+  }
+  return ok;
+}
+// Seriale: stampa tutto il diario (record in flash)
+static void diarioStampa(Stream &s) {
+  diarioFlush();
+  uint32_t n = diarioRecord();
+  s.printf("DIARIO %lu\n", (unsigned long)n);
+  for (uint32_t i = 0; i < n; i++) {
+    RecDiario r; char l[64];
+    if (!diarioLeggi(i, &r)) break;
+    diarioLinea(r, l, sizeof(l));
+    s.println(l);
+    if ((i & 15) == 0) cane();
+  }
+  s.println("END");
+}
+// BLE: DIARIO[,n] manda gli ultimi n record (default 40) come righe di log 'G' (una per giro del loop)
+static void diarioAvviaInvio(const char *arg);
+static void diarioInvioServi() {
+  if (!diaInvioN) return;
+  if (connHdl == BLE_CONN_HANDLE_INVALID) { diaInvioN = 0; return; }
+  RecDiario r; char l[LOG_LEN], out[LOG_LEN + 1];
+  if (!diarioLeggi(diaInvioIdx, &r)) { diaInvioN = 0; return; }
+  diarioLinea(r, l, sizeof(l));
+  out[0] = 'G';
+  snprintf(out + 1, LOG_LEN, "%s", l);
+  if (carRisposte.notify(connHdl, out, strlen(out))) { diaInvioIdx++; diaInvioN--; }
+}
+static void diarioAvviaInvio(const char *arg) {
+  diarioFlush();
+  uint32_t tot = diarioRecord();
+  uint32_t n = arg && *arg ? (uint32_t)atol(arg) : 40;
+  if (n > tot) n = tot;
+  diaInvioIdx = tot - n;
+  diaInvioN = n;
+}
+
+// Stato "registrazione in corso" persistente (/reg.bin: [0] attiva, [1] riprese consecutive): seconda rete se GPREGRET2 si perde (brownout).
+// Azzerato alla chiusura ordinata e quando si entra in modalita' normale con l'USB (una registrazione orfana non riparte piu').
+#define REG_FILE "/reg.bin"
+// File di 3 byte [attiva, riprese, checksum]. Scrittura ATOMICA: si scrive /reg.tmp e lo si rinomina su /reg.bin (lfs_rename e' atomico:
+// un guasto a meta' lascia o il vecchio file o il nuovo). Mancante = nessuna registrazione attiva (la marca in GPREGRET2 copre il resto);
+// presente ma corrotto = prudenza: attiva con riprese al massimo, cosi' la prossima ripresa viene rifiutata.
+#define REG_TMP "/reg.tmp"
+static uint8_t regCk(uint8_t a, uint8_t r) { return (uint8_t)(a ^ r ^ 0x5A); }
+static void regStato(uint8_t &attiva, uint8_t &riprese) {
+  InternalFS.begin();
+  Adafruit_LittleFS_Namespace::File f(InternalFS);
+  attiva = 0; riprese = 0;
+  if (!f.open(REG_FILE, Adafruit_LittleFS_Namespace::FILE_O_READ)) return;
+  uint8_t b[3] = {0, 0, 0};
+  int n = f.read(b, 3);
+  f.close();
+  if (n != 3 || b[2] != regCk(b[0], b[1]) || b[0] > 1 || b[1] > 15) { attiva = 1; riprese = MAX_RIPRESE; return; }
+  attiva = b[0]; riprese = b[1];
+}
+static void regScrivi(uint8_t attiva, uint8_t riprese) {
+  uint8_t a, r;
+  regStato(a, r);
+  if (a == attiva && r == riprese) return;                // niente scritture inutili
+  uint32_t tIni = millis();
+  uint8_t b[3] = {attiva, riprese, regCk(attiva, riprese)};
+  InternalFS.remove(REG_TMP);
+  { Adafruit_LittleFS_Namespace::File f(InternalFS); if (f.open(REG_TMP, Adafruit_LittleFS_Namespace::FILE_O_WRITE)) { f.write(b, 3); f.close(); } }
+  InternalFS.rename(REG_TMP, REG_FILE);
+  uint32_t dt = millis() - tIni;
+  if (dt > statRegMs) statRegMs = dt > 65535 ? 65535 : (uint16_t)dt;
 }
 
 // ---------------- I2C ----------------
@@ -257,7 +591,7 @@ static void imuPoll() {
 static void calibraBoot() {
   finestraAzzera();
   uint32_t t0 = millis();
-  while (millis() - t0 < 1100) { imuPoll(); delay(1); }
+  while (millis() - t0 < 1100) { cane(); imuPoll(); delay(1); }
   if (wN >= 40 && finestraChiudi()) {
     for (int i = 0; i < 3; i++) ultimoBiasLog[i] = bias[i];
     logRiga("bias boot %.1f %.1f %.1f dps", bias[0] * 0.070f, bias[1] * 0.070f, bias[2] * 0.070f);
@@ -287,6 +621,7 @@ static void preparaPacchetto(uint8_t *p, uint32_t ora) {
 
 // ---------------- Batteria e stato ----------------
 static void vaInSospensione(bool soloUsb = false);
+static void sistemaOff(uint8_t marca);
 #define VCAL_FILE "/vcal.bin"
 static float vcalFattore = 2.96f;   // rapporto del partitore 1M/510k (nominale); si taratura col comando VCAL,<mV letti col tester>
 
@@ -368,7 +703,7 @@ static void aggiornaStato(bool forzaLog) {
     if (mv < 3400 && !bassaLog) { bassaLog = true; logRiga("batteria bassa %u mV", mv); }
     if (mv > 3500) bassaLog = false;
     if (mv < 3300) {
-      if (++contaSotto >= 5) { logRiga("bat < 3,3 V: sospensione"); vaInSospensione(true); }
+      if (++contaSotto >= 5) { logRiga("bat < 3,3 V: sospensione"); sonnoMotivo = 3; vaInSospensione(true); }
     } else contaSotto = 0;
   } else contaSotto = 0;
 }
@@ -395,14 +730,30 @@ static uint8_t attendiInt1Bassa(uint32_t ms) {
 }
 // LED spenti a batteria (sotto la cuffia non si vedono e consumano, decisione 2026-11-10): si accendono solo con l'USB alimentata.
 // Tutte le scritture dei LED passano di qui (attivi bassi: LOW = acceso). I tempi delle sequenze restano uguali.
+// Un solo lampo da 15 ms anche a batteria (aggira ledScrivi): per i pochi casi silenziosi in cui la tag deve dire "sono viva ma non
+// registro / mi sono ripresa". Consumo: ~15 ms x pochi mA = ~0,05 mC a evento, trascurabile (una cella da 40 mAh = 144 C).
+static void lampoBreve(bool r, bool g, bool b) {
+  if (r) { pinMode(LED_RED, OUTPUT); digitalWrite(LED_RED, LOW); }
+  if (g) { pinMode(LED_GREEN, OUTPUT); digitalWrite(LED_GREEN, LOW); }
+  if (b) { pinMode(LED_BLUE, OUTPUT); digitalWrite(LED_BLUE, LOW); }
+  delay(15);
+  if (r) digitalWrite(LED_RED, HIGH);
+  if (g) digitalWrite(LED_GREEN, HIGH);
+  if (b) digitalWrite(LED_BLUE, HIGH);
+}
+// Eccezione (2026-11-11, richiesta dell'utente): durante la gestione dei tocchi i LED si vedono anche a batteria
+// (risveglio: blu, finestra dei tocchi di conferma: verde, falso risveglio: rosso 2 s; esito: 3 lampi verdi o i lampi di errore).
+static bool ledTocchi = false;
 static inline void ledScrivi(uint8_t pin, uint8_t livello) {
   bool usb = NRF_POWER->USBREGSTATUS & POWER_USBREGSTATUS_VBUSDETECT_Msk;
-  digitalWrite(pin, (livello == LOW && !usb) ? HIGH : livello);
+  digitalWrite(pin, (livello == LOW && !usb && !ledTocchi) ? HIGH : livello);
 }
 
 static void vaInSospensione(bool soloUsb) {
   if (otaAttivo) { logRiga("sospensione rinviata: OTA"); return; }
   logRiga(soloUsb ? "sospensione (solo USB)" : "sospensione (4 tap/USB)");
+  diario(DIA_MODO, 2, sonnoMotivo, ultimaMv);
+  diarioFlush();
   for (int i = 0; i < 150; i++) { inviaLog(); delay(2); }   // lascia partire le ultime righe
   sonnoAnnuncia(false);                                      // "vado in sonno" per ~2 s (e attende un display che sta scaricando)
   bleSpegni();
@@ -422,10 +773,7 @@ static void vaInSospensione(bool soloUsb) {
     nrf_gpio_cfg_sense_input(PIN_INT1_ASSOLUTO, NRF_GPIO_PIN_NOPULL, NRF_GPIO_PIN_SENSE_HIGH);
   }
   if (Serial) { Serial.flush(); delay(20); }
-  sd_power_gpregret_clr(1, 0xFF);
-  sd_power_gpregret_set(1, MARCA_SLEEP);
-  sd_power_system_off();
-  while (true) __WFE();
+  sistemaOff(MARCA_SLEEP);                                   // con l'USB presente annulla il sonno e riavvia (NOTA 11)
 }
 
 // Conta in software i tocchi singoli (TAP_SRC bit SINGLE_TAP; l'IMU deve essere in modalita' tocco singolo).
@@ -438,22 +786,27 @@ static uint8_t contaTocchi(uint32_t finestraMs, uint32_t ignoraMs, uint32_t gapM
   i2cLeggi(REG_TAP_SRC, &src, 1);                                   // azzera il latch
   while (true) {
     uint32_t ora = millis();
+    cane();
     uint32_t limite = (n >= 2) ? ultimo + gapMs : t0 + finestraMs;
     if (ora >= limite) break;
     if (lampeggia) ledScrivi(LED_RED, ((ora / 100) & 1) ? HIGH : LOW);
-    // blu acceso = invito ai tocchi; si spegne per TOCCO_LAMPO_MS a ogni tocco contato (riscontro visivo)
-    if (invitoBlu && ora - t0 >= ignoraMs) ledScrivi(LED_BLUE, (n > 0 && ora - ultimo < TOCCO_LAMPO_MS) ? HIGH : LOW);
+    // blu = sveglia, aspetta; verde = finestra dei tocchi di conferma aperta (si spegne per TOCCO_LAMPO_MS a ogni tocco contato)
+    if (invitoBlu) {
+      bool aperta = ora - t0 >= ignoraMs, lampo = n > 0 && ora - ultimo < TOCCO_LAMPO_MS;
+      ledScrivi(LED_BLUE, aperta ? HIGH : LOW);
+      ledScrivi(LED_GREEN, (aperta && !lampo) ? LOW : HIGH);
+    }
     if (i2cLeggi(REG_TAP_SRC, &src, 1) && (src & 0x20)) {           // SINGLE_TAP
       if (ora - t0 >= ignoraMs && (n == 0 || ora - ultimo >= RISVEGLIO_DEBOUNCE_MS)) {
         n++; ultimo = ora;
-        if (invitoBlu) ledScrivi(LED_BLUE, HIGH);
+        if (invitoBlu) ledScrivi(LED_GREEN, HIGH);
         if (n >= massimo) break;
       }
     }
     delay(5);
   }
   if (lampeggia) ledScrivi(LED_RED, HIGH);
-  if (invitoBlu) ledScrivi(LED_BLUE, HIGH);
+  if (invitoBlu) { ledScrivi(LED_BLUE, HIGH); ledScrivi(LED_GREEN, HIGH); }
   return n;
 }
 
@@ -464,7 +817,9 @@ static uint8_t contaTocchi(uint32_t finestraMs, uint32_t ignoraMs, uint32_t gapM
 // perche' il reset dura piu' dei suoi tempi di spegnimento. Si riaccende, si riconfigura il tap e si ascolta.
 static uint8_t tocchiExtra = 0;
 static bool imuMutoAlRisveglio = false;
-static bool risveglioQuattroTap() {
+// Accende l'IMU (P1.08), riavvia l'I2C e verifica il WHO_AM_I (fino a 4 tentativi da 40 ms: puo' metterci di piu' a partire).
+// Serve al risveglio a tocchi, alla ripresa automatica e al sonno senza BLE (dopo un reset i pin tornano al default e l'IMU e' spento).
+static bool imuAccendi() {
   NRF_P1->PIN_CNF[8] = (GPIO_PIN_CNF_DIR_Output << GPIO_PIN_CNF_DIR_Pos) | (GPIO_PIN_CNF_INPUT_Disconnect << GPIO_PIN_CNF_INPUT_Pos) | (GPIO_PIN_CNF_DRIVE_H0H1 << GPIO_PIN_CNF_DRIVE_Pos);
   NRF_P1->OUTSET = 1UL << 8;
   pinMode(16, INPUT_PULLUP); pinMode(17, INPUT_PULLUP);
@@ -474,24 +829,35 @@ static bool risveglioQuattroTap() {
   Wire1.setClock(400000);
   uint8_t id = 0;
   bool ok = false;
-  for (int i = 0; i < 4 && !ok; i++) {                              // l'IMU puo' metterci piu' di 40 ms a partire
+  for (int i = 0; i < 4 && !ok; i++) {
     ok = i2cLeggi(REG_WHO_AM_I, &id, 1) && id == 0x6A;
     if (!ok) delay(40);
   }
-  if (!ok) { imuMutoAlRisveglio = true; return true; }              // IMU muto: avvio normale (almeno si raggiunge via USB)
+  return ok;
+}
+static bool risveglioQuattroTap() {
+  ledTocchi = true;                                                 // LED visibili anche a batteria per tutta la gestione dei tocchi
+  pinMode(LED_RED, OUTPUT); pinMode(LED_GREEN, OUTPUT); pinMode(LED_BLUE, OUTPUT);
+  ledScrivi(LED_RED, HIGH); ledScrivi(LED_GREEN, HIGH); ledScrivi(LED_BLUE, LOW);   // blu subito: sveglia, aspetta
+  if (!imuAccendi()) { imuMutoAlRisveglio = true; return true; }    // IMU muto: avvio normale (almeno si raggiunge via USB)
   configuraTap();
   // Conferma in SOFTWARE su tocchi singoli (non il DOUBLE_TAP hardware, che nell'oscillazione residua del primo gesto
   // poteva scattare da solo e svegliare la tag con 2 soli tocchi).
   i2cScrivi(REG_WAKE_UP_THS, 0x00);                                 // SINGLE_DOUBLE_TAP = 0: tocco singolo
   i2cScrivi(REG_MD1_CFG, 0x40);                                     // tocco singolo su INT1 (solo per coerenza: si legge TAP_SRC)
-  pinMode(LED_BLUE, OUTPUT); ledScrivi(LED_BLUE, HIGH);
   tocchiExtra = contaTocchi(RISVEGLIO_FINESTRA_MS, RISVEGLIO_PAUSA_MS, RISVEGLIO_GAP_MS, 6, false, true);
   if (tocchiExtra >= RISVEGLIO_TAP_EXTRA) return true;
+  ledScrivi(LED_RED, LOW); delay(2000); ledScrivi(LED_RED, HIGH);  // falso risveglio: rosso 2 s, poi si spegne e torna a dormire
   configuraTap();                                                   // torna alla configurazione del doppio tap per dormire
   delay(20);
   // falso risveglio: di nuovo System OFF con la stessa configurazione
   attendiInt1Bassa(300);
   nrf_gpio_cfg_sense_input(PIN_INT1_ASSOLUTO, NRF_GPIO_PIN_NOPULL, NRF_GPIO_PIN_SENSE_HIGH);
+#if PROVE_GUASTI
+  diario(DIA_FALSO, tocchiExtra, bootMarca);                        // per contare i falsi risvegli (borsa scossa): una scrittura flash, solo in fase di prova
+  diarioFlush();
+#endif
+  if (NRF_POWER->USBREGSTATUS & POWER_USBREGSTATUS_VBUSDETECT_Msk) { NRF_POWER->GPREGRET2 = 0; NVIC_SystemReset(); }   // USB arrivata nel frattempo: niente sonno
   NRF_POWER->GPREGRET2 = MARCA_FALSO | (tocchiExtra & 0x0F);   // falso risveglio: la marca vale come sleep e mostra i tocchi visti
   NRF_POWER->SYSTEMOFF = POWER_SYSTEMOFF_SYSTEMOFF_Enter;
   while (true) __WFE();
@@ -574,7 +940,7 @@ static void rispondi(char tipo, const char *testo) {
 #define APP_MAX_BYTE  (STAGING_BASE - APP_BASE) // 0x59000 = 356 KB: massimo di una nuova app (e fine massima dell'app attuale)
 #define BL_SETTINGS   0xFF000UL                 // pagina delle impostazioni dell'Adafruit nRF52 Bootloader
 
-extern "C" uint32_t __etext, __data_start__, __data_end__;
+extern "C" uint32_t __etext, __data_start__, __data_end__, __bss_start__, __bss_end__;
 
 static uint16_t crc16Ccitt(const uint8_t *p, uint32_t n) {   // stessa funzione del bootloader (crc16_compute, init 0xFFFF)
   uint16_t crc = 0xFFFF;
@@ -731,12 +1097,14 @@ void ramInstalla(uint32_t src, uint32_t dst, uint32_t words, uint32_t *sett) {
   // 1. cancella le pagine dell'app
   nv->CONFIG = NVMC_CONFIG_WEN_Een;
   for (uint32_t a = dst; a < dst + words * 4; a += 4096) {
+    NRF_WDT->RR[0] = 0x6E524635UL;                            // watchdog: l'installazione dura qualche secondo e a interrupt spenti nessuno lo serve
     nv->ERASEPAGE = a;
     while (!nv->READY) {}
   }
   // 2. copia
   nv->CONFIG = NVMC_CONFIG_WEN_Wen;
   for (uint32_t i = 0; i < words; i++) {
+    if (!(i & 1023)) NRF_WDT->RR[0] = 0x6E524635UL;
     *(volatile uint32_t *)(dst + i * 4) = *(volatile uint32_t *)(src + i * 4);
     while (!nv->READY) {}
   }
@@ -852,29 +1220,107 @@ static void comandoColore(const char *a) {
   annuncioAggiorna(true);
 }
 
+#if PROVE_GUASTI
+// Comandi di prova per la prova a secco (PROVE_GUASTI): provocano davvero il guasto, per verificare ripresa, contesto e watchdog
+static void provaFifo(uint32_t sec, uint8_t modo, uint16_t khz);
+static void provaComando(const char *c, const char *arg) {
+  if (!strcmp(c, "PROVA_TEMPI")) {                       // durata di diarioFlush (anche con rotazione del file) e regScrivi, con il BLE in annuncio
+    if (inVasca) { rispondi('X', "registrazione in corso"); return; }
+    uint8_t a0, r0; regStato(a0, r0);
+    diaFile = "/dia_t.bin"; InternalFS.remove(diaFile);
+    uint16_t maxN = 0, maxRot = 0, maxReg = 0;
+    for (int giro = 0; giro < 230; giro++) {              // 230 flush da 1 record: a 200 record il file ruota (tiene la meta.) al flush 201
+      diario(DIA_NOTA, 99, giro);
+      statDiaMs = 0; diarioFlush(); cane();
+      uint16_t d = statDiaMs;
+      if (giro >= 199 && giro <= 201) { if (d > maxRot) maxRot = d; } else if (d > maxN) maxN = d;
+
+    }
+    { uint16_t m = 0; for (int i = 0; i < 6; i++) { statRegMs = 0; regScrivi(1, (i & 1) ? 2 : 3); if (statRegMs > m) m = statRegMs; cane(); } maxReg = m; }
+    regScrivi(a0, r0);
+    InternalFS.remove(diaFile); diaFile = DIARIO_FILE;
+    char r[48]; snprintf(r, sizeof(r), "tempi dia%u rot%u reg%u", maxN, maxRot, maxReg);
+    logRiga("%s ms", r);
+    if (Serial && !dumpInCorso) Serial.printf("TEMPI %s\n", r);
+    rispondi('K', r);
+  } else if (!strcmp(c, "PROVA_TEMPO")) {                // millis() attuale: misura_avvio.py lo interroga piu' volte per legare tempo PC e millis
+    char r[24]; snprintf(r, sizeof(r), "t%lu", (unsigned long)millis());
+    if (Serial && !dumpInCorso) Serial.printf("TEMPO %lu\n", (unsigned long)millis());
+    rispondi('K', r);
+  } else if (!strcmp(c, "PROVA_AVVIO")) {                // dati del tempo di sessione di questo avvio: n avvii, origine, istante grezzo del reset precedente, scarto, margine
+    char r[48];
+    snprintf(r, sizeof(r), "av n%u o%u r%lu s%lu m%u g%u", bootNAvvii, bootOrigScarto, (unsigned long)bootResetMs, (unsigned long)bootScarto, bootMargine, bootGestore);
+    if (Serial && !dumpInCorso) Serial.printf("AVVIO %s\n", r);
+    rispondi('K', r);
+  } else if (!strcmp(c, "PROVA_CRASH")) {
+    logRiga("PROVA_CRASH: HardFault");
+    rispondi('K', "prova crash");
+    diario(DIA_NOTA, 1, inVasca);
+    diarioFlush();
+    delay(150);                                          // lascia partire la risposta
+    volatile uint32_t *p = (volatile uint32_t *)0xF0000000UL;
+    *p = 0xDEAD;                                         // BusFault (non abilitato) -> HardFault
+    __asm volatile("udf #0");
+  } else if (!strcmp(c, "PROVA_BLOCCO")) {
+    logRiga("PROVA_BLOCCO: ciclo infinito (watchdog %d s)", WDT_SECONDI);
+    rispondi('K', "prova blocco");
+    diario(DIA_NOTA, 2, inVasca);
+    diarioFlush();
+    delay(150);
+    FASE(99);
+    while (true) { __asm volatile("nop"); }              // nessuno serve il watchdog
+  } else if (!strcmp(c, "PROVA_FIFO")) {                 // PROVA_FIFO,<secondi>[,<modo>[,<kHz>]]  (modi: vedi provaFifo)
+    uint32_t sec = arg && *arg ? (uint32_t)atol(arg) : 10;
+    const char *v = arg ? strchr(arg, ',') : nullptr;
+    uint8_t modo = 0; uint16_t khz = 400;
+    if (v) { modo = (uint8_t)atoi(v + 1); const char *k = strchr(v + 1, ','); if (k) khz = (uint16_t)atoi(k + 1); }
+    provaFifo(sec, modo, khz);
+  } else if (!strcmp(c, "PROVA_RESET")) {
+    logRiga("PROVA_RESET: reset software");
+    rispondi('K', "prova reset");
+    diario(DIA_NOTA, 3, inVasca);
+    diarioFlush();
+    delay(150);
+    NVIC_SystemReset();
+  } else {
+    rispondi('X', "prova sconosciuta");
+  }
+}
+#endif
+
 static void eseguiComandi() {
   while (cmdTesta != cmdCodaI) {
     char c[CMD_LEN]; strcpy(c, cmdCoda[cmdCodaI & 3]); cmdCodaI = cmdCodaI + 1;
     char *arg = strchr(c, ','); if (arg) *arg++ = 0;   // il comando e' fino alla prima virgola
+#if PROVE_GUASTI
+    if (!strncmp(c, "PROVA_", 6)) { provaComando(c, arg); continue; }   // anche in registrazione
+#endif
     if (inVasca) {                                     // in registrazione: solo SLEEP (chiude il segmento e dorme), il resto no
-      if (!strcmp(c, "SLEEP")) { sonnoRichiesto = true; logRiga("sospensione da comando: chiudo la registrazione"); rispondi('K', "sospensione: chiudo la registrazione"); }
+      if (!strcmp(c, "SLEEP")) { sonnoRichiesto = true; sonnoMotivo = 1; logRiga("sospensione da comando: chiudo la registrazione"); rispondi('K', "sospensione: chiudo la registrazione"); }
       else rispondi('X', "registrazione in corso");
     }
-    else if (!strcmp(c, "SLEEP")) vaInSospensione();
+    else if (!strcmp(c, "SLEEP")) { sonnoMotivo = 1; vaInSospensione(); }
     else if (!strcmp(c, "LIST")) rispondi('Z', "");   // nessuna registrazione: fine elenco
-    else if (!strcmp(c, "VCAL")) comandoVcal(arg);
+    else if (!strcmp(c, "VCAL")) {                    // VCAL senza argomento = lettura; con argomento solo con USB (come nome e colore)
+      if (arg && !vbusPresente()) rispondi('X', "solo con USB");
+      else comandoVcal(arg);
+    }
+    else if (!strcmp(c, "DIARIO")) { diarioAvviaInvio(arg); rispondi('K', "diario"); }   // DIARIO[,n]: ultimi n record come righe di log
     else if (!strcmp(c, "NOME")) {                    // NOME (senza virgola) = chiede il nome attuale; NOME,<testo> lo imposta; NOME, lo cancella
       if (!arg) { char r[24]; snprintf(r, sizeof(r), "nome %s", tagNome); rispondi('K', r); }
+      else if (!vbusPresente()) rispondi('X', "solo con USB");   // 0.6.1: nome e colore si cambiano solo con l'USB (a batteria la tag non e' in modalita' normale)
       else comandoNome(arg);
     }
-    else if (!strcmp(c, "COLORE")) comandoColore(arg);
+    else if (!strcmp(c, "COLORE")) {
+      if (arg && *arg && !vbusPresente()) rispondi('X', "solo con USB");
+      else comandoColore(arg);
+    }
     else if (!strcmp(c, "OTA")) otaAvvia(arg ? arg : (char *)"");
     else if (!strcmp(c, "OTAEND")) otaFine();
     else if (!strcmp(c, "OTAABORT")) { if (otaAttivo) logRiga("ota: annullata"); otaAnnulla(); rispondi('K', "ota annullata"); }
     else { logRiga("cmd? %s", c); rispondi('X', "non supportato"); }
   }
 }
-
 // Chiamata dal loop: svuota l'anello in flash, manda gli avvisi, avvia l'installazione
 static void servizioOta() {
   if (!otaAttivo) return;
@@ -895,11 +1341,13 @@ static void inConnessione(uint16_t h) {
   if (connHdl == BLE_CONN_HANDLE_INVALID) connHdl = h;   // provvisorio: la pagina vera e' chi scrive i comandi o abilita 0005
   if (!inVasca) { ledScrivi(LED_BLUE, HIGH); ledScrivi(LED_GREEN, LOW); }   // verde fisso
   logRiga("connesso %u", h);
+  diario(DIA_CONN, 1, h);
 }
 static void inDisconnessione(uint16_t h, uint8_t motivo) {
   if (h == connHdl) { connHdl = BLE_CONN_HANDLE_INVALID; risposteAttive = false; }
   if (!inVasca) ledScrivi(LED_GREEN, HIGH);
   logRiga("disconnesso %u (0x%02X)", h, motivo);
+  diario(DIA_CONN, 0, h, motivo);
 }
 
 // Notifica a tutti i collegamenti che hanno abilitato la caratteristica (pagina web e, se serve, display)
@@ -920,6 +1368,8 @@ static uint32_t memPagine = SWR_TOT_PAGINE;
 
 static bool memInit() {
   if (flashPronta) return true;
+  anello.ciclo = cane;                   // la scansione dei 512 blocchi serve il watchdog
+  flash.ciclo = cane;                    // le attese lunghe del chip (cancellazione fino a 15 s) servono il watchdog
   if (!flash.begin()) return false;
   memPagine = min((uint32_t)SWR_TOT_PAGINE, (uint32_t)(flash.size() / SWR_PAGINA));
   flashPronta = memPagine >= 64;
@@ -983,6 +1433,7 @@ static uint8_t erroriAnnuncio() {
   return e;
 }
 static uint8_t statoAnnuncio() {
+  if (annErrore) return ST_ERRORE;
   if (annSonno) return ST_SONNO;
   if (annPiena) return ST_PIENA;
   if (erroriAnnuncio() & (ERR_IMU | ERR_FLASH)) return ST_ERRORE;
@@ -1057,6 +1508,7 @@ static void inControllo(uint16_t h, BLECharacteristic *, uint8_t *d, uint16_t le
     case M_CONFERMA: if (len < 9) return; c.seq = swrLeggi32(d + 1); c.crc = swrLeggi32(d + 5); break;
     case M_RIPETI: if (len < 5) return; c.seq = swrLeggi32(d + 1); break;
     case M_STOP: if (len < 2) return; c.motivo = d[1]; break;
+    case M_SONNO: break;
     default: return;
   }
   cmdSy[cmdSyT & 15] = c;
@@ -1125,10 +1577,17 @@ static void syncElabora() {
       syncConn = c.conn; syncAttivo = true; mappaDaInviare = true;
       chiusureViste = anello.chiusure;
       logRiga("sync: pronto (conn %u)", c.conn);
+      diario(DIA_SYNC, 1, c.conn);
       continue;
     }
     if (!syncAttivo || c.conn != syncConn) continue;
-    if (c.tipo == M_CONFERMA) syncConferma(c.seq, c.crc);
+    if (c.tipo == M_SONNO) {   // stessa richiesta del comando testuale SLEEP; solo con sessione valida (dopo PRONTO)
+      logRiga("sync: SONNO ricevuto");
+      diario(DIA_SYNC, 5, c.conn);
+      sonnoMotivo = 1;
+      if (inVasca) sonnoRichiesto = true; else sonnoDaSync = true;
+    }
+    else if (c.tipo == M_CONFERMA) syncConferma(c.seq, c.crc);
     else if (c.tipo == M_RIPETI) {
       int16_t b = anello.trovaSeq(c.seq);
       if (b < 0 || anello.st[b] != BL_DA_VALIDARE) { uscErrore(E_SEQ_SCONOSCIUTO); continue; }
@@ -1139,6 +1598,7 @@ static void syncElabora() {
       if (!presente && ripN < 2) ripSeq[ripN++] = c.seq;
     } else if (c.tipo == M_STOP) {
       logRiga("sync: STOP motivo %u", c.motivo);
+      diario(DIA_SYNC, 2, c.conn, c.motivo);
       syncReset();
     }
   }
@@ -1191,7 +1651,7 @@ static void syncServi() {
   syncElabora();
   if (!syncAttivo) return;
   BLEConnection *c = Bluefruit.Connection(syncConn);
-  if (!c || !c->connected()) { logRiga("sync: collegamento perso"); syncReset(); return; }
+  if (!c || !c->connected()) { logRiga("sync: collegamento perso"); diario(DIA_SYNC, 3, syncConn); syncReset(); return; }
   if (!carSyncDati.notifyEnabled(syncConn) || c->getMtu() < 138) return;   // MAPPA = 135 byte + 3 di intestazione ATT
   if (anello.chiusure != chiusureViste) { chiusureViste = anello.chiusure; fineInviata = false; }
   for (uint8_t budget = 10; budget; budget--) {
@@ -1213,6 +1673,7 @@ static void syncServi() {
         uint8_t m[5]; m[0] = M_FINE; sw32(m + 1, anello.maxSeq);
         uscAccoda(m, 5);
         fineInviata = true;
+        diario(DIA_SYNC, 4, 0, anello.nDaValidare);
         continue;
       }
       return;
@@ -1247,7 +1708,7 @@ static void statoSyncServi(bool forza) {
 
 static void bleServi(uint32_t ms) {
   uint32_t t0 = millis();
-  while (millis() - t0 < ms) { syncServi(); annuncioAggiorna(false); statoSyncServi(false); delay(2); }
+  while (millis() - t0 < ms) { cane(); syncServi(); annuncioAggiorna(false); statoSyncServi(false); delay(2); }
 }
 static void bleSpegni() {
   if (!bleOk) return;
@@ -1361,7 +1822,11 @@ static uint8_t vFlagsProx = SWR_FLAG_PRIMA, vMotivo = 0, vErrI2c = 0;
 static bool vAttivo = false;   // registrazione avviata: attendi() serve anche il FIFO
 // misure per la verifica dei tempi (finiscono nella pagina di chiusura, byte 24..30)
 static uint16_t statGapMax = 0, statApriMax = 0;
-static uint8_t statOverrun = 0;
+static bool vProva = false;                         // PROVA_FIFO: i campioni non si registrano, si contano soltanto
+
+
+
+static uint32_t pN = 0, pSwap = 0, pBuoni = 0; static float pSomma = 0;
 
 static int8_t tempDie() {
   if (sdAttivo()) { int32_t t = 0; sd_temp_get(&t); return (int8_t)(t / 4); }
@@ -1382,6 +1847,15 @@ static void gpregretImposta(uint8_t v) {
   else NRF_POWER->GPREGRET2 = v;
 }
 static void sistemaOff(uint8_t marca) {
+  // Con la tensione USB presente il System OFF non si risveglierebbe piu' (il risveglio da USB e' sul fronte di VBUS):
+  // invece di dormire si riavvia, e con l'USB l'avvio va in modalita' normale. Diario NOTA 11.
+  if (vbusOra()) {
+    logRiga("sonno annullato: USB presente");
+    diario(DIA_NOTA, 11, marca);
+    diarioFlush();
+    gpregretImposta(0);
+    NVIC_SystemReset();
+  }
   if (sdAttivo()) { gpregretImposta(marca); sd_power_system_off(); }
   else { NRF_POWER->GPREGRET2 = marca; NRF_POWER->SYSTEMOFF = POWER_SYSTEMOFF_SYSTEMOFF_Enter; }
   while (true) __WFE();
@@ -1390,7 +1864,7 @@ static void sistemaOff(uint8_t marca) {
 static void vServi();
 static void attendi(uint32_t ms) {   // attesa che continua a svuotare il FIFO dell'IMU
   uint32_t t0 = millis();
-  while (millis() - t0 < ms) { if (vAttivo) vServi(); delay(vAttivo ? 10 : 1); }
+  while (millis() - t0 < ms) { cane(); if (vAttivo) vServi(); delay(vAttivo ? 10 : 1); }
 }
 static void lampi(uint8_t colore, uint8_t n, uint16_t onMs, uint16_t offMs) {
   for (uint8_t i = 0; i < n; i++) { ledSet(colore); attendi(onMs); ledSet(0); if (i + 1 < n) attendi(offMs); }
@@ -1462,9 +1936,18 @@ static void vQuiete(const int16_t *s) {
   for (int i = 0; i < 3; i++) a[i] /= an;
   float ang = 0;
   if (rifOk) ang = acosf(constrain(a[0] * rif[0] + a[1] * rif[1] + a[2] * rif[2], -1.0f, 1.0f)) * 57.2958f;
+  // Bias: si impara anche quando la media e' alta ma orientamento e lettura sono stabili da un secondo all'altro.
+  // Prima si imparava solo in quiete: con un bias > QUIETE_GYRO_DPS la tag non risultava mai ferma e la registrazione
+  // non si chiudeva mai (visto il 2026-11-11 sulla tag 447B0247 ferma sul tavolo).
+  static float bmPrec[3]; static bool bmOk = false;
+  bool letturaStabile = bmOk;
+  for (int i = 0; i < 3; i++) if (fabsf(bm[i] - bmPrec[i]) * 0.035f > 1.0f) letturaStabile = false;
+  for (int i = 0; i < 3; i++) bmPrec[i] = bm[i];
+  bmOk = true;
+  if (rifOk && ang < QUIETE_ANGOLO_GRADI && letturaStabile)
+    for (int i = 0; i < 3; i++) bias[i] += 0.3f * (bm[i] - bias[i]);
   if (rifOk && gMed < QUIETE_GYRO_DPS && ang < QUIETE_ANGOLO_GRADI) {
     secFermo++;
-    for (int i = 0; i < 3; i++) bias[i] += 0.1f * (bm[i] - bias[i]);   // in quiete il giroscopio misura il suo bias
   } else {
     for (int i = 0; i < 3; i++) rif[i] = a[i];
     rifOk = true; secFermo = 0;
@@ -1474,6 +1957,14 @@ static void vQuiete(const int16_t *s) {
 
 static void vCampione(const int16_t *s, uint32_t t) {
   if (vMotivo) return;
+  if (vProva) {                                           // prova a secco del FIFO: nessuna scrittura in flash
+    float a = sqrtf((float)s[0] * s[0] + (float)s[1] * s[1] + (float)s[2] * s[2]) * (SWR_ACC_UG_LSB / 1e6f);
+    float g = sqrtf((float)s[3] * s[3] + (float)s[4] * s[4] + (float)s[5] * s[5]) * (SWR_ACC_UG_LSB / 1e6f);   // il "giro" letto come accelerometro
+    pN++; pSomma += a;
+    if (a > 0.85f && a < 1.15f) pBuoni++;                  // a riposo |a| = 1 g: se e' fuori, il campione e' disallineato
+    if (g > 0.8f && g < 1.2f && a < 0.5f) pSwap++;         // lo stesso criterio di swr.py (conta_scambiati)
+    return;
+  }
   if (cod.nc && !cod.sta(s)) vChiudiPagina();
   if (vMotivo) return;
   cod.aggiungi(s, t);
@@ -1481,37 +1972,25 @@ static void vCampione(const int16_t *s, uint32_t t) {
   vQuiete(s);
 }
 
-// Svuota il FIFO dell'IMU (6 parole da 16 bit per campione: Gx Gy Gz Ax Ay Az) e codifica i campioni
-static void vServi() {
-  if (vMotivo) return;
-  uint8_t st[2];
-  if (!i2cLeggi(REG_FIFO_STATUS1, st, 2)) { if (++vErrI2c > 100) vMotivo = SWR_STOP_ERRORE; return; }
-  vErrI2c = 0;
-  uint32_t tr = millis();
-  if (st[1] & 0x40) {                                    // overrun: FIFO ripartito, i campioni persi si vedono dal flag e dal tempo
-    vChiudiPagina();
-    vFlagsProx |= SWR_FLAG_GAP;
-    if (statOverrun < 255) statOverrun++;
-    i2cScrivi(REG_FIFO_CTRL5, 0x00);
-    i2cScrivi(REG_FIFO_CTRL5, 0x2E);
-    return;
-  }
-  uint16_t parole = st[0] | ((st[1] & 0x0F) << 8);
-  uint16_t insiemi = parole / 6;
-  if (insiemi > 120) insiemi = 120;                      // al massimo ~0,6 s per chiamata
-  for (uint16_t k = 0; k < insiemi && !vMotivo;) {
-    uint8_t n = min((uint16_t)2, (uint16_t)(insiemi - k));
-    uint8_t b[24];
-    if (!i2cLeggi(REG_FIFO_OUT_L, b, 12 * n)) { if (++vErrI2c > 100) vMotivo = SWR_STOP_ERRORE; return; }
-    for (uint8_t j = 0; j < n; j++, k++) {
-      int16_t w[6], s[6];
-      for (int i = 0; i < 6; i++) w[i] = (int16_t)(b[12 * j + 2 * i] | (b[12 * j + 2 * i + 1] << 8));
-      s[0] = w[3]; s[1] = w[4]; s[2] = w[5]; s[3] = w[0]; s[4] = w[1]; s[5] = w[2];   // ax ay az gx gy gz
-      uint32_t eta = ((uint32_t)(insiemi - 1 - k) * 4800UL + 500) / 1000;                // ms prima della lettura
-      vCampione(s, tr - eta);
-    }
-  }
-}
+// Svuota il FIFO dell'IMU (6 parole da 16 bit per campione: Gx Gy Gz Ax Ay Az) e codifica i campioni. L'ALGORITMO (verifica del pattern,
+// controllo sul contenuto, riallineamento) sta in swr_fifo.h, senza Arduino e con I2C iniettato: e' provato con un segnale sintetico dal port
+// Python fifo_sim.py (test_swr.py). Qui c'e' solo l'adattatore all'hardware.
+struct FifoHw {
+  uint32_t ms() { return millis(); }
+  bool leggi(uint8_t reg, uint8_t *b, uint8_t n) { bool ok = i2cLeggi(reg, b, n); if (ok) vErrI2c = 0; return ok; }
+  void scrivi(uint8_t reg, uint8_t v) { i2cScrivi(reg, v); }
+  void attendi(uint32_t m) { delay(m); }
+  bool fermo() { return vMotivo != 0; }
+  void erroreI2c() { if (++vErrI2c > 100) vMotivo = SWR_STOP_ERRORE; }
+  void campione(const int16_t *s, uint32_t t) { vCampione(s, t); }
+  void chiudiPagina() { vChiudiPagina(); }
+  void gap() { vFlagsProx |= SWR_FLAG_GAP; }
+  void evento(uint8_t tipo, uint16_t a, uint16_t b) { (void)b; if (tipo == 1) diario(DIA_OVERRUN, a, statGapMax); else diario(DIA_DISALL, 1, a, 0); }
+  void traccia(const char *tag, uint32_t a, uint32_t b, uint32_t c) { if (vProva && Serial) Serial.printf("%s %lu %lu %lu\n", tag, (unsigned long)a, (unsigned long)b, (unsigned long)c); }
+};
+static FifoHw fifoHw;
+static SwrFifo<FifoHw> fifo(fifoHw);
+static void vServi() { fifo.servi(); }
 
 static bool vImuAvvia() {
   i2cScrivi(REG_CTRL3_C, 0x01);                          // reset software: tutto ai valori di default
@@ -1523,7 +2002,83 @@ static bool vImuAvvia() {
   i2cScrivi(REG_CTRL2_G, 0x58);                          // 208 Hz, +-1000 dps
   i2cScrivi(REG_FIFO_CTRL5, 0x2E);                       // FIFO continuo a 208 Hz
   uint8_t v = 0;
-  return i2cLeggi(REG_CTRL1_XL, &v, 1) && v == 0x54;
+  if (!i2cLeggi(REG_CTRL1_XL, &v, 1) || v != 0x54) return false;
+  uint8_t g = 0, f = 0;                                  // 0.6.1: controlla anche giroscopio e FIFO (prima si guardava solo l'accelerometro)
+  if (!i2cLeggi(REG_CTRL2_G, &g, 1) || g != 0x58) { logRiga("IMU giro 0x%02X?", g); return false; }
+  if (!i2cLeggi(REG_FIFO_CTRL5, &f, 1) || f != 0x2E) { logRiga("IMU fifo 0x%02X?", f); return false; }
+  if (!i2cLeggi(REG_FIFO_CTRL3, &f, 1) || f != 0x09) { logRiga("IMU fifo3 0x%02X?", f); return false; }
+  fifo.campAvvio = 0; fifo.batchN = 0; fifo.ultAcc = 0;                       // il primo vServi() allinea il FIFO al pattern G,XL (FIFO_STATUS3/4)
+  return true;
+}
+
+// PROVA_FIFO,<secondi>[,<modo>]: a secco, in modalita' normale (USB). Fa girare vServi() sull'IMU vero senza scrivere in flash e conta i
+// campioni "scambiati" (stesso criterio di swr.py). modo 0 = normale; 1 = a meta' tempo si tolgono 3 parole al FIFO (si simula una lettura
+// I2C interrotta): deve risultare 1 disallineamento, 3 parole scartate e 0 scambiati; 2 = come 1 ma SENZA riallineamento (la lettura di
+// prima della 0.6.1): dopo il taglio tutti i campioni risultano scambiati, che e' proprio il difetto visto in piscina.
+static void provaFifo(uint32_t sec, uint8_t modo, uint16_t khz = 400) {
+  if (inVasca) { rispondi('X', "registrazione in corso"); return; }
+  if (sec < 1) sec = 1;
+  if (sec > (modo >= 5 ? 600UL : 60UL)) sec = (modo >= 5 ? 600UL : 60UL);
+  if (!vImuAvvia()) { logRiga("prova fifo: IMU KO"); rispondi('X', "prova fifo: IMU"); imuOk = imuInit(); return; }
+  vProva = true; fifo.azzera(); fifo.azzeraStat(); fifo.allinea = (modo != 2 && modo != 3); Wire1.setClock(khz * 1000UL);
+  uint8_t reg0a = 0, reg0r = 0;
+  if (modo == 5 || modo == 6) {                          // carico di registrazione con il BLE: ogni 10 s un diarioFlush e ogni 60 s un regScrivi (su file di prova)
+    diarioFlush(); regStato(reg0a, reg0r);
+    diaFile = "/dia_t.bin"; InternalFS.remove(diaFile);
+    statDiaMs = 0; statRegMs = 0;
+  }
+  pN = pSwap = pBuoni = 0; pSomma = 0; vMotivo = 0; vErrI2c = 0;
+  if (modo == 4) {                                       // esperimento: lettura a FASE FISSA dopo il dato pronto (DRDY dell'accelerometro su INT1, impulso da 75 us)
+    i2cScrivi(0x0B, 0x80);                               // DRDY_PULSE_CFG_G: DRDY a impulsi
+    i2cScrivi(0x0D, 0x01);                               // INT1_CTRL: INT1_DRDY_XL
+    pinMode(PIN_INT1_ASSOLUTO, INPUT);
+  }
+  uint32_t t0 = millis();
+  bool tagliato = false;
+  uint32_t tServ = 0, gMax = 0, tFl = millis(), tRg = millis();
+  uint8_t nRg = 0;
+  while (millis() - t0 < sec * 1000UL) {
+    cane();
+
+    if (modo == 5 || modo == 6) {                        // 5 = stalli grezzi; 6 = con la regola del ciclo (niente flash se c'e' un client BLE collegato)
+      bool libero = modo == 5 || Bluefruit.Periph.connected() == 0;
+      if (libero && millis() - tFl >= 10000UL) { tFl = millis(); diario(DIA_NOTA, 97, nRg); diarioFlush(); }
+      if (libero && millis() - tRg >= 60000UL) { tRg = millis(); regScrivi(1, (nRg++ & 1) ? 2 : 3); }
+    }
+    if ((modo == 1 || modo == 2) && !tagliato && millis() - t0 >= sec * 500UL) {
+      uint8_t x[6];
+      i2cLeggi(REG_FIFO_OUT_L, x, 6);                    // 3 parole tolte a mano: il puntatore di lettura si sfasa di 3
+      tagliato = true;
+      fifo.ultAcc = millis();                                // il registro di stato si assesta dopo ~1 ms: come per ogni altro accesso
+      logRiga("prova fifo: 3 parole tolte");
+    }
+    if (modo == 4) {                                     // 4 impulsi DRDY (~19 ms), poi si aspetta meta' periodo (2,4 ms) e si legge: fase costante rispetto al campionamento
+      uint8_t n = 0; uint32_t tw = millis();
+      while (n < 4 && millis() - tw < 60) { if (digitalRead(PIN_INT1_ASSOLUTO)) { n++; while (digitalRead(PIN_INT1_ASSOLUTO) && millis() - tw < 60) {} } }
+      delayMicroseconds(2400);
+      fifo.ultAcc = 0;
+      vServi();
+    } else {
+      { uint32_t o = millis(), g = o - tServ; if (tServ && g > gMax) gMax = g; tServ = o; }   // intervallo fra due servizi del FIFO (con gli stalli)
+      vServi();
+      delay(20);
+    }
+  }
+  vProva = false; fifo.allinea = true; Wire1.setClock(400000);
+  i2cScrivi(REG_FIFO_CTRL5, 0x00);
+  char r[48];
+  snprintf(r, sizeof(r), "n%lu ok%lu sw%lu d%u s%u r%u b%u", (unsigned long)pN, (unsigned long)pBuoni, (unsigned long)pSwap, fifo.statDisall, fifo.nSospetti, fifo.nRc, fifo.nRcSpostati);
+  logRiga("fifo %s", r);
+  rispondi('K', r);
+  char r2[48];
+  snprintf(r2, sizeof(r2), "gmax%lu ovr%u dia%u reg%u", (unsigned long)gMax, fifo.statOverrun, statDiaMs, statRegMs);    // modo 5: stalli reali con il BLE
+  logRiga("%s", r2);
+  if (Serial && !dumpInCorso) Serial.printf("FIFO2 %s\n", r2);
+  rispondi('K', r2);
+  if (modo == 5 || modo == 6) { InternalFS.remove(diaFile); diaFile = DIARIO_FILE; regScrivi(reg0a, reg0r); }
+  fifo.azzeraStat();
+  imuOk = imuInit();                                     // riporta l'IMU alla configurazione della modalita' normale
+  if (imuOk) calibraBoot();
 }
 
 static void vAzzera() {
@@ -1541,30 +2096,104 @@ static void vAzzera() {
   dormiVasca(false);
 }
 
-static void modalitaVasca() {
+// Sonno senza BLE (avvio senza ragione per registrare): IMU con il doppio tap come sorgente di risveglio, poi System OFF con MARCA_SLEEP.
+static void dormiSenzaBle() {
+  if (imuAccendi()) {
+    configuraTap();
+    delay(50);
+    attendiInt1Bassa(1000);
+  }
+  nrf_gpio_cfg_sense_input(PIN_INT1_ASSOLUTO, NRF_GPIO_PIN_NOPULL, NRF_GPIO_PIN_SENSE_HIGH);
+  sistemaOff(MARCA_SLEEP);
+}
+
+// Seconda rete della ripresa: l'ultimo blocco per seq contiene pagine di segmento/dati ma NON la pagina di chiusura del suo segmento
+// (la chiusura finisce sempre nell'ultimo blocco del segmento). Le pagine si scrivono in ordine: la prima 0xFF chiude l'elenco.
+static bool ultimoSegmentoAperto() {
+  if (!anelloOk || anello.maxSeq == 0 || anello.ultimo < 0) return false;
+  bool dati = false, chiusura = false;
+  for (uint8_t p = 1; p < SWR_PAGINE_BLOCCO; p++) {
+    uint8_t h[4];
+    if (!anello.leggi(anello.ultimo, p * SWR_PAGINA, h, 4)) return false;
+    if (h[0] == 0xFF) break;
+    if (h[0] == SWR_T_SEGMENTO || h[0] == SWR_T_DATI) dati = true;
+    else if (h[0] == SWR_T_CHIUSURA) chiusura = true;
+  }
+  return dati && !chiusura;
+}
+
+// Uscita anticipata dalla modalita' vasca (prima o durante l'avvio della registrazione). hw = guasto dell'IMU o della flash: durante una
+// ripresa (origine != 0) si riprova con un RESET (riaccende l'IMU e il QSPI e consuma una ripresa: il limite MAX_RIPRESE chiude il ciclo).
+// In ogni altro caso lo stato "registrazione in corso" va DISARMATO (marca e /reg.bin): una cella ricollegata giorni dopo non deve riprendere
+// da sola. Un solo lampo rosso da 15 ms anche a batteria.
+static void uscitaAnticipata(uint8_t origine, uint8_t riprese, bool hw) {
+  lampoBreve(true, false, false);
+  if (origine != 0 && hw && riprese <= MAX_RIPRESE) {
+    regScrivi(1, riprese);
+    gpregretImposta(MARCA_REGISTRA | (riprese > 15 ? 15 : riprese));
+    diario(DIA_NOTA, 9, riprese, origine);
+    diarioFlush();
+    NVIC_SystemReset();
+  }
+  gpregretImposta(MARCA_SLEEP);
+  regScrivi(0, 0);
+}
+
+// origine: 0 = 4 tocchi; 1 = ripresa dopo un riavvio inatteso (marca GPREGRET2); 2 = ripresa dalla seconda rete (stato in /reg.bin + flash).
+// Le riprese non hanno il rito dei tocchi, aprono un NUOVO segmento e annotano la causa nella pagina di segmento (swr_formato.h, byte 38..63).
+static void modalitaVasca(uint8_t origine) {
   inVasca = true;
+  if (origine == 0) tempoNuovaCatena();                      // partenza a tocchi: il tempo di sessione comincia qui
+  uint8_t riprese = 0;                                       // riprese automatiche consecutive senza chiusura ordinata (serve anche alle uscite anticipate)
+  if (origine != 0) {
+    uint8_t att = 0, rip = 0;
+    regStato(att, rip);
+    uint8_t dalMarca = ((bootMarca & 0xF0) == MARCA_REGISTRA) ? (bootMarca & 0x0F) : 0;     // il conteggio sta anche nella marca: vale il maggiore dei due
+    riprese = (rip > dalMarca ? rip : dalMarca) + 1;                                         // (con /reg.bin cancellato o corrotto la tag si ferma comunque)
+  }
   tagId = NRF_FICR->DEVICEID[0];
   pinMode(LED_RED, OUTPUT); pinMode(LED_GREEN, OUTPUT); pinMode(LED_BLUE, OUTPUT);
   ledSet(0);
   pinMode(PIN_NCHG, INPUT_PULLUP);
   pinMode(PIN_LSM6DS3TR_C_POWER, OUTPUT);
-  if (imuMutoAlRisveglio) { lampi(LED_R, 10, 60, 60); dormiVasca(false); }
+  if (origine != 0) { lampoBreve(true, true, false); imuMutoAlRisveglio = !imuAccendi(); }  // ripresa dopo guasto: lampo giallo; l'IMU va riacceso qui (dopo il reset e' spento)
+  if (imuMutoAlRisveglio) { uscitaAnticipata(origine, riprese, true); lampi(LED_R, 10, 60, 60); dormiVasca(false); }   // IMU muto: lampo rosso; in ripresa reset
   vcalCarica();
   vMv = batteriaMv();
   ultimaMv = vMv;
-  if (vMv > 0 && vMv < BAT_MIN_AVVIO_MV) { lampi(LED_R, 3, 200, 200); dormiVasca(false); }   // batteria troppo scarica: non si registra
-  if (!memInit()) { lampi(LED_R, 10, 60, 60); dormiVasca(false); }
-  if (tocchiExtra >= 6) vAzzera();                                                           // 2 tocchi, blu, 6 tocchi: azzeramento
+  if (vMv > 0 && vMv < BAT_MIN_AVVIO_MV) { uscitaAnticipata(origine, riprese, false); lampi(LED_R, 3, 200, 200); dormiVasca(false); }   // batteria troppo scarica: non si registra
+  if (!memInit()) { uscitaAnticipata(origine, riprese, true); lampi(LED_R, 10, 60, 60); dormiVasca(false); }
+  if (origine == 0 && tocchiExtra >= 6) vAzzera();                                                           // 2 tocchi, blu, 6 tocchi: azzeramento
   EsitoScansione es = memScansiona();
   if (es == SC_FORMATO1) {                                                                   // dati del formato 1: NON si cancellano da soli
+    uscitaAnticipata(origine, riprese, false);
     lampi(LED_R | LED_B, 4, 250, 250);                                                       // 4 lampi viola: scaricare con DUMP, poi azzerare a tocchi
     dormiVasca(false);
   }
   if (es == SC_ESTRANEA) {                                                                   // contenuto non riconosciuto: MAI cancellato da solo
+    uscitaAnticipata(origine, riprese, false);
     lampi(LED_R | LED_B, 4, 250, 250);                                                       // come il formato 1: scaricare con DUMP, poi azzerare
     dormiVasca(false);
   }
+  if (origine == 2 && !ultimoSegmentoAperto()) {                                             // seconda rete: se l'ultimo segmento e' chiuso non c'e' niente da riprendere
+    diario(DIA_NOTA, 2, 0);
+    regScrivi(0, 0);
+    diarioFlush();
+    dormiVasca(false);
+  }
   bleIniz(true);                                                                             // BLE acceso anche in registrazione
+  if (origine != 0) {
+    diario(DIA_RIPRESA, riprese, MAX_RIPRESE, origine);
+    if (riprese > MAX_RIPRESE) {                                                             // protezione dai cicli: niente piu' riprese, annuncio ERRORE, sonno
+      diario(DIA_NOTA, 3, riprese);
+      lampoBreve(true, false, false);                                                        // lampo rosso anche a batteria: rifiuto della quarta ripresa
+      gpregretImposta(MARCA_SLEEP);
+      regScrivi(0, 0);
+      diarioFlush();
+      annErrore = true; annuncioAggiorna(true); bleServi(3000); annErrore = false;
+      dormiVasca(false);
+    }
+  }
   vSeg = 0;
   if (anello.maxSeq && anello.ultimo >= 0) {                                                 // numero del segmento = quello dell'ultimo blocco + 1
     uint8_t g[2];
@@ -1576,6 +2205,7 @@ static void modalitaVasca() {
   // il segmento comincia sempre in un blocco nuovo
   if (!anello.apri(millis(), vMv, vTemp, 0, vSeg)) {
     bool piena = anello.ultimoErrore == AN_PIENA;
+    uscitaAnticipata(origine, riprese, !piena);                                              // memoria piena: stato disarmato; errore flash: in ripresa reset
     lampi(LED_R, piena ? 5 : 10, piena ? 150 : 60, piena ? 150 : 60);
     dormiVasca(false, piena);                                                                // memoria piena: serve conferma dal display o azzeramento
   }
@@ -1586,17 +2216,59 @@ static void modalitaVasca() {
   p[20] = SWR_GIRO_MDPS_LSB; p[21] = 0;
   memset(p + 22, 0, 6);                                  // bias del giroscopio non misurato (si stima a casa)
   p[28] = causaReset; p[29] = tocchiExtra;
-  memset(p + 30, 0, 8); strncpy((char *)p + 30, VER_NUM, 7);
+  memset(p + 30, 0, 8); strncpy((char *)p + 30, VER_NUM VER_SEG, 7);
+  // 0.6.1: origine del segmento (tocchi o ripresa automatica) e contesto del guasto precedente (swr_formato.h, byte 38..63)
+  p[SWR_SEG_OFF_FLAG] = (origine == 1 ? SWR_SEGF_RIPRESA : origine == 2 ? SWR_SEGF_RIPRESA_FLASH : 0) | (bootCtxValido ? SWR_SEGF_CONTESTO : 0);
+  p[SWR_SEG_OFF_RIPRESE] = riprese; p[SWR_SEG_OFF_MARCA] = bootMarca; p[SWR_SEG_OFF_GUASTO] = bootGuasto;
+  memcpy(p + SWR_SEG_OFF_RESETREAS, &bootRr, 4);
+  memcpy(p + SWR_SEG_OFF_PC, &bootCtx.pc, 4); memcpy(p + SWR_SEG_OFF_LR, &bootCtx.lr, 4);
+  memcpy(p + SWR_SEG_OFF_CFSR, &bootCtx.cfsr, 4); memcpy(p + SWR_SEG_OFF_HFSR, &bootCtx.hfsr, 4);
+  p[SWR_SEG_OFF_FASE] = bootFase; p[SWR_SEG_OFF_ORIGINE] = origine;
+  // tempo di sessione continuo (swr_formato.h byte 64..73): tempo di sessione = millis + scarto
+  memcpy(p + SWR_SEG_OFF_SCARTO, &bootScarto, 4);
+  p[SWR_SEG_OFF_TORIG] = bootOrigScarto;
+  memcpy(p + SWR_SEG_OFF_MARGINE, &bootMargine, 2);
+  p[SWR_SEG_OFF_NAVVII] = bootNAvvii;
+  { uint16_t ta = T_AVVIO_MS; memcpy(p + SWR_SEG_OFF_TAVVIO, &ta, 2); }
+  diario(DIA_NOTA, 10, bootOrigScarto, bootMargine, bootScarto);
   swrIntestazione(p, SWR_T_SEGMENTO, SWR_FORMATO, anello.numeroPagina(), millis(), vMv, vTemp, 0, vSeg);
-  if (!anello.scriviPagina(p)) { lampi(LED_R, 10, 60, 60); dormiVasca(false); }
+  if (!anello.scriviPagina(p)) { uscitaAnticipata(origine, riprese, true); lampi(LED_R, 10, 60, 60); dormiVasca(false); }
   vPagineSeg++;
-  if (!vImuAvvia()) { lampi(LED_R, 10, 60, 60); dormiVasca(false); }
+  regScrivi(1, riprese);                                 // seconda rete (brownout: GPREGRET2 si perde)
+  gpregretImposta(MARCA_REGISTRA | (riprese > 15 ? 15 : riprese));   // rete principale: sopravvive a reset software, watchdog e HardFault
+  diario(DIA_REG_INIZIO, origine, vSeg, vMv, riprese);
+  diarioFlush();
+  cane();
+  if (!vImuAvvia()) { uscitaAnticipata(origine, riprese, true); lampi(LED_R, 10, 60, 60); dormiVasca(false); }   // IMU che non parte: in ripresa reset (riaccende l'IMU)
   vAttivo = true;
   lampi(LED_G, 3, 150, 150);                             // registrazione avviata (nel frattempo il FIFO viene svuotato)
+  ledTocchi = false;                                     // fine della gestione dei tocchi: da qui LED di nuovo spenti a batteria
 
-  uint32_t tBat = millis(), tLed = millis(), tFifo = 0;
+  uint32_t tBat = millis(), tLed = millis(), tFifo = 0, tDia = millis(), tVivo = millis(), campPrec = 0;
+  bool resetRip = (riprese == 0);                       // il contatore delle riprese si azzera anche dopo 10 min di registrazione stabile
   uint8_t sotto = 0;
   while (!vMotivo) {
+    FASE(10);
+    {                                                    // vitalita' del flusso dati: se i campioni non crescono per 5 s si smette di servire il
+      uint32_t o2 = millis();                            // watchdog (IMU o FIFO bloccati): scatta il reset e la ripresa automatica, che riaccende l'IMU.
+      if (vCampioni != campPrec) { campPrec = vCampioni; tVivo = o2; }   // Chiudere con ERRORE perderebbe il resto dell'allenamento; la ripresa e'
+      else if (o2 - tVivo > 5000UL && !wdtSospeso) {                      // comunque limitata a MAX_RIPRESE consecutive.
+        wdtSospeso = true;
+        logRiga("flusso dati fermo: reset");
+        diario(DIA_NOTA, 6, 0, 0, vCampioni);
+        diarioFlush();
+      }
+      if (!resetRip && !wdtSospeso && o2 - vInizioMs >= 600000UL && Bluefruit.Periph.connected() == 0) {   // 10 min stabili: catena finita (solo senza client BLE: regScrivi puo' durare 2 s)
+        resetRip = true;
+        vServi();                                        // regScrivi dura fino a ~1,2 s (misurato): FIFO svuotato prima; succede al massimo una volta per catena
+        regScrivi(1, 0);
+        fifo.ultAcc = 0;
+        gpregretImposta(MARCA_REGISTRA);
+        diario(DIA_NOTA, 5, riprese);
+        tVivo = millis(); campPrec = vCampioni;          // stallo pianificato
+      }
+    }
+    cane();
     uint32_t ora = millis();
     if (ora - tFifo >= 20) {                             // FIFO (1,6 s di capienza): servito almeno ogni 20 ms quando il loop gira veloce
       if (tFifo) { uint32_t gap = ora - tFifo; if (gap > statGapMax) statGapMax = gap > 65535 ? 65535 : (uint16_t)gap; }
@@ -1621,10 +2293,26 @@ static void modalitaVasca() {
       else if (anello.pctNonConfermata() >= 80) lampi(LED_R | LED_G, 2, 30, 100);   // quasi tutta la memoria e' non confermata
       else lampi(LED_G, 1, 30, 0);
     }
+    // Diario in flash: MISURATO (PROVA_TEMPI, BLE in annuncio) 400-600 ms per scrittura, 800 ms con rotazione del file: il FIFO (1,6 s) lo regge,
+    // ma e' uno stallo vero. Per questo al massimo ogni 120 s, dopo aver svuotato il FIFO, e con un solo record cumulativo per i riallineamenti.
+    // MISURATO con un client BLE collegato (ble_carico.py): diarioFlush fino a 931 ms, regScrivi 2014 ms, overrun del FIFO: con un collegamento
+    // attivo la flash interna e gli slot radio si contendono e gli stalli superano 1 s. Quindi NIENTE scritture flash nel ciclo finche' un client
+    // e' collegato (il display si collega solo per scaricare, a bordo vasca): gli eventi restano in RAM (40 posti) e si scrivono dopo lo scollegamento
+    // o alla chiusura. Se la RAM sta per riempirsi (>= 32 eventi) si scrive comunque.
+    if ((diaPend || fifo.disallNuovi) && millis() - tDia >= 120000UL && (Bluefruit.Periph.connected() == 0 || diaPend >= DIARIO_RAM - 8)) {
+      tDia = millis(); FASE(14);
+      vServi();                                                                                  // FIFO svuotato subito prima dello stallo
+      if (fifo.disallNuovi) { diario(DIA_DISALL, 0, fifo.disallNuovi, fifo.statDisall); fifo.disallNuovi = 0; }
+      diarioFlush();
+      fifo.ultAcc = 0;
+      tVivo = millis(); campPrec = vCampioni;            // lo stallo e' pianificato: non conta come flusso fermo
+    }
     delay(syncAttivo ? 2 : 40);
   }
   // chiusura sicura: pagina parziale, pagina di chiusura, poi sospensione
   vAttivo = false;
+  wdtSospeso = false;                                    // dopo l'uscita dal ciclo il watchdog si serve di nuovo (la chiusura e gli annunci durano piu' di 8 s)
+  cane();
   uint8_t motivo = vMotivo;
   vMotivo = 0;
   vChiudiPagina();
@@ -1637,13 +2325,25 @@ static void modalitaVasca() {
     memset(p, 0xFF, sizeof(p));
     memcpy(p + 16, &vCampioni, 4); memcpy(p + 20, &vPagineSeg, 4);
     p[24] = statGapMax & 0xFF; p[25] = statGapMax >> 8;        // misure per la verifica dei tempi
-    p[26] = statOverrun;
+    p[26] = fifo.statOverrun;
     p[27] = statApriMax & 0xFF; p[28] = statApriMax >> 8;
     p[29] = statConfermati & 0xFF; p[30] = statConfermati >> 8;
+    p[SWR_CHIUS_OFF_DISALL] = fifo.statDisall & 0xFF; p[SWR_CHIUS_OFF_DISALL + 1] = fifo.statDisall >> 8;      // 0.6.1
+    { uint16_t sc = fifo.statScartate > 0xFFFE ? 0xFFFE : fifo.statScartate; p[SWR_CHIUS_OFF_SCARTATE] = sc & 0xFF; p[SWR_CHIUS_OFF_SCARTATE + 1] = sc >> 8; }
     swrIntestazione(p, SWR_T_CHIUSURA, motivo, anello.numeroPagina(), millis(), vMv, vTemp, 0, vSeg);
     anello.scriviPagina(p);
   }
   anello.chiudi();                                       // da qui il blocco e' "da validare" e si puo' inviare
+  gpregretImposta(MARCA_SLEEP);                          // chiusura ordinata: niente ripresa automatica. PRIMA la marca (e' istantanea) ...
+  regScrivi(0, 0);                                       // ... poi il file (~1 s): un guasto in mezzo lascia la marca gia' disarmata
+  {
+    uint32_t dur = (millis() - vInizioMs) / 1000;
+    if (fifo.disallNuovi) { diario(DIA_DISALL, 0, fifo.disallNuovi, fifo.statDisall); fifo.disallNuovi = 0; }
+    diario(DIA_REG_FINE, motivo, vSeg, vMv, dur);
+    diario(DIA_NOTA, 4, fifo.statOverrun, fifo.statDisall);
+    diario(DIA_NOTA, 7, statDiaMs, statRegMs, statGapMax);        // misure: massimo di diarioFlush e regScrivi (ms) e massimo intervallo fra letture del FIFO
+    diarioFlush();
+  }
   if (motivo == SWR_STOP_PIENA) lampi(LED_R, 5, 150, 150);
   else if (motivo == SWR_STOP_BATTERIA) lampi(LED_R, 3, 200, 200);
   else if (motivo == SWR_STOP_ERRORE) lampi(LED_R, 10, 60, 60);
@@ -1659,7 +2359,7 @@ static void modalitaVasca() {
 
 // ================= Comandi da seriale (modalita' normale, con USB): DUMP, MEM, ERASE =================
 static void comandiSeriale() {
-  static char buf[24]; static uint8_t n = 0;
+  static char buf[32]; static uint8_t n = 0;
   while (Serial.available()) {
     char c = Serial.read();
     if (c == '\r') continue;
@@ -1689,6 +2389,7 @@ static void comandiSeriale() {
           if (anello.st[i] == BL_LIBERO) continue;
           for (uint16_t k = 0; k < SWR_BLOCCO_BYTE; k += sizeof(blocco)) {
             flash.readBuffer((uint32_t)i * SWR_BLOCCO_BYTE + k, blocco, sizeof(blocco));
+            cane();
             Serial.write(blocco, sizeof(blocco));
           }
         }
@@ -1703,22 +2404,64 @@ static void comandiSeriale() {
         for (uint32_t p = 0; p < usate; p += 4) {
           uint32_t np = min((uint32_t)4, usate - p);
           flash.readBuffer(p * SWR_PAGINA, blocco, np * SWR_PAGINA);
+          cane();
           Serial.write(blocco, np * SWR_PAGINA);
         }
         Serial.printf("\nEND %lu\n", (unsigned long)usate);
         Serial.flush();
         dumpInCorso = false;
       }
+    } else if (!strcmp(buf, "DIARIO")) {
+      diarioStampa(Serial);
+    } else if (!strcmp(buf, "DIARIO,CANC")) {
+      InternalFS.remove(diaFile); diaPend = 0; Serial.println("K diario cancellato");
+#if PROVE_GUASTI
+    } else if (!strncmp(buf, "PROVA_", 6)) {
+      { char *a = strchr(buf, ','); if (a) *a++ = 0; provaComando(buf, a); }
+#endif
     } else if (buf[0]) {
       Serial.println("X comando");
     }
   }
 }
 
+// USB staccata in modalita' normale (VBUS sparito per ~0,5 s) = sonno subito: a batteria la modalita' normale non esiste (0.6.1).
+// Distingue PC (enumerazione USB: tud_mounted) da caricatore (VBUS senza enumerazione) e lo scrive nel diario.
+static void controlloUsb() {
+  static uint32_t t = 0;
+  static uint8_t assente = 0;
+  static int8_t tipoPrec = -1;
+  uint32_t ora = millis();
+  if (ora - t < 100) return;
+  t = ora;
+  if (!vbusPresente()) {
+    if (++assente >= VBUS_ASSENZA_N && !otaAttivo) {         // 2 s di assenza continua (prima 0,5 s: bastava un disturbo)
+      logRiga("USB staccata: sonno");
+      diario(DIA_USB, 0, 0, 0);
+      sonnoMotivo = 4;
+      vaInSospensione();
+    }
+    return;
+  }
+  assente = 0;
+  int8_t tipo = TinyUSBDevice.mounted() ? 1 : 2;
+  if (tipo != tipoPrec) { tipoPrec = tipo; diario(DIA_USB, tipo, ultimaMv); }
+}
+
 void setup() {
-  // Causa del reset dal registro RESETREAS (prima che il SoftDevice lo gestisca)
-  uint32_t rr = NRF_POWER->RESETREAS;
-  NRF_POWER->RESETREAS = rr;
+  // Causa del reset: il core azzera RESETREAS in init() (wiring.c) PRIMA di setup() ma ne conserva una copia, readResetReason().
+  // Il bootloader Adafruit NON lo azzera (main.c 0.6.2): la nota della 0.5.0 era sbagliata, vedi LEGGIMI.
+  uint32_t rr = readResetReason();
+  bootRr = rr;
+  bootWdtGiaAttivo = NRF_WDT->RUNSTATUS & WDT_RUNSTATUS_RUNSTATUS_Msk;   // il WDT sopravvive al reset? (si logga: ipotesi da verificare)
+  // contesto del guasto precedente e fase del programma (RAM noinit), da leggere prima di riscriverli
+  bootCtxValido = ctxRam.magic == CTX_MAGIC && ctxRam.chk == ctxChk(ctxRam) && (rr & (POWER_RESETREAS_DOG_Msk | POWER_RESETREAS_SREQ_Msk | POWER_RESETREAS_LOCKUP_Msk));
+  if (bootCtxValido) bootCtx = ctxRam; else memset(&bootCtx, 0, sizeof(bootCtx));
+  ctxRam.magic = 0;
+  bootFase = ((faseRam & 0xFFFFFF00UL) == 0x5A5A5A00UL && (rr & (POWER_RESETREAS_DOG_Msk | POWER_RESETREAS_SREQ_Msk | POWER_RESETREAS_LOCKUP_Msk))) ? (faseRam & 0xFF) : 0;
+  tempoAvvio(rr);                                          // prima di wdtAvvia(): cane() sovrascrive "ultimo vivo"
+  wdtAvvia();
+  FASE(1);
   if (rr & POWER_RESETREAS_VBUS_Msk) causaReset = 7;
   else if (rr & POWER_RESETREAS_OFF_Msk) causaReset = 1;
   else if (rr & POWER_RESETREAS_DOG_Msk) causaReset = 3;
@@ -1726,19 +2469,75 @@ void setup() {
   else if (rr & POWER_RESETREAS_LOCKUP_Msk) causaReset = 6;
   else if (rr & POWER_RESETREAS_RESETPIN_Msk) causaReset = 8;
   else causaReset = 0;
-  uint8_t marca = NRF_POWER->GPREGRET2;                      // marca lasciata prima di System OFF (RESETREAS e' azzerato dal bootloader)
+  if (bootCtxValido && bootCtx.tipo >= 1 && bootCtx.tipo <= 5) bootGuasto = bootCtx.tipo;
+  else if (rr & POWER_RESETREAS_DOG_Msk) bootGuasto = SWR_GUASTO_WDT;
+  else if (rr & POWER_RESETREAS_LOCKUP_Msk) bootGuasto = SWR_GUASTO_ALTRO;
+  uint8_t marca = NRF_POWER->GPREGRET2;                      // marca lasciata prima di System OFF / durante la registrazione
   NRF_POWER->GPREGRET2 = 0;
+  bootMarca = marca;
   bool vbusAvvio = NRF_POWER->USBREGSTATUS & POWER_USBREGSTATUS_VBUSDETECT_Msk;
-  if ((marca == MARCA_SLEEP || (marca & 0xF0) == MARCA_FALSO) && !vbusAvvio && causaReset != 7) causaReset = 1;   // risveglio da doppio tap
+  // Risveglio causato dall'USB ma VBUS non ancora visto (lettura non assestata o contatto incerto, visto il 2026-11-11:
+  // 3 avvii causa7 vbus0 di fila, ognuno tornato a dormire): si aspetta fino a 1 s prima di decidere. Diario NOTA 12.
+  uint16_t attesaVbus = 0;
+  if ((rr & POWER_RESETREAS_VBUS_Msk) && !vbusAvvio) {
+    uint32_t t0 = millis();
+    while (!vbusAvvio && millis() - t0 < VBUS_ATTESA_AVVIO_MS) {
+      delay(10); cane();
+      vbusAvvio = NRF_POWER->USBREGSTATUS & POWER_USBREGSTATUS_VBUSDETECT_Msk;
+    }
+    attesaVbus = (uint16_t)(millis() - t0);
+  }
+  bool dormiva = marca == MARCA_SLEEP || (marca & 0xF0) == MARCA_FALSO;
+  if (dormiva && !vbusAvvio && causaReset != 7) causaReset = 1;   // risveglio da doppio tap (la marca resta come conferma)
 
   bool quattroTap = false;
   if (causaReset == 1) quattroTap = risveglioQuattroTap();   // se non arrivano 4 tap non ritorna: torna a dormire
-  // 4 tocchi SENZA USB = modalita' vasca (BLE mai avviato, non ritorna). Con l'USB collegata: modalita' normale.
-  if (quattroTap && !vbusAvvio) modalitaVasca();
+  cane();
+
+  // Diario: avvio con causa, marca e contesto del guasto (in RAM; in flash al primo diarioFlush)
+  {
+    uint16_t comp = (rr & 0xF) | (((rr >> 16) & 0xF) << 4) | (((rr >> 20) & 1) << 8);
+    diario(DIA_AVVIO, causaReset, comp, (uint16_t)(marca << 8) | (vbusAvvio ? 1 : 0) | (PROVE_GUASTI ? 2 : 0));
+    {                                                        // il contesto del guasto deve stare fuori da [__bss_start__, __bss_end__): altrimenti lo startup lo azzera
+      uint32_t ca = (uint32_t)&ctxRam;
+      bool inBss = ca >= (uint32_t)&__bss_start__ && ca < (uint32_t)&__bss_end__;
+      logRiga("ctx %08lX%s", (unsigned long)ca, inBss ? " IN BSS!" : "");
+      if (inBss) diario(DIA_NOTA, 8, 0, 0, ca);
+    }
+    if (bootGuasto != SWR_GUASTO_NESSUNO || bootCtxValido) {
+      diario(DIA_GUASTO, bootGuasto, bootFase, 0, bootCtx.pc);
+      diario(DIA_GUASTO2, 0, (uint16_t)(bootCtx.cfsr & 0xFFFF), (uint16_t)(bootCtx.cfsr >> 16), bootCtx.lr);
+    }
+    if (bootWdtGiaAttivo) diario(DIA_WDT, 1);
+    if (attesaVbus) diario(DIA_NOTA, 12, vbusAvvio, attesaVbus);   // NOTA 12 <vbus visto 0/1> <ms attesi> (NOTA 10 = tempo di sessione)
+  }
+
+  // ---- REGOLE DI MODO (0.6.1) ----
+  // senza USB la modalita' normale non esiste: o si registra (4 tocchi, o ripresa dopo un riavvio inatteso) o si dorme
+  if (!vbusAvvio) {
+    if (quattroTap) { modalitaVasca(0); }                    // non ritorna
+    if ((marca & 0xF0) == MARCA_REGISTRA) { modalitaVasca(1); }   // riavviata in registrazione (rete principale)
+    if (!dormiva) {                                          // seconda rete (marca persa: brownout): stato in /reg.bin + ultimo segmento senza chiusura
+      uint8_t att = 0, rip = 0;
+      regStato(att, rip);
+      if (att) { modalitaVasca(2); }
+    }
+    lampoBreve(false, false, true);                          // un lampo blu da 15 ms: "ci sono ma non registro" (anche a batteria)
+    sonnoMotivo = 5;                                         // nessuna ragione per registrare (es. batteria appena collegata): sonno
+    diario(DIA_MODO, 2, sonnoMotivo, 0);
+    diarioFlush();
+    dormiSenzaBle();                                         // non ritorna
+  }
+  // da qui: USB presente (PC o caricatore), modalita' normale, mai registrazione. Una registrazione orfana non riparte piu'.
+  {
+    uint8_t att = 0, rip = 0;
+    regStato(att, rip);
+    if (att) { regScrivi(0, 0); diario(DIA_NOTA, 1, rip); }
+  }
 
   Serial.begin(115200);
   uint32_t t0 = millis();
-  while (!Serial && millis() - t0 < 2000) delay(10);
+  while (!Serial && millis() - t0 < 3000) { cane(); delay(10); }   // attende l'enumerazione/DTR (PC): con un caricatore scade e basta
 
   pinMode(LED_RED, OUTPUT); pinMode(LED_GREEN, OUTPUT); pinMode(LED_BLUE, OUTPUT);
   ledScrivi(LED_RED, HIGH); ledScrivi(LED_GREEN, HIGH); ledScrivi(LED_BLUE, HIGH);
@@ -1748,24 +2547,30 @@ void setup() {
 
   const char *nomi[] = {"accensione", "doppio tap", "?", "watchdog", "?", "software", "lockup", "USB", "pin reset"};
   logRiga("boot %s, causa %s (RESETREAS 0x%lX)", VERSIONE, nomi[causaReset], (unsigned long)rr);
-  logRiga("marca %02X vbus %d", marca, vbusAvvio);
+  logRiga("marca %02X vbus %d wdt-gia %d", marca, vbusAvvio, bootWdtGiaAttivo);
+  if (bootGuasto) logRiga("guasto t%u fase%u pc%08lX lr%08lX", bootGuasto, bootFase, (unsigned long)bootCtx.pc, (unsigned long)bootCtx.lr);
   if (quattroTap) logRiga("risveglio 4 tap");
   if (*(volatile const char *)marcatoreVersione != 'S' || *(volatile const char *)marcatoreScheda != 'S') logRiga("?");   // tiene il marcatore nel binario (altrimenti il linker lo scarta)
 
   bleIniz(false);                       // BLE: 2 collegamenti, servizi 7a1e0001 (pagina) e 7a1e0101 (display), annuncio di sincronizzazione
+  cane();
   if (memInit()) {                      // anche in modalita' normale la flash si scansiona: il display puo' scaricare con l'USB collegata
     EsitoScansione es = memScansiona();
     logRiga("memoria: %s, da validare %u, confermati %u, liberi %u, seq %lu", es == SC_OK ? "formato 3" : es == SC_FORMATO1 ? "FORMATO 1 (non toccata)" : "estranea",
             anello.nDaValidare, anello.nConfermati, anello.nLiberi, (unsigned long)anello.maxSeq);
   } else logRiga("flash non risponde");
+  cane();
 
   imuOk = imuInit();   // dopo il BLE: se l'IMU non risponde il tag resta comunque visibile
   logRiga(imuOk ? "IMU ok" : "IMU NON risponde");
+  cane();
   if (imuOk) calibraBoot();
   aggiornaStato(true);
+  diario(DIA_BATT, (vbusPresente() ? 1 : 0) | ((digitalRead(PIN_NCHG) == LOW) ? 2 : 0), ultimaMv);
+  diario(DIA_MODO, 0, 0, ultimaMv);
+  diarioFlush();
   controllaBootloader();
 }
-
 // Sospensione automatica: chiamata a ogni pacchetto (25 Hz). Ogni secondo valuta un blocco:
 // fermo = rotazione media bassa E gravita' nella stessa direzione d'inizio quiete.
 // Dopo INATTIVITA_S blocchi fermi di fila va in sospensione (doppio tap o USB per riattivare).
@@ -1814,12 +2619,14 @@ static void controllaInattivita(uint32_t ora) {
     logRiga("quiete %ds rot%.1f ang%.1f", secFermo, gMax, angMax);
   if (secFermo >= INATTIVITA_S) {
     logRiga("fermo da %d s: sospensione", INATTIVITA_S);
+    sonnoMotivo = 2;
     vaInSospensione();
   }
 }
 
 void loop() {
   static uint32_t ultimoDati = 0, ultimoStato = 0, ultimoLed = 0;
+  cane(); FASE(20);
   uint32_t ora = millis();
 
   if (imuOk && !otaAttivo) imuPoll();
@@ -1845,9 +2652,15 @@ void loop() {
   }
   eseguiComandi();
   if (Serial) comandiSeriale();
+  FASE(21);
   servizioOta();
+  FASE(22);
+  controlloUsb();                           // USB staccata -> sonno subito (a batteria la modalita' normale non esiste)
+  diarioInvioServi();
+  { static uint32_t tDia = 0; if (diaPend && !diaInvioN && millis() - tDia >= 10000UL) { tDia = millis(); diarioFlush(); } }
   inviaLog();
   syncServi();                              // sincronizzazione con il display (anche con l'USB collegata)
+  if (sonnoDaSync) { sonnoDaSync = false; sonnoMotivo = 1; vaInSospensione(); }   // M_SONNO (con l'USB: riavvio, NOTA 11)
   annuncioAggiorna(false);
   statoSyncServi(false);
   if (!Bluefruit.connected() && ora - ultimoLed >= 500) {   // blu lampeggiante = advertising

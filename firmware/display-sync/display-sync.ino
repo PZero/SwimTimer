@@ -9,6 +9,7 @@
 #include "sd_scrittore.h"
 #include "trasporto.h"
 #include "ui.h"
+#include "web.h"
 
 void setup() {
   Serial.begin(115200);
@@ -21,6 +22,7 @@ void setup() {
   ricezioneInit(); // buffer dei blocchi (2 x 4 KB per tag) in PSRAM
   sdInit();        // microSD (1 bit) e task scrittore
   trasportoInit(); // BLE (scansione e collegamenti) oppure demo
+  webInit();       // Wi-Fi AP "SwimTimer" + pagina di stato; se fallisce la scheda continua a scaricare
 #if SWIM_DEMO
   Serial.println("Modalita' DEMO: tag simulate");
 #endif

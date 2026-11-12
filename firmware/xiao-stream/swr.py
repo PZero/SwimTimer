@@ -21,6 +21,16 @@ OFF_CONFERMA, LEN_CONFERMA = 252, 4
 T_SEGMENTO, T_DATI, T_CHIUSURA = 0xA5, 0xD1, 0xE0
 FLAG_PRIMA, FLAG_GAP = 0x01, 0x02
 MOTIVI = {1: "quiete", 2: "memoria piena", 3: "batteria", 4: "USB collegata", 5: "errore flash/IMU", 6: "comando SLEEP"}
+# 0.6.1: campi del segmento (byte 38..63) e della chiusura (31..34), vedi swr_formato.h
+GUASTI = {0: "nessuno noto", 1: "HardFault", 2: "stack overflow", 3: "malloc fallita", 4: "watchdog", 5: "altro"}
+ORIGINI = {0: "tocchi", 1: "ripresa dopo riavvio (marca)", 2: "ripresa dopo riavvio (flash)"}
+SEGF_RIPRESA, SEGF_RIPRESA_FLASH, SEGF_CONTESTO = 0x01, 0x02, 0x04
+# tempo di sessione continuo (byte 64..73 del segmento): origine dello scarto
+TORIG = {0: "partenza a tocchi", 1: "istante esatto (gestore di guasto)", 2: "ultimo vivo (stimato)", 3: "SCONOSCIUTA"}
+TORIG_SCONOSCIUTA = 3
+# bit di RESETREAS (nRF52840)
+RESETREAS_BIT = [(0, "pin reset"), (1, "watchdog"), (2, "reset software"), (3, "lockup"), (16, "uscita da System OFF"),
+                 (17, "LPCOMP"), (18, "debug"), (19, "NFC"), (20, "VBUS")]
 ODR_HZ_NOMINALE = 2083 / 10.0
 MS_PER_CAMPIONE = 1000.0 / ODR_HZ_NOMINALE
 # unita' per LSB (valori del segmento): acc 488 ug/LSB (+-16 g), giro 35 mdps/LSB (+-1000 dps)
@@ -143,16 +153,28 @@ class Codificatore:
         return bytes(self.pag)
 
 
-def pagina_segmento(numero, segmento, millis=0, mv=4000, temp=22, causa=1, tocchi=2, versione="0.5.0"):
+def pagina_segmento(numero, segmento, millis=0, mv=4000, temp=22, causa=1, tocchi=2, versione="0.5.0", extra=None):
+    """extra (0.6.1): dict con flag, riprese, marca, guasto, resetreas, pc, lr, cfsr, hfsr, fase, origine (tutti facoltativi)."""
     pag = bytearray(b"\xff" * PAGINA)
     pag[16:38] = struct.pack("<HHHhhhBB8s", 2083, 488, 35, 0, 0, 0, causa, tocchi, versione.encode()[:7])
+    if extra is not None:
+        e = dict(flag=0, riprese=0, marca=0, guasto=0, resetreas=0, pc=0, lr=0, cfsr=0, hfsr=0, fase=0, origine=0)
+        e.update(extra)
+        pag[38:64] = struct.pack("<BBBBIIIIIBB", e["flag"], e["riprese"], e["marca"], e["guasto"], e["resetreas"],
+                                 e["pc"], e["lr"], e["cfsr"], e["hfsr"], e["fase"], e["origine"])
+        if any(k in extra for k in ("scarto", "torig", "margine", "navvii", "tavvio")):       # tempo di sessione (byte 64..73)
+            t = dict(scarto=0, torig=0, margine=0, navvii=1, tavvio=500)
+            t.update({k: v for k, v in extra.items() if k in t})
+            pag[64:74] = struct.pack("<IBHBH", t["scarto"], t["torig"], t["margine"], t["navvii"], t["tavvio"])
     intestazione(pag, T_SEGMENTO, 1, numero, millis, mv, temp, 0, segmento)
     return bytes(pag)
 
 
-def pagina_chiusura(numero, segmento, motivo, campioni, pagine, millis=0, mv=3900, temp=22):
+def pagina_chiusura(numero, segmento, motivo, campioni, pagine, millis=0, mv=3900, temp=22, disall=None, scartate=0):
     pag = bytearray(b"\xff" * PAGINA)
     pag[16:24] = struct.pack("<II", campioni, pagine)
+    if disall is not None:                                   # 0.6.1: disallineamenti FIFO e parole scartate (byte 31..34)
+        pag[31:35] = struct.pack("<HH", disall, scartate)
     intestazione(pag, T_CHIUSURA, motivo, numero, millis, mv, temp, 0, segmento)
     return bytes(pag)
 
@@ -195,6 +217,7 @@ class Esito:
         self.segmenti = {}         # idx -> dict(info)
         self.pagine_dati = []      # dict per pagina dati valida
         self.pagine_usate = 0
+        self.gap_pagine = []       # pagine dati con il flag di interruzione (overrun del FIFO o riallineamento)
 
     def avvisa(self, testo):
         self.problemi.append(testo)
@@ -281,6 +304,13 @@ def _pagina(es, p, pag, numero_atteso):
             es.segmenti[seg] = dict(idx=seg, pagina=p, millis=millis, mv_inizio=mv, odr_x10=odr, ug_lsb=ug, mdps_lsb=mdps,
                                     bias=(bx, by, bz), causa=causa, tocchi=tocchi, versione=ver.split(b"\0")[0].decode("ascii", "replace"),
                                     chiuso=False, motivo=None, campioni=None, pagine=None)
+            if pag[38] != 0xFF:                              # 0.6.1: origine del segmento e contesto del guasto (0xFF = file vecchio)
+                fl, rip, marca, guasto, rr, pc, lr, cfsr, hfsr, fase, orig = struct.unpack_from("<BBBBIIIIIBB", pag, 38)
+                es.segmenti[seg].update(seg_flag=fl, riprese=rip, marca=marca, guasto=guasto, resetreas=rr, pc=pc, lr=lr,
+                                        cfsr=cfsr, hfsr=hfsr, fase=fase, origine=orig)
+                if pag[68] != 0xFF:                          # tempo di sessione continuo
+                    sc, to, mg, nav, tav = struct.unpack_from("<IBHBH", pag, 64)
+                    es.segmenti[seg].update(scarto=sc, torig=to, margine=mg, navvii=nav, tavvio=tav)
         elif tipo == T_DATI:
             if seg not in es.segmenti:
                 es.avvisa("pagina %d: dati del segmento %d senza pagina di segmento valida" % (p, seg))
@@ -293,7 +323,7 @@ def _pagina(es, p, pag, numero_atteso):
                 return
             es.pagine_dati.append(dict(pagina=p, seg=seg, millis=millis, mv=mv, temp=temp, flag=flag, campioni=camp))
             if flag & FLAG_GAP:
-                es.avvisa("pagina %d: interruzione dei dati (overrun del FIFO) prima di questa pagina" % p)
+                es.gap_pagine.append(p)                      # raggruppate in _fine: dalla 0.6.1 sono anche scarti di riallineamento del FIFO (< 1 campione)
         elif tipo == T_CHIUSURA:
             if seg in es.segmenti:
                 campioni, pagine = struct.unpack_from("<II", pag, 16)
@@ -302,6 +332,9 @@ def _pagina(es, p, pag, numero_atteso):
                 if pag[24:26] != b"\xff\xff":
                     gap, ovr, apri, conf = struct.unpack_from("<HBHH", pag, 24)
                     es.segmenti[seg].update(gap_max_ms=gap, overrun=ovr, apri_max_ms=apri, confermati=conf)
+                if pag[31:33] != b"\xff\xff":                  # 0.6.1: allineamento del FIFO
+                    dis, scart = struct.unpack_from("<HH", pag, 31)
+                    es.segmenti[seg].update(disallineamenti=dis, parole_scartate=scart if scart != 0xFFFF else None)
             else:
                 es.avvisa("pagina %d: chiusura del segmento %d senza segmento" % (p, seg))
         else:
@@ -309,6 +342,13 @@ def _pagina(es, p, pag, numero_atteso):
 
 
 def _fine(es):
+    if es.gap_pagine:
+        if len(es.gap_pagine) <= 5:
+            for p in es.gap_pagine:
+                es.avvisa("pagina %d: interruzione dei dati (overrun o riallineamento del FIFO) prima di questa pagina" % p)
+        else:
+            es.avvisa("%d pagine con interruzione dei dati (overrun o riallineamento del FIFO, di solito < 1 campione): prime pagine %s"
+                      % (len(es.gap_pagine), ", ".join(str(x) for x in es.gap_pagine[:5])))
     for s in es.segmenti.values():
         if not s["chiuso"]:
             es.avvisa("segmento %d senza chiusura (batteria scarica, memoria piena o spegnimento: la fine e' l'ultima pagina valida)" % s["idx"])
@@ -384,6 +424,41 @@ def scrivi_csv(esito, percorso, grezzo=False):
     return n
 
 
+def tempo_sessione_ms(segmento, millis_ms):
+    """Tempo di sessione (ms) di un istante `millis_ms` (millis della tag, per esempio il campo millis di una pagina dati) del segmento:
+    millis + scarto. None se il segmento non ha il campo o se la continuita' e' persa (origine SCONOSCIUTA: tempo non continuo)."""
+    if segmento.get("scarto") is None or segmento.get("torig") == TORIG_SCONOSCIUTA:
+        return None
+    return millis_ms + segmento["scarto"]
+
+
+def correggi_scarto(segmento, t_avvio_nuovo_ms):
+    """Scarto ricalcolato con un T_AVVIO migliore di quello usato dal firmware: ogni riavvio della catena ha sommato T_AVVIO una volta."""
+    if segmento.get("scarto") is None or segmento.get("torig") == TORIG_SCONOSCIUTA:
+        return None
+    return segmento["scarto"] + (segmento["navvii"] - 1) * (t_avvio_nuovo_ms - segmento["tavvio"])
+
+
+def resetreas_testo(rr):
+    nomi = [n for b, n in RESETREAS_BIT if rr & (1 << b)]
+    return ", ".join(nomi) if nomi else "accensione/nessun bit"
+
+
+def conta_scambiati(esito):
+    """Campioni con accelerometro e giroscopio scambiati (lettura disallineata del FIFO): il 'giroscopio' contiene
+    l'accelerazione (|giro grezzo| * 0,488 mg ~ 1 g) e l'accelerometro, a riposo, pochi LSB (< 0,5 g). VALE SOLO A RIPOSO: in movimento il
+    criterio non scatta. Ritorna (scambiati, totale)."""
+    scambiati = totale = 0
+    for pg in esito.pagine_dati:
+        for ax, ay, az, gx, gy, gz in pg["campioni"]:
+            totale += 1
+            g_come_acc = ((gx * gx + gy * gy + gz * gz) ** 0.5) * G_PER_LSB
+            a_come_acc = ((ax * ax + ay * ay + az * az) ** 0.5) * G_PER_LSB
+            if 0.8 <= g_come_acc <= 1.2 and a_come_acc < 0.5:
+                scambiati += 1
+    return scambiati, totale
+
+
 def riassunto(esito):
     """Testo leggibile: segmenti, durata, problemi."""
     ult = {}
@@ -403,9 +478,31 @@ def riassunto(esito):
             idx, camp, camp / ODR_HZ_NOMINALE, s["mv_inizio"],
             (" -> %d mV" % s["mv_fine"]) if s.get("mv_fine") else "",
             MOTIVI.get(s["motivo"], "senza chiusura") if s["chiuso"] else "senza chiusura"))
+        if s.get("seg_flag") is not None:
+            testo = "    origine: %s" % ORIGINI.get(s["origine"], "?")
+            if s["origine"]:
+                testo += ", riprese consecutive %d" % s["riprese"]
+            testo += "; RESETREAS 0x%X (%s), marca 0x%02X" % (s["resetreas"], resetreas_testo(s["resetreas"]), s["marca"])
+            out.append(testo)
+            if s.get("scarto") is not None:
+                if s["torig"] == TORIG_SCONOSCIUTA:
+                    out.append("    TEMPO NON CONTINUO: l'istante del reset e' sconosciuto (RAM persa o brownout): non si puo' collegare al segmento precedente")
+                else:
+                    out.append("    tempo di sessione = millis + %d ms (+-%d ms), origine: %s, avvii della catena %d, T_AVVIO usato %d ms" % (
+                        s["scarto"], s["margine"], TORIG.get(s["torig"], "?"), s["navvii"], s["tavvio"]))
+            if s["guasto"] or s["seg_flag"] & SEGF_CONTESTO:
+                out.append("    GUASTO: %s, PC 0x%08X LR 0x%08X CFSR 0x%X HFSR 0x%X fase %d" % (
+                    GUASTI.get(s["guasto"], "?"), s["pc"], s["lr"], s["cfsr"], s["hfsr"], s["fase"]))
         if s.get("gap_max_ms") is not None:
             out.append("    tempi: massimo %d ms fra due letture del FIFO (capienza ~1600 ms), overrun %d, apertura blocco massima %d ms, "
                        "blocchi confermati %d" % (s["gap_max_ms"], s["overrun"], s["apri_max_ms"], s["confermati"]))
+        if s.get("disallineamenti") is not None:
+            out.append("    FIFO: %d disallineamenti%s" % (s["disallineamenti"], (", %d parole scartate" % s["parole_scartate"]) if s.get("parole_scartate") is not None else ""))
+    sc, tot = conta_scambiati(esito)
+    if sc:
+        out.append("ATTENZIONE: %d campioni su %d (%.1f%%) con accelerometro e giroscopio SCAMBIATI (lettura del FIFO disallineata): "
+                   "i dati di quei tratti non sono affidabili. NOTA: questo controllo riconosce lo scambio solo a RIPOSO (giro letto come "
+                   "accelerazione ~ 1 g e accelerazione < 0,5 g); in movimento un campione scambiato non si riconosce da qui" % (sc, tot, 100.0 * sc / tot))
     if esito.problemi:
         out.append("PROBLEMI (%d):" % len(esito.problemi))
         out.extend("  - " + p for p in esito.problemi)

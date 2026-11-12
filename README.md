@@ -4,7 +4,7 @@ Automatic lap times in the pool: a tag under the swim cap and a poolside display
 
 ![Status](https://img.shields.io/badge/status-XIAO%20test%20tags%20in%20bench%20tests-yellow) ![Board](https://img.shields.io/badge/nRF52840%20tag-v0.6%20Rev0%20ready%20for%20preview-green) ![Repository](https://img.shields.io/badge/repository-public-blue) ![License](https://img.shields.io/badge/license-to%20be%20defined-lightgrey)
 
-Updated on **2026-11-10**. Single public repository `PZero/SwimTimer`: XIAO test tags and their firmware, tools page (GitHub Pages: https://pzero.github.io/SwimTimer/), online collaboration app (Firebase, Italian and English: https://swimtimer-pzero.web.app, with contact form and poolside display demo), ESP32 prototype, nRF52840 tag (KiCad, Gerber, JLCPCB and NextPCB files), programmer HAT, technical wallpapers and three videos (first pool test, progress update and first presentation).
+Updated on **2026-11-12**. Single public repository `PZero/SwimTimer`: XIAO test tags and their firmware, tools page (GitHub Pages: https://pzero.github.io/SwimTimer/), online collaboration app (Firebase, Italian and English: https://swimtimer-pzero.web.app, with contact form and poolside display demo), ESP32 prototype, nRF52840 tag (KiCad, Gerber, JLCPCB and NextPCB files), programmer HAT, technical wallpapers and three videos (first pool test, progress update and first presentation).
 
 > **Language.** This README is in English. Internal working documents in [`docs/`](docs/) (state, decisions, requirements, design) are written in Italian.
 
@@ -69,12 +69,13 @@ English: **https://youtu.be/EVrdSybpnE4**. Italian: https://youtu.be/_2UzpOqblVI
 | Area | Status |
 |---|---|
 | ESP32-S3 + BMI160 prototype, firmware **0.4.3** | Working on the bench; no pool tests yet. Its tools were removed from the tools page on 2026-11-08 |
-| LilyGO T-RGB display (4-hand pace clock) | Working on the bench |
+| LilyGO T-RGB display (4-hand pace clock) | Board works, **screen broken** (torn ribbon cable). Replacement 2.8″ screen to order. Used now without a screen (see the display firmware row) |
 | nRF52840 tag **v0.5 "economy"** | Ready: 21.59 x 28.0 mm, 2 layers, DRC 0, ERC 0 errors, `verifica_v05.py` 100/100 pins. JLCPCB files plus NextPCB files (single board and 3x1 / 2x1 panels); JLC placement preview checked, Q1 and U6 rotations fixed (commit `dea9744`) |
 | nRF52840 tag **v0.6 "Rev0"** (new) | 4 layers 0.8 mm, 21.59 x 28.5 mm, no BGA (NextPCB Rev0 rejects pitch below 0.45 mm). Files generated; JLC rotations of the new SOT-23 parts still to verify in a JLC preview |
 | XIAO nRF52840 Sense test tags | One board in use on the bench ([`hardware/xiao/README.md`](hardware/xiao/README.md)). Firmware 0.5.2 (no automatic sleep on USB power), 0.5.3 (USB during a recording closes it and restarts in normal mode) and 0.5.4 (charge current 100 mA) flashed and checked on the bench; test cell 1000 mAh; pool recording download and recorded data not yet checked; not yet used in the pool |
-| XIAO firmware **0.6.0** (`firmware/xiao-stream`) | Ring flash of 512 blocks, `.swr` format 3, BLE always on (also while recording), 2 connections, settable name and colour. Tested in a dry run with the display; the published OTA release is still 0.5.4 |
-| Display firmware `firmware/display-sync` | LilyGO T-RGB: receives the blocks from up to 3 tags, verifies, writes to microSD and confirms. Dry run: 2 tags x 15 min, 666 blocks saved and confirmed, 0 CRC errors, 0 anomalies. Signal strength still to be tuned |
+| XIAO firmware **0.6.1** (`firmware/xiao-stream`, test build on both tags) | Automatic resume after a crash or watchdog reset (max 3 in a row), 8 s watchdog, fault context and persistent diary, IMU FIFO realignment with content check, continuous session time (start-up 500 ms), no idle without USB, USB rules, standby command from the display. Standby from the page, rest stop and idle on the charger **not yet verified**. The published OTA release is still 0.5.4 |
+| Display firmware `firmware/display-sync` | LilyGO T-RGB without a working screen: receives the blocks from up to 3 tags, verifies, writes to microSD and confirms. Creates the Wi-Fi network «SwimTimer» with a status page for iPhone (`http://192.168.4.1`), which also shows warnings, the recording button and the standby button for the tags. Dry run (0.6.0): 2 tags x 15 min, 666 blocks saved and confirmed, 0 CRC errors, 0 anomalies. Signal strength still to be tuned |
+| Display enclosure `hardware/display-involucro/` | Parametric OpenSCAD design: PLA vase, silicone cap, fork with a 15° detent swivel; STL files and renders. Fit on the real board still to be checked |
 | Tools page `tools/index.html` | XIAO only: Live, Recording, Annotation and Firmware tabs, USB / Bluetooth / Demo. Also published on the Firebase site at `/strumenti/`, with an "Upload online" button. Tested in the browser with Demo and simulated ports, not yet with the real XIAO over USB for a full download |
 | Online collaboration app | Bilingual (IT/EN) public landing page with a contact form, and members' area (Google login, admin approval of new accounts, admin page for messages). Poolside display section with a live demo. Firestore rules tested with 17 emulator tests. Not yet used with real sessions |
 | Test campaign 1 | **Planned**: one swimmer (the author), 50 m pool, wall drills, then a real training session as verification. See [Test methodology](#test-methodology-raw-data-video-and-hand-annotation) |
@@ -383,7 +384,7 @@ Arduino sketch (core Seeeduino:nrf52 + Bluefruit) that makes the XIAO speak the 
 
 #### Firmware 0.6.0: ring flash, BLE always on, synchronization
 
-Source in [`firmware/xiao-stream`](firmware/xiao-stream/); the published release `release/xiao.bin` is **still 0.5.4** (0.6.0 is not yet published for OTA).
+Source in [`firmware/xiao-stream`](firmware/xiao-stream/); the published release `release/xiao.bin` is **still 0.5.4** (0.6.0 is not yet published for OTA). Superseded by 0.6.1 below.
 
 - **Ring flash.** The 2 MB flash is a ring of **512 blocks of 4 KB**. A block is overwritten only after the display has confirmed it. Recording stops when the memory is full of unconfirmed blocks. A memory that is not recognised is never erased automatically.
 - **`.swr` format 3.** Each block has a header (marker `0xB1`) with a global sequence number that is never reused, even after an erase. The confirmation flag is stored in the last word of the block (bytes 252..255): the Puya flash replaces a 4-byte word instead of ANDing it, so format 2 (confirmation in byte 16) corrupted the sequence number. Found and fixed with no data lost. Decoders [`swr.py`](firmware/xiao-stream/swr.py) and [`tools/swr.js`](tools/swr.js) read formats 1, 2 and 3.
@@ -391,6 +392,22 @@ Source in [`firmware/xiao-stream`](firmware/xiao-stream/); the published release
 - **Settings.** Tag name (up to 11 characters) and colour (palette of 10) can be set from the tools page. `NOME` and `COLORE` without argument return the current value. LEDs are off on battery.
 - **Sleep during recording (0.6.0).** The `SLEEP` command works while recording: it closes the current segment with stop reason 6 ("SLEEP command").
 - **Sync service** `7a1e0101`: see [Tag to display synchronization](#tag-to-display-synchronization).
+
+#### Firmware 0.6.1: crash recovery and diary (test build)
+
+Test build with the test commands (`PROVE_GUASTI`) enabled only in the `-prove` build. The published release is still 0.5.4. Motivation: on 2026-11-11 a tag restarted during a pool recording and came back in normal mode, where touches were ignored, so that session was lost. Details (Italian): [`firmware/xiao-stream/LEGGIMI.md`](firmware/xiao-stream/LEGGIMI.md); test log: [`PROVA-0.6.1.md`](firmware/xiao-stream/PROVA-0.6.1.md).
+
+- **No idle without USB.** Without USB the tag records or sleeps. The normal mode exists only with USB.
+- **Automatic resume.** After a crash or a watchdog reset the tag resumes recording, at most 3 times in a row. The counter is kept in RAM and in flash; the larger value is used.
+- **Watchdog 8 s.** Resets the MCU if the main loop stops.
+- **Fault context and diary.** The reset reason and the context of the fault are saved in flash. The diary (`DIARIO`) persists across resets. With BLE connected the diary is not written to flash, so some events are lost (known issue).
+- **IMU FIFO realignment.** The FIFO is realigned and its content is checked (`swr_fifo.h`). Checked by simulation ([`fifo_sim.py`](firmware/xiao-stream/fifo_sim.py)) and with impacts on the bench. With the display connected it realigns about 40 times per minute: data are correct, but there are many small gaps.
+- **Continuous session time.** Start-up takes 500 ms (494-496 ms measured on battery; `T_AVVIO` 500 ± 30 ms, measured with [`misura_avvio.py`](firmware/xiao-stream/misura_avvio.py)).
+- **USB rules.** USB absence is confirmed after 2 s. The tag waits for VBUS. It never enters System OFF while VBUS is present.
+- **LEDs.** Visible on battery only in the touch handling: blue, green, red for 2 s, 3 green flashes.
+- **Settings.** Name and colour can be changed only over USB.
+- **Standby command.** `M_SONNO` (0x14) on the encrypted sync channel, sent by the display. Not yet verified end to end.
+- **Verification status.** Installed on both tags after the incident. Verified on battery: resume after crash and watchdog (3 crashes and 3 blocks; the 4th is refused), USB stability (case 40), start-up time, impacts and FIFO cut. Not yet verified: standby from the display page, rest stop (3 min still) on one tag (bias correction loaded), idle on the charger.
 
 #### Pool recording mode (firmware 0.5.0 to 0.5.4)
 
@@ -442,14 +459,16 @@ sequenceDiagram
 - **Invariant.** The tag never overwrites an unconfirmed block; when memory is full of unconfirmed blocks, recording stops.
 
 **Display firmware** [`firmware/display-sync`](firmware/display-sync/) (PlatformIO, espressif32 6.9.0, Adafruit GFX, no LVGL; details in [`LEGGIMI.md`](firmware/display-sync/LEGGIMI.md), Italian):
-- Dial in **3 sectors of 120 degrees**, one per tag, with the **map of the 512 blocks** (validated / transmitting / to validate / open / free), tag name and colour, battery (LiPo curve) and signal in %.
-- Up to **3 tags connected at once**; a single task writes to the SD card; the display never goes to standby.
+- **Blind mode (current state).** The T-RGB screen is broken, so the board works without it. It downloads the tags to the microSD, creates the Wi-Fi network **SwimTimer** and serves a status page at `http://192.168.4.1` (tested from an iPhone). The page shows warnings with the action to take, a REGISTRA button that also works during a download, the last block saved to SD, and a standby button for the tags. The network password is in `segreti.h`, which is excluded from git; the template is `segreti.esempio.h`. A preview with invented data is in [`web/anteprima.html`](firmware/display-sync/web/anteprima.html).
+- **Bluetooth scan at 30 % duty cycle.** With 80 % the Wi-Fi network disappeared.
+- Dial in **3 sectors of 120 degrees**, one per tag, with the **map of the 512 blocks** (validated / transmitting / to validate / open / free), tag name and colour, battery (LiPo curve) and signal in %. Drawn when the screen works; not visible at present.
+- Up to **3 tags connected at once**; a single task writes to the SD card.
 - **SD card layout.** One folder per tag, `/swim/<tag id>/`, with `tag.swr` (the data), `tag.idx` (the index) and `tag.anomalia` (anomalies). A boot log with the reset reason is kept in `/swim/avvii.txt`.
 - **DEMO mode** with 3 simulated tags.
 
 ![Mockup of the tag status screen (invented data)](docs/img/mockup-stato-tag.png)
 
-**Dry run (2026-11-10).** 2 tags x 15 minutes next to the display: **666 blocks saved and confirmed, 0 CRC errors, 0 anomalies**, memory of both tags working as a ring, no display restart. Measured throughput up to 8 KB/s against 1.25 KB/s produced at 208 Hz. Signal on the T-RGB is weak (about -57 / -64 dBm at 10 cm) and still to be tuned.
+**Dry run (2026-11-10, firmware 0.6.0).** 2 tags x 15 minutes next to the display: **666 blocks saved and confirmed, 0 CRC errors, 0 anomalies**, memory of both tags working as a ring, no display restart. Measured throughput up to 8 KB/s against 1.25 KB/s produced at 208 Hz. Signal on the T-RGB is weak (about -57 / -64 dBm at 10 cm) and still to be tuned. The antenna connector (U.FL/IPEX-1) still has to be checked against the T-RGB schematic.
 
 **SD card check from the PC (2026-11-10).** The display SD card was read on a PC: **2408 blocks** from two real tags, **no gaps in the sequence numbers, no overruns**, about **1.27 million samples** decoded.
 
@@ -627,8 +646,8 @@ SwimTimer/
 ├── firebase.json, .firebaserc    Firebase Hosting and Firestore configuration
 ├── firmware/
 │   ├── test-collegamenti/        ESP32-S3 tag: firmware 0.4.3
-│   ├── xiao-stream/              XIAO nRF52840 Sense: BLE streaming + OTA, recording, ring flash and sync 0.6.0, .swr tools (release/ xiao.bin, xiao.json = 0.5.4)
-│   ├── display-sync/             T-RGB display: tag synchronization, 3 tags, microSD, DEMO (PlatformIO)
+│   ├── xiao-stream/              XIAO nRF52840 Sense: BLE streaming + OTA, recording, ring flash, sync, crash recovery 0.6.1 (test build), .swr tools, FIFO simulation (fifo_sim.py), tests (test_swr.py); release/ xiao.bin, xiao.json = 0.5.4
+│   ├── display-sync/             T-RGB display without screen: tag synchronization, 3 tags, microSD, Wi-Fi status page (web.cpp, pagina.h; preview in web/), DEMO (PlatformIO). segreti.h is local, not in git (template segreti.esempio.h)
 │   └── display-prova/            T-RGB display (first test)
 ├── tools/                        index.html (XIAO tools page: Live, Recording, Annotation, Firmware), annotazione.js/.css, registrazione.js, swr.js, test_swr2.mjs, parita_swr.mjs, display.html (poolside display mockup)
 ├── analisi/video/                OpenCV analysis of the underwater video (stabilisation, background, skin filter, classification, tuning, comparison)
@@ -643,9 +662,11 @@ SwimTimer/
 │   │   └── kicad/                scripts, KiCad projects (swimtag, _collaudo, _economica, _v06),
 │   │                             jlc/ (v0.3 ... v0.6), nextpcb/ (v0.5, panels 3x1 and 2x1, v0.6),
 │   │                             verifica_v04/v05/v06.py
+│   ├── display-involucro/        poolside display enclosure (blind display): involucro.scad (OpenSCAD), stl/, render/, LEGGIMI.md (Italian)
 │   ├── programmatore/            Raspberry Pi HAT: KiCad, PDF, 1:1 prints, scripts
 │   ├── wallpaper_v0.5/           genera.py, estrai_dati.py, render/, png/ (20 wallpapers, v0.5)
 │   └── wallpaper_v0.4/           v0.4 wallpapers (historical)
+├── .claude/agents/               instructions for the project's AI agents (Italian): design, electronics, app, git and README, reviewer
 ├── CHANGELOG.md                  changes by date
 ├── CLAUDE.md                     project working rules
 └── README.md                     this file
@@ -701,9 +722,14 @@ The v0.5 board is verified (DRC/ERC, `verifica_v05.py`). **Do not order** before
 6. Final version: motor, pressure sensor, multi-slot charging base with NFC association (see [Planned features and ideas](#planned-features-and-ideas)).
 
 **Tag to display synchronization**
-- Stability: ERROR advertisement before sleep, display timeout/watchdog.
-- Check the microSD contents from the PC, tune the signal strength, long-duration test and edge cases.
-- Publish firmware 0.6.0 as the OTA release after the tests.
+- Next pool session with the blind display: start and stop from the Wi-Fi page, then download over USB at the end.
+- Verify on the tags: standby from the display page and rest stop (3 min still) on tag `447B0247`.
+- Open problem: on the charger or the PC with USB the tag stays awake in normal mode and, from the PC page, restarts instead of switching off. The tag must go idle by itself on the charger and wake on a tap; to be designed with the tag states.
+- Reduce the FIFO realignments (about 40 per minute with the display connected); fix the BLE `connect()` without timeout and the frozen block map when the link stays open.
+- Move the diary to external memory (this changes the 512-block map on the display).
+- Stability: ERROR advertisement before sleep, display watchdog.
+- Replace the T-RGB screen (2.8″), decide the antenna, tune the signal strength, long-duration test and edge cases.
+- Publish firmware 0.6.1 as the OTA release only after the pool tests.
 
 **Poolside display**
 - Confirm the Raspberry Pi 4 + nRF52840 dongle architecture, then wire `ricevi()` to a real BLE source.
@@ -711,7 +737,7 @@ The v0.5 board is verified (DRC/ERC, `verifica_v05.py`). **Do not order** before
 - Agree the reference test for the Effort 1-10 indicator.
 
 **XIAO test tags**
-- Order 2 boards and the cells (1000 mAh in use for the tests), dry-run the waterproofing. Firmware ported (`firmware/xiao-stream`): published release is 0.5.4 (the version used in the first pool test on 9 November 2026; the OTA install of this release package from the page is not yet tested). Still to do: dry run at home (2-taps-blue-2-taps wake, recording and download over USB), low-battery sleep, Battery panel and VCAL calibration, then **test campaign 1** (one swimmer, 50 m pool, wall drills, then a training session for verification, with hand annotation of all events).
+- Order 2 boards and the cells (1000 mAh in use for the tests), dry-run the waterproofing. Firmware ported (`firmware/xiao-stream`): published release is 0.5.4 (the version used in the first pool test on 9 November 2026; the OTA install of this release package from the page is not yet tested); 0.6.1 test build on both tags. Still to do: dry run at home (2-taps-blue-2-taps wake, recording and download over USB), low-battery sleep, Battery panel and VCAL calibration, then **test campaign 1** (one swimmer, 50 m pool, wall drills, then a training session for verification, with hand annotation of all events).
 
 **Analysis**
 - Build the labelled dataset from the OpenCV reference, validate with one session left out, train the finish network and compare it with a classical method; more sessions and more swimmers needed.

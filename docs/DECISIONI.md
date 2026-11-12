@@ -152,3 +152,14 @@
 | 2026-11-10 | Pagina dei tool con Edge (Chrome su Windows tiene un collegamento BLE appeso) | Con Edge il collegamento funziona |
 | 2026-11-10 | Il display scrive un file per tag (`/swim/<id>/tag.swr`) invece di uno per avvio; la pagina apre più `.swr` e li unisce per seq | Una registrazione spezzata su più file non si leggeva (solo il primo aveva la pagina di segmento) |
 | 2026-11-10 | In registrazione la tag accetta il comando SLEEP (chiude il segmento, motivo 6) e risponde a NOME/COLORE senza argomento | Il pulsante Sospendi non faceva niente; la pagina mostrava il nome in cache |
+| 2026-11-11 | Senza USB la tag registra o dorme: la modalità normale esiste solo con l'USB | L'incidente in vasca: dopo un riavvio la tag restava PRONTA e non registrava |
+| 2026-11-11 | Ripresa automatica dopo un riavvio inatteso, al massimo 3 di fila, con marca in RAM + file in flash (si usa il maggiore dei due contatori) | Un crash non deve più fermare la registrazione; il watchdog azzera la marca, la flash no |
+| 2026-11-11 | Watchdog 8 s; contesto del guasto e diario persistenti | La causa del riavvio in vasca è andata persa |
+| 2026-11-11 | Nome, colore e taratura batteria modificabili solo con l'USB | Richiesta dell'utente; niente scritture da chiunque in portata |
+| 2026-11-11 | Comandi di prova (`PROVE_GUASTI`) spenti nella versione di rilascio e visibili nella versione (`-prove`) | La caratteristica dei comandi è aperta |
+| 2026-11-11 | Memoria piena: la tag si ferma (non sovrascrive i blocchi non scaricati) | Scelta dell'utente |
+| 2026-11-11 | Mai System OFF con l'USB presente: si riavvia in modalità normale | Con VBUS presente la tag non avrebbe modo di svegliarsi |
+| 2026-11-11 | LED visibili anche a batteria solo nella gestione dei tocchi (blu, verde, rosso 2 s, 3 lampi verdi) | Senza segnali non si sapeva se la registrazione era partita |
+| 2026-11-11 | Display senza schermo: rete Wi-Fi «SwimTimer» con pagina di stato per iPhone; scansione BLE al 30 % | Schermo rotto; con l'80 % la rete spariva |
+| 2026-11-11 | Standby comandato dalla scheda con il comando M_SONNO (0x14) sul canale cifrato di sincronizzazione | Il secondo collegamento sulla caratteristica aperta non funzionava ed era insicuro |
+| 2026-11-11 | Dimezzare il costo in token: agenti nuovi e brevi, niente riprese di agenti lunghi, un obiettivo per sessione | Richiesta dell'utente dopo una giornata troppo costosa |
