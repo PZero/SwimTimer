@@ -1,0 +1,28 @@
+#cloud-config
+# SwimTimer - stazione Raspberry Pi 3. Copiare come user-data nella partizione di avvio
+# e sostituire i segnaposto (Blocco note, solo spazi). cloud-init lo applica SOLO al primo avvio.
+hostname: swimtimer-pi
+manage_etc_hosts: true
+timezone: Europe/Rome
+keyboard:
+  model: pc105
+  layout: it
+users:
+- name: swim
+  groups: users,adm,dialout,audio,netdev,video,plugdev,input,gpio,spi,i2c,render,sudo
+  shell: /bin/bash
+  lock_passwd: false
+  plain_text_passwd: SCRIVI_PASSWORD_PI
+  sudo: ALL=(ALL) NOPASSWD:ALL
+  ssh_authorized_keys:
+  - ssh-ed25519 CHIAVE_PUBBLICA_DEL_PC commento
+enable_ssh: true
+ssh_pwauth: true
+runcmd:
+- [ systemctl, enable, --now, ssh ]
+- [ raspi-config, nonint, do_wifi_country, IT ]
+- [ rfkill, unblock, wifi ]
+- [ sh, -c, 'nmcli con delete wifi-1 wifi-2 || true' ]
+- [ nmcli, con, add, type, wifi, ifname, wlan0, con-name, wifi-1, autoconnect, yes, connection.autoconnect-priority, '5', ssid, NOME_RETE_WIFI, wifi-sec.key-mgmt, wpa-psk, wifi-sec.psk, 'SCRIVI_PASSWORD_WIFI_1' ]
+- [ nmcli, con, add, type, wifi, ifname, wlan0, con-name, wifi-2, autoconnect, yes, connection.autoconnect-priority, '10', ssid, NOME_RETE_WIFI, wifi-sec.key-mgmt, wpa-psk, wifi-sec.psk, 'SCRIVI_PASSWORD_WIFI_2' ]
+- [ sh, -c, 'nmcli con up wifi-2 || nmcli con up wifi-1' ]

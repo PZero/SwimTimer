@@ -41,6 +41,7 @@ English: **https://youtu.be/EVrdSybpnE4**. Italian: https://youtu.be/_2UzpOqblVI
 - [nRF52840 tag](#nrf52840-tag)
 - [XIAO nRF52840 Sense test tags](#xiao-nrf52840-sense-test-tags)
 - [Tag to display synchronization](#tag-to-display-synchronization)
+- [Base station (Raspberry Pi 3)](#base-station-raspberry-pi-3)
 - [Tools page (`tools/index.html`)](#tools-page-toolsindexhtml)
 - [Analysis: video (OpenCV) and IMU test bench](#analysis-video-opencv-and-imu-test-bench)
 - [Online collaboration app](#online-collaboration-app)
@@ -125,6 +126,23 @@ flowchart LR
   DSP -- "pace clock, times" --> SWI[Swimmer]
   CHG[Charging base / programmer] -- "contacts under the tag" --> TAG
 ```
+
+### Target poolside chain (decided 2026-11-12)
+
+```text
+Tag (XIAO nRF52840, under the cap)
+   |  BLE, out of the water
+   v
+Receiver (XIAO nRF52840, USB)
+   |  USB serial
+   v
+Raspberry Pi 3 (Raspberry Pi OS Lite 64-bit, headless)
+   |  HDMI, HTML page
+   v
+Portable 15.6" HDMI monitor (poolside display)
+```
+
+Tests run with two tags streaming raw data; in normal operation only events (start, turns, stop) are exchanged. The LilyGO T-RGB display remains a test device for synchronization.
 
 - **Synchronization.** After the swim the tag pushes its recorded blocks to the poolside display over BLE; the display verifies, stores and confirms them. See [Tag to display synchronization](#tag-to-display-synchronization).
 - **Tag.** Under the cap, pressed against the skull. It decides START, turns and STOP on its own using the IMU and logs raw data to flash.
@@ -473,6 +491,12 @@ sequenceDiagram
 **SD card check from the PC (2026-11-10).** The display SD card was read on a PC: **2408 blocks** from two real tags, **no gaps in the sequence numbers, no overruns**, about **1.27 million samples** decoded.
 
 **Tools page.** The *Synchronization* panel shows the state and the block map and sets name and colour; on connect it asks the tag for its real name and colour. The `.swr` reader opens formats 1, 2 and 3 and accepts **several files at once** (merged by block sequence number, duplicates dropped); it reads the format-3 `MEM` and `DUMP` over USB. Position warnings are shown only for full flash images. Test [`tools/test_swr2.mjs`](tools/test_swr2.mjs). Use Edge: on Windows Chrome keeps a stale BLE connection.
+
+## Base station (Raspberry Pi 3)
+
+The Raspberry Pi 3 receives the events from the USB receiver and serves the poolside page to the HDMI monitor. It is configured headless: cloud-init on first boot (template `user-data.esempio`, no credentials in the repository), a fallback `systemd.run=` script, network diagnostics written to `/boot/firmware/diag.txt`, and settings for the Waveshare 4" HDMI display (`hdmi_cvt` 480x800, `hdmi_drive=1`).
+
+Instructions (Italian): [`stazione/rpi/LEGGIMI.md`](stazione/rpi/LEGGIMI.md). Files: [`swim-firstrun.sh`](stazione/rpi/swim-firstrun.sh), [`user-data.esempio`](stazione/rpi/user-data.esempio).
 
 ## Tools page (`tools/index.html`)
 

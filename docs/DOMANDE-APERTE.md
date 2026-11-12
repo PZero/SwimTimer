@@ -29,7 +29,7 @@ Risolte: modulo E73 (Raytac a stock 0), IMU LSM6DSV16X, flash 16 MB, interruttor
 30. Traslatore di livello sul programmatore (SWD 3,3 V del Pi contro 1,8 V del tag al primo avvio): lo aggiungiamo (1–2 €) o ti basta il metodo con le 1 kΩ e REGOUT0 scritto subito?
 31. Ordine NextPCB v0.6 (216,39 $ per 20 pz): aspetti Viviane (sponsorizzazione) fino a mercoledì 11 novembre o ordini subito?
 32. XIAO in arrivo: scriviamo subito lo sketch Arduino di streaming BLE per la tab XIAO? Ordini le celle LP-401230 da 100 mAh?
-33. Display a bordo vasca: confermi Raspberry Pi 4 + dongle nRF52840 + monitor portatile + power bank? Faccio fare a `elettronica` la distinta con modelli e prezzi (~180–220 €)?
+33. ~~Display a bordo vasca~~: deciso il 2026-11-12, Raspberry Pi 3 + XIAO nRF52840 ricevente via USB + monitor 15,6″ HDMI.
 34. Quale test di riferimento (CSS 400+200 m o altro) per calcolare l'Effort di ogni nuotatore? Ora la scala 1–10 è provvisoria.
 35. Vasca da 50 m: il BLE non arriva al muro opposto al display. Secondo ricevitore a batteria sul muro lontano (~15–20 €) o consegna ritardata fino al ritorno?
 36. XIAO: compri una scheda di scorta (la attuale ha il regolatore 3,3 V guasto e va col diodo) e un multimetro (10–15 €, serve anche per le v0.6)?
@@ -56,8 +56,11 @@ Risolte: modulo E73 (Raytac a stock 0), IMU LSM6DSV16X, flash 16 MB, interruttor
 57. Video da Drive nell'editor: abiliti la Google Drive API nel progetto `swimtimer-pzero` (gratuita, ma il file va condiviso «chiunque abbia il link»), o lasciamo il file locale?
 58. Segnale del display: facciamo le misure a 10 cm / 1 m / 3 m (e tag ruotata) per tarare la scala in %? Se il margine a bordo vasca è scarso, valutiamo un'antenna esterna o un ricevitore diverso.
 59. ~~Verifica della SD dal PC~~: fatta il 2026-11-10 (nessun buco, nessun errore). Cancelli le cartelle della DEMO nella SD (`1000a3f2`, `20007c10`, `3000e95b`)?
-60. Display T-RGB come display «di sviluppo» per 1–3 nuotatori e Pi 4 + dongle per 10: confermi questa divisione?
+60. ~~T-RGB o Pi~~: deciso, il T-RGB resta scheda di sviluppo; la stazione è il Pi 3.
 61. **Stati della tag con l'USB:** sul caricatore deve andare in idle da sola (come la svegli: tocchi? scollegando?); al PC resta sveglia per lavorarci. E dalla pagina del PC, con la tag su USB, «spegni» deve davvero spegnerla (oggi si riavvia)? Da progettare insieme prima del codice.
 62. Ordini un **T-RGB 2,8″** nuovo (circa 45 €)? E un'antenna 2,4 GHz **U.FL/IPEX-1** dopo aver controllato lo schema?
-63. Il **Raspberry Pi 3 con monitor HDMI**: lo teniamo come idea per una stazione con corrente (più nuotatori, tabellone), da valutare con l'architettura definitiva?
+63. ~~Raspberry Pi 3~~: scelto come stazione (2026-11-12), configurato.
 64. Diario nella memoria esterna della tag (niente blocchi con il BLE collegato): accetti di riservare uno dei 512 blocchi (cambia la mappa del display)?
+65. **Crash dell'11/11:** in vasca hai riavviato la tag a mano o toccato il reset? La custodia era sigillata (pad USB all'asciutto)? Ricordi un urto forte verso il decimo minuto?
+66. **Conferma dei blocchi:** con la XIAO ricevente (senza SD) la tag riceve la conferma solo dopo che il Pi ha salvato il blocco: confermi?
+67. Password dell'utente `swim` sul Pi: la imposti tu via SSH (`sudo passwd swim`) o resta solo la chiave?

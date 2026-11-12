@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-11-12 (base station Raspberry Pi 3, final architecture, crash analysis)
+- **Base station** `stazione/rpi/` (LEGGIMI.md, `swim-firstrun.sh`, `user-data.esempio`): headless Raspberry Pi 3 (Raspberry Pi OS Lite 64-bit, trixie) with cloud-init on first boot, fallback `systemd.run=` script, network diagnostics in `/boot/firmware/diag.txt`, Waveshare 4" HDMI settings. Credentials are placeholders only.
+- **Architecture decided:** tag (XIAO nRF52840) -> receiver (XIAO, USB) -> Raspberry Pi 3 -> 15.6" HDMI monitor (HTML page). Tests with 2 tags in raw mode, events only in normal operation.
+- **Crash analysis (2026-11-11 pool incident)** in `docs/STATO.md`: reset cause not logged by 0.6.0; hypotheses are battery/3V3 contact or stack overflow in BLE callbacks; tag 0.6.2 will add prevention and report the reset reason to the receiver.
+- **Docs:** `docs/STATO.md` rewritten, decisions and open questions updated. README: target chain and base station sections. No firmware changed.
+
 ## 2026-11-12 (tag firmware 0.6.1, display without screen, enclosure)
 - **Pool incident (2026-11-11):** a tag restarted during a recording and came back in normal mode, where touches were ignored; the swim was not recorded. Analysis kept outside the repository; the fixes are in this entry.
 - **XIAO firmware 0.6.1 (test build, `-prove` for the test commands)** (`firmware/xiao-stream`, details in `LEGGIMI.md`, test log in `PROVA-0.6.1.md`): without USB the tag records or sleeps (normal mode only with USB); automatic resume after a crash or watchdog reset, at most 3 in a row (counter in RAM and flash); 8 s watchdog; fault context and persistent diary (`DIARIO`); IMU FIFO realignment with a content check (`swr_fifo.h`, simulated by `fifo_sim.py`); continuous session time (start-up 500 ms, measured with `misura_avvio.py`); USB rules (2 s absence, waits for VBUS, never System OFF with VBUS); LEDs for touches visible on battery only in the touch handling; name and colour settable only over USB; standby command `M_SONNO` (0x14) on the sync channel. The published OTA release stays 0.5.4.
