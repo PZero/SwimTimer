@@ -63,6 +63,7 @@ app/display/
 
 # Video v3: miniature con fotogrammi reali dell autore (dati personali), generate in locale
 media/video/miniatura_test1_*.png
+media/video/miniatura_houston_*.png
 
 __pycache__/
 

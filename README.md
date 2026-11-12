@@ -8,7 +8,15 @@ Updated on **2026-11-12**. Single public repository `PZero/SwimTimer`: XIAO test
 
 > **Language.** This README is in English. Internal working documents in [`docs/`](docs/) (state, decisions, requirements, design) are written in Italian.
 
-### The first pool test (2.5 minutes, latest)
+### Houston, we have a problem (3 minutes, latest)
+
+[![SwimTimer: Houston, we have a problem, video on YouTube](https://img.youtube.com/vi/mj6OTWkjgwk/maxresdefault.jpg)](https://youtu.be/mj6OTWkjgwk)
+
+Watch the English version on YouTube: **https://youtu.be/mj6OTWkjgwk**. Italian version: https://youtu.be/85RNvPnFV1E.
+
+The tag stopped in the pool on 11 November 2026: a "black box" diagnosis after every connection showed that the Bluetooth task's stack was too small. The video shows the three changes (black box, bigger stack, poolside station that confirms every block only after saving and reading it back: almost 1,000 blocks on the bench, zero lost) and the stroke-rhythm idea for timing the finish, a promising lead still being checked. Animations drawn in code with made-up data. Sources in [`media/video/`](media/video/) (`genera_video_v4.py`, `musica_v4.py`, `STORYBOARD_v4.md`); the video files are not in the repository.
+
+### The first pool test (2.5 minutes)
 
 [![SwimTimer: the first pool test, video on YouTube](https://img.youtube.com/vi/bs7WDUuwb-A/maxresdefault.jpg)](https://youtu.be/bs7WDUuwb-A)
 
@@ -512,7 +520,7 @@ The receiver replaces the display as the BLE central: a second XIAO nRF52840 Sen
 - **Write, fsync, read back, compare, then OK** to the receiver.
 - Log file and live KB/s. Data folders are health data and stay out of git.
 
-**Tag firmware 0.6.3** ([`firmware/xiao-stream`](firmware/xiao-stream/)): 238-byte fragments (READY v2), notification queue, 2M PHY and data length extension, a DIAGNOSIS message after every connection, flash reads aligned to 4 bytes, BLE task stack raised to 8 KB (`-DCFG_BLE_TASK_STACKSIZE=(256*8)`, also required for OTA builds).
+**Tag firmware 0.6.3** ([`firmware/xiao-stream`](firmware/xiao-stream/)): 238-byte fragments (READY v2), notification queue, 2M PHY and data length extension, a DIAGNOSIS message after every connection, flash reads aligned to 4 bytes, BLE task stack raised to 8 KB (`-DCFG_BLE_TASK_STACKSIZE=(256*8)`, also required for OTA builds; 10 KB, `(256*10)`, from tag 0.6.4).
 
 **Bench results (2026-11-12, tag 0.6.3, receiver 0.1.6).** Tags next to the receiver; logs and data are not in the repository.
 

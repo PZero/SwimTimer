@@ -1,6 +1,6 @@
 # Video di presentazione di SwimTimer
 
-**Pubblicati su YouTube** — primo test in vasca (v3): italiano https://youtu.be/J01CR2nldp8 · inglese https://youtu.be/bs7WDUuwb-A. Aggiornamento novembre 2026 (v2): italiano https://youtu.be/_Htx2DawnF8 · inglese https://youtu.be/JLs5JJG4JG8. Prima presentazione (v0.5): italiano https://youtu.be/_2UzpOqblVI · inglese https://youtu.be/EVrdSybpnE4.
+**Pubblicati su YouTube** — «Houston, abbiamo un problema» (v4): italiano https://youtu.be/85RNvPnFV1E · inglese https://youtu.be/mj6OTWkjgwk. Primo test in vasca (v3): italiano https://youtu.be/J01CR2nldp8 · inglese https://youtu.be/bs7WDUuwb-A. Aggiornamento novembre 2026 (v2): italiano https://youtu.be/_Htx2DawnF8 · inglese https://youtu.be/JLs5JJG4JG8. Prima presentazione (v0.5): italiano https://youtu.be/_2UzpOqblVI · inglese https://youtu.be/EVrdSybpnE4.
 
 Video da 120 s (1920x1080, 30 fps, H.264 + AAC 192 kbps 48 kHz) con musica originale.
 
@@ -206,3 +206,76 @@ Site: https://swimtimer-pzero.web.app · Contact: SmartSwimTimer@gmail.com · Co
 Original music generated for this video. Images and data come from the author's real session.
 
 **Tags:** SwimTimer, swimming, lap timer, swimming pool, IMU, OpenCV, computer vision, neural network, TinyML, nRF52840, XIAO, Insta360, wearable, open source project
+
+---
+
+# Video «Houston, abbiamo un problema» (v4, novembre 2026)
+
+**Pubblicato su YouTube:** italiano https://youtu.be/85RNvPnFV1E · inglese https://youtu.be/mj6OTWkjgwk.
+
+180 s, 1920x1080, 30 fps, H.264 + AAC 192 kbps 48 kHz, italiano e inglese. Solo scritte a schermo, musica originale `musica_v4.py`.
+Sequenza approvata: `STORYBOARD_v4.md`. Animazioni disegnate in codice con **dati inventati**.
+Apertura con la clip «My first board – Marte/Houston» dell'autore (IT/EN, 27 s, intera, in cornice e con il suo audio; musica a −18 dB durante la clip):
+la clip non sta nel repository e si passa con `--clip` (default in `~/Downloads`).
+
+## Come si rigenera
+```
+python media/video/genera_video_v4.py                          # musica + miniatura + video IT (SwimTimer_houston_it.mp4)
+python media/video/genera_video_v4.py --lingua en --no-musica  # versione EN
+python media/video/genera_video_v4.py --anteprima 20 70 --dir CARTELLA
+python media/video/genera_video_v4.py --prova-audio 40         # solo il mix audio dei primi 40 s
+```
+
+## YouTube - italiano
+**Titolo:** SwimTimer: Houston, abbiamo un problema - la tag si pianta, la scatola nera e il ritmo delle bracciate
+
+**Descrizione:**
+Se nei test ti pianti, è perché sei arrivato a un livello di dettaglio nuovo.
+L'11 novembre, in vasca, la tag di SwimTimer si è fermata verso il decimo minuto. Le abbiamo dato una "scatola nera" e ha confessato:
+la memoria riservata al Bluetooth era troppo piccola.
+In questo video:
+- la scatola nera che racconta lo stato della tag a ogni collegamento;
+- più memoria per il Bluetooth;
+- la stazione a bordo vasca che dà una ricevuta per ogni pezzo salvato: a banco quasi 1000 blocchi, zero persi;
+- il ritmo delle bracciate che si proietta in avanti per trovare l'istante del tocco: una pista promettente, ancora in verifica;
+- il prossimo livello: 1 ora a banco con 2 tag, poi di nuovo in vasca.
+Sito: https://swimtimer-pzero.web.app · Contatti: SmartSwimTimer@gmail.com · Codice: GitHub PZero/SwimTimer
+Musica originale generata per questo video. I dati delle animazioni sono inventati.
+
+**Capitoli:**
+0:00 Apertura
+0:06 La prima scheda
+0:33 Houston, abbiamo un problema
+0:55 La scatola nera
+1:18 Tre cambi
+1:42 Anche il ritmo
+2:32 Il prossimo livello
+
+**Tag:** SwimTimer, nuoto, cronometro, piscina, Bluetooth, nRF52840, XIAO, Raspberry Pi, debug, wearable, progetto open source
+
+## YouTube - English
+**Title:** SwimTimer: Houston, we have a problem - the tag crashes, the black box and the stroke rhythm
+
+**Description:**
+If your tests crash, it's because you've reached a new level of detail.
+On November 11th, in the pool, the SwimTimer tag stopped around minute ten. We gave it a "black box" and it confessed:
+the memory set aside for Bluetooth was too small.
+In this video:
+- the black box that reports the tag's state every time it connects;
+- more memory for Bluetooth;
+- the poolside station that issues a receipt for every saved piece: almost 1,000 blocks on the bench, zero lost;
+- the stroke rhythm projected forward to find the moment of the touch: a promising lead, still being checked;
+- the next level: 1 hour on the bench with 2 tags, then back in the pool.
+Site: https://swimtimer-pzero.web.app · Contact: SmartSwimTimer@gmail.com · Code: GitHub PZero/SwimTimer
+Original music generated for this video. Animation data is made up.
+
+**Chapters:**
+0:00 Opening
+0:06 The first board
+0:33 Houston, we have a problem
+0:55 The black box
+1:18 Three changes
+1:42 Rhythm too
+2:32 The next level
+
+**Tags:** SwimTimer, swimming, lap timer, swimming pool, Bluetooth, nRF52840, XIAO, Raspberry Pi, debugging, wearable, open source project

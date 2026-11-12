@@ -1,5 +1,8 @@
 # Changelog
 
+## 2026-11-12 (video «Houston, we have a problem»)
+- **Video v4 (3 minutes, on-screen text only, original generated music):** YouTube IT https://youtu.be/85RNvPnFV1E, EN https://youtu.be/mj6OTWkjgwk; first in the landing page and at the top of the README. The 11/11 crash, the black box, the bigger BLE stack, the poolside station with a receipt per block, the stroke-rhythm prediction (in verification). Opens with the author's "My first board – Mars/Houston" clip (kept outside the repository). Animations with made-up data. Sources: `media/video/genera_video_v4.py`, `musica_v4.py`, `testi_v4_en.py`, `STORYBOARD_v4.md`.
+
 ## 2026-11-12 (USB receiver 0.1.6, host, tag 0.6.3, bench results)
 - **Receiver firmware 0.1.6** (`firmware/ricevitore`): XIAO nRF52840 Sense on USB, central for 2 tags, encrypted sync protocol, USB frames with CRC (`PROTOCOLLO-USB.md`), confirmation to the tag only after the host's OK.
 - **Host** `stazione/ricevitore_host.py` (Windows and Raspberry Pi): saves `tag.swr` + `tag.idx` per tag, writes, fsyncs and reads back before the OK, log and KB/s.
