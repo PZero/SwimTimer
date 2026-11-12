@@ -34,7 +34,7 @@ Porte sul PC: ricevitore COM21; tag 4a510689 e 447b0247 (COM cambiano). Con l'US
 - Log e dati delle prove solo nello scratchpad della sessione (dati di salute: mai nel repo).
 
 ## Prossimi passi (un obiettivo per sessione)
-1. **Tag 0.6.4:** stack BLE a 10 KB; ridurre i ricollegamenti in registrazione (annunciare solo con ≥ N blocchi o restare collegata); capire i 287 ms vs 150 ms con 1 tag (intervallo di connessione 7,5→15 ms? eventi radio del ricevitore); DIAGNOSI non troncata; HCI 0x3E. Poi prova 60 min a banco con 2 tag.
+1. **Tag 0.6.4:** stack BLE a 10 KB; in registrazione **resta collegata** al ricevitore e invia ogni blocco appena completo (decisione dell'utente; verificare consumo e ripresa dopo la perdita del collegamento); capire i 287 ms vs 150 ms con 1 tag (intervallo di connessione 7,5→15 ms? eventi radio del ricevitore); DIAGNOSI non troncata; HCI 0x3E. Poi prova 60 min a banco con 2 tag.
 2. **Stazione sul Pi:** `ricevitore_host.py` come servizio + pagina HTML (RSSI, blocchi, KB/s, collegamenti, log); Chromium a schermo intero.
 3. Misura a 1/3/5 m e sotto la cuffia; poi sessione in vasca.
 
