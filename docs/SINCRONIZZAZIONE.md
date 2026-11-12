@@ -138,17 +138,19 @@ Tavolozza (la stessa di `tools/display.html`): 0 blu `#3b82f6`, 1 arancione `#f9
 
 | tipo | nome | verso | contenuto dopo il byte di tipo |
 |---|---|---|---|
-| 0x10 | PRONTO | D→T | versione u8 |
+| 0x10 | PRONTO | D→T | versione u8: **1** = frammenti da 128 B (display-sync, ricevitore <= 0.1.5); **2** = frammenti da 238 B e DIAGNOSI (ricevitore 0.1.6, tag 0.6.2+). Una tag 0.6.1 accetta solo 1 |
 | 0x11 | CONFERMA | D→T | seq u32, crc32 u32 |
 | 0x12 | RIPETI | D→T | seq u32 |
 | 0x13 | STOP | D→T | motivo u8 (1 SD piena, 2 errore SD, 3 troppi errori) |
 | 0x14 | SONNO | D→T | nessun argomento (1 byte). Accettato solo dopo PRONTO. In registrazione la tag chiude il segmento (motivo 6, attende lo scarico in corso, max 60 s) e dorme; in modalità normale va in sospensione (con l'USB riavvia, NOTA 11). Diario/log tag: `sync: SONNO ricevuto`. Sostituisce la scrittura SLEEP sulla 0004 aperta |
 | 0x01 | MAPPA | T→D | millis tag u32, blocco aperto u16, 128 B (512 × 2 bit, blocco *i* nei bit 2·(i%4) del byte i/4: 0 libero, 1 aperto, 2 da validare, 3 validato) |
-| 0x02 | BLOCCO | T→D | seq u32, blocco fisico u16, crc32 u32, millis del primo campione u32 |
-| 0x03 | FRAMMENTO | T→D | seq u32, indice u8 (0..31), 128 B (frammento *k* = byte 128·k … del blocco da 4096 B) |
+| 0x02 | BLOCCO | T→D | seq u32, blocco fisico u16, crc32 u32, millis del primo campione u32; **con PRONTO versione 2 un byte in più** (16 B): dimensione dei frammenti di questo blocco (238, oppure 128 se l'MTU negoziato è < 247) |
+| 0x03 | FRAMMENTO | T→D | seq u32, indice u8, dati: **versione 1** indici 0..31, 128 B (frammento *k* = byte 128·k …); **versione 2** indici 0..17, 238 B (byte 238·k …), l'ultimo da 50 B (4096 = 17·238 + 50). 6 + 238 = 244 = MTU 247 − 3: è il massimo che sta in una notifica (non 240) |
 | 0x04 | CONFERMATO | T→D | seq u32 |
 | 0x05 | FINE | T→D | ultimo seq u32 |
 | 0x06 | ERRORE | T→D | codice u8 (1 CRC della conferma diverso, 2 seq sconosciuto, 3 flash) |
+| 0x07 | DIAGNOSI | T→D | **solo con PRONTO versione 2**, una volta per collegamento, subito dopo MAPPA (27 B + testo, max 244): versione diagnosi u8 (1), causa dell'ultimo reset u8 (0 accensione, 1 tap, 3 watchdog, 5 software, 6 lockup, 7 USB, 8 pin), guasto u8 (0 nessuno, 1 HardFault, 2 watchdog, 3 altro), RESETREAS grezzo u32, PC u32, LR u32, CFSR u32 (PC/LR/CFSR = 0 se il contesto non era valido), stack libero minimo in byte di loop/Callback/BLE u16 ×3 (0xFFFF = non misurato), numero di righe u8, poi le ultime righe del diario in flash (ASCII, separate da `
+`, dalla più vecchia; gli eventi ancora in RAM non ci sono) |
 
 Dopo PRONTO la tag manda MAPPA, poi BLOCCO + 32 FRAMMENTI per il blocco non confermato più vecchio, e al più un secondo blocco prima della prima CONFERMA (finestra 2).
 

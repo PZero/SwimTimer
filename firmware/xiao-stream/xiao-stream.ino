@@ -18,7 +18,7 @@
 #ifndef PROVE_GUASTI
 #define PROVE_GUASTI 0          // predefinito 0 (rilascio). Per la prova a secco: compilare con -DPROVE_GUASTI=1 (versione "0.6.1-prove")
 #endif
-#define VER_NUM "0.6.1"
+#define VER_NUM "0.6.3"
 #if PROVE_GUASTI
 #define VER_SUF "-prove"        // la build di prova si riconosce da VERSIONE, dal diario (AVV ... PROVE) e dalla pagina di segmento ("0.6.1p")
 #define VER_SEG "p"
@@ -979,6 +979,7 @@ static volatile uint32_t otaAccettati = 0, otaCrc = 0xFFFFFFFFu;
 static uint32_t otaTabella[256];
 static char otaVer[16];
 static volatile char otaMsgTipo = 0;
+static volatile bool otaMsgOffset = false;   // 0.6.2: il testo "ota offset,N" lo compone il loop (la callback non usa snprintf)
 static char otaMsgTesto[40];
 static volatile uint32_t otaInstallaAlle = 0;   // millis a cui avviare l'installazione (0 = nessuna)
 
@@ -993,11 +994,10 @@ static void inOta(uint16_t h, BLECharacteristic *, uint8_t *d, uint16_t len) {
   if (!otaAttivo || otaInstallaAlle || len < 5) return;
   uint32_t off; memcpy(&off, d, 4);
   uint16_t n = len - 4;
-  char msg[40];
-  if (off != otaAccettati) { snprintf(msg, sizeof(msg), "ota offset,%lu", (unsigned long)otaAccettati); otaMessaggio('X', msg); return; }
+  if (off != otaAccettati) { if (!otaMsgTipo) { otaMsgOffset = true; otaMessaggio('X', ""); } return; }
   if ((uint64_t)otaAccettati + n > otaTotale) { otaMessaggio('X', "ota dati oltre la dimensione"); return; }
   for (int i = 0; i < 100 && OTA_ANELLO - (otaTesta - otaCoda) < n; i++) delay(5);   // il loop svuota l'anello in flash
-  if (OTA_ANELLO - (otaTesta - otaCoda) < n) { snprintf(msg, sizeof(msg), "ota offset,%lu", (unsigned long)otaAccettati); otaMessaggio('X', msg); return; }
+  if (OTA_ANELLO - (otaTesta - otaCoda) < n) { if (!otaMsgTipo) { otaMsgOffset = true; otaMessaggio('X', ""); } return; }
   uint32_t t = otaTesta;
   uint32_t c = otaCrc;
   for (uint16_t i = 0; i < n; i++) {
@@ -1326,7 +1326,11 @@ static void servizioOta() {
   if (!otaAttivo) return;
   if (connHdl == BLE_CONN_HANDLE_INVALID && !otaInstallaAlle) { logRiga("ota: collegamento perso"); otaAnnulla(); return; }
   if (!otaSvuota()) { logRiga("ota: errore scrittura flash"); otaAnnulla(); rispondi('X', "ota scrittura fallita"); return; }
-  if (otaMsgTipo) { char t = otaMsgTipo, m[40]; strlcpy(m, otaMsgTesto, sizeof(m)); otaMsgTipo = 0; rispondi(t, m); }
+  if (otaMsgTipo) {
+    char t = otaMsgTipo, m[40]; strlcpy(m, otaMsgTesto, sizeof(m));
+    if (otaMsgOffset) { otaMsgOffset = false; snprintf(m, sizeof(m), "ota offset,%lu", (unsigned long)otaAccettati); }
+    otaMsgTipo = 0; rispondi(t, m);
+  }
   uint32_t pct = otaAccettati * 100UL / otaTotale;
   if (!otaInstallaAlle && pct >= otaUltimoPct + 25) { otaUltimoPct = pct - pct % 25; logRiga("ota: ricevuto %lu%%", (unsigned long)pct); }
   if (otaInstallaAlle && (int32_t)(millis() - otaInstallaAlle) >= 0) otaInstalla();
@@ -1337,17 +1341,52 @@ static void inCccdRisposte(uint16_t h, BLECharacteristic *, uint16_t valore) {
   else if (h == connHdl) risposteAttive = false;
 }
 
+// 0.6.2: le callback BLE (task "Callback", stack 3 KB fisso nel core) non usano snprintf/vsnprintf ne' buffer: copiano l'evento in una coda
+// e basta; log, diario e richieste di PHY/DLE/intervallo le fa connEventiServi() dal loop (chiamata da syncServi()).
+struct EvConn { uint16_t h; uint8_t su, motivo; };
+static EvConn evConn[8];
+static volatile uint8_t evConnT = 0, evConnC = 0;
+static volatile uint8_t evConnPersi = 0;
+static void evConnAccoda(uint16_t h, uint8_t su, uint8_t motivo) {
+  if ((uint8_t)(evConnT - evConnC) >= 8) { evConnPersi++; return; }
+  evConn[evConnT & 7] = {h, su, motivo};
+  evConnT = evConnT + 1;
+}
 static void inConnessione(uint16_t h) {
   if (connHdl == BLE_CONN_HANDLE_INVALID) connHdl = h;   // provvisorio: la pagina vera e' chi scrive i comandi o abilita 0005
   if (!inVasca) { ledScrivi(LED_BLUE, HIGH); ledScrivi(LED_GREEN, LOW); }   // verde fisso
-  logRiga("connesso %u", h);
-  diario(DIA_CONN, 1, h);
+  evConnAccoda(h, 1, 0);
 }
 static void inDisconnessione(uint16_t h, uint8_t motivo) {
   if (h == connHdl) { connHdl = BLE_CONN_HANDLE_INVALID; risposteAttive = false; }
   if (!inVasca) ledScrivi(LED_GREEN, HIGH);
-  logRiga("disconnesso %u (0x%02X)", h, motivo);
-  diario(DIA_CONN, 0, h, motivo);
+  evConnAccoda(h, 0, motivo);
+}
+// Dal loop: log + diario e, a ogni nuovo collegamento, richiesta di PHY 2M, DLE 251 e intervallo 7,5-15 ms (0.6.2). Il central (ricevitore,
+// display) lo fa gia' da solo: se una procedura del link e' in corso il SoftDevice risponde BUSY e si ignora. L'intervallo si chiede nella
+// forma 7,5-15 ms (non fisso a 7,5): con due tag il ricevitore sceglie 11,25-15 ms e non deve litigare con la tag.
+static void connEventiServi() {
+  while (evConnC != evConnT) {
+    EvConn e = evConn[evConnC & 7];
+    evConnC = evConnC + 1;
+    if (e.su) {
+      logRiga("connesso %u", e.h);
+      diario(DIA_CONN, 1, e.h);
+      BLEConnection *c = Bluefruit.Connection(e.h);
+      if (c && c->connected()) {
+        c->requestPHY(BLE_GAP_PHY_2MBPS);
+        c->requestDataLengthUpdate();
+        if (c->getConnectionInterval() > 12) {
+          ble_gap_conn_params_t cp = {6, 12, 0, 200};
+          sd_ble_gap_conn_param_update(e.h, &cp);
+        }
+      }
+    } else {
+      logRiga("disconnesso %u (0x%02X)", e.h, e.motivo);
+      diario(DIA_CONN, 0, e.h, e.motivo);
+    }
+  }
+  if (evConnPersi) { uint8_t p = evConnPersi; evConnPersi = 0; diario(DIA_NOTA, 12, p); }   // eventi di collegamento persi (coda piena)
 }
 
 // Notifica a tutti i collegamenti che hanno abilitato la caratteristica (pagina web e, se serve, display)
@@ -1417,6 +1456,37 @@ static uint32_t txSeq = 0, txCrc = 0, txMillis = 0, chiusureViste = 0;
 static int16_t txBlk = 0;
 static uint8_t txFase = 0;                      // 0 = intestazione BLOCCO, 1..32 = frammento fase-1
 static uint16_t statConfermati = 0;             // blocchi confermati dall'avvio
+static uint8_t syncVer = 1;                     // versione dichiarata dal central nel PRONTO (1 = frammenti da 128, 2 = da 238 con MTU 247)
+static uint8_t txFrag = SYNC_FRAMMENTO, txNFrag = SYNC_N_FRAMMENTI;   // frammento e numero di frammenti del blocco in trasmissione
+static bool diagDaInviare = false, diagPronta = false;
+static uint8_t diagTent = 0;   // tentativi falliti di invio della DIAGNOSI
+static uint8_t diagBuf[244];
+static uint16_t diagLen = 0;
+
+// 0.6.2: stack libero minimo (byte) dei task, da FreeRTOS (uxTaskGetSystemState): loop (4 KB), Callback (3 KB), BLE (5 KB). Le dimensioni
+// sono costanti del core (main.cpp, bluefruit.cpp) e non si cambiano dallo sketch. Sotto 512 B liberi si scrive una NOTA 13 nel diario
+// (task, byte liberi): e' il segnale che lo stack e' vicino al limite, prima di un eventuale HardFault.
+static uint16_t stkLibero[3] = {0xFFFF, 0xFFFF, 0xFFFF};
+static void stackMonitor() {
+  static uint32_t t = 0;
+  if (millis() - t < 5000) return;
+  t = millis();
+  TaskStatus_t st[12];
+  UBaseType_t n = uxTaskGetSystemState(st, 12, NULL);
+  static bool zeroNotato = false;
+  if (n == 0 && !zeroNotato) { zeroNotato = true; diario(DIA_NOTA, 18, 0); }   // FreeRTOS non restituisce task: monitor cieco, lo si dice una volta
+  for (UBaseType_t i = 0; i < n; i++) {
+    int k = !strcmp(st[i].pcTaskName, "loop") ? 0 : !strncmp(st[i].pcTaskName, "Callbac", 7) ? 1 : !strcmp(st[i].pcTaskName, "BLE") ? 2 : -1;
+    if (k < 0) continue;
+    uint32_t b = (uint32_t)st[i].usStackHighWaterMark * 4;
+    uint16_t v = b > 0xFFFE ? 0xFFFE : (uint16_t)b;
+    if (v < stkLibero[k]) {
+      bool nuovo = v < 512 && stkLibero[k] - v >= 64;
+      stkLibero[k] = v;
+      if (nuovo) diario(DIA_NOTA, 13, k, v);
+    }
+  }
+}
 
 struct CmdSync { uint16_t conn; uint8_t tipo, motivo; uint32_t seq, crc; };
 static CmdSync cmdSy[16];
@@ -1480,6 +1550,10 @@ static void annuncioAggiorna(bool forza) {
   Bluefruit.Advertising.clearData();
   Bluefruit.Advertising.addFlags(BLE_GAP_ADV_FLAGS_LE_ONLY_GENERAL_DISC_MODE);
   if (!Bluefruit.Advertising.addManufacturerData(md, SYNC_LEN_ANNUNCIO)) logRiga("annuncio: dati produttore KO");
+  {   // 0.6.2: 100 ms se ci sono blocchi in attesa (il display li vede prima), 200 ms altrimenti; il cambio vale al riavvio dell'annuncio
+    uint16_t iv = (anelloOk && anello.nDaValidare > 0) ? 160 : 320;   // unita' di 0,625 ms
+    Bluefruit.Advertising.setInterval(iv, iv);
+  }
   if (advAbilitato && Bluefruit.Periph.connected() < 2) Bluefruit.Advertising.start(0);
 }
 
@@ -1516,7 +1590,7 @@ static void inControllo(uint16_t h, BLECharacteristic *, uint8_t *d, uint16_t le
 }
 
 static void syncReset() {
-  syncAttivo = false; syncErrore = false; mappaDaInviare = false; fineInviata = false;
+  syncAttivo = false; syncErrore = false; mappaDaInviare = false; fineInviata = false; diagDaInviare = false; diagPronta = false; diagTent = 0; syncVer = 1;
   syncConn = BLE_CONN_HANDLE_INVALID;
   finN = 0; ripN = 0; txAttiva = false; uscT = uscC = 0;
 }
@@ -1571,12 +1645,13 @@ static void syncElabora() {
     CmdSync c = cmdSy[cmdSyC & 15];
     cmdSyC = cmdSyC + 1;
     if (c.tipo == M_PRONTO) {
-      if (!anelloOk || c.motivo != SYNC_VERSIONE) { logRiga("sync: PRONTO ignorato"); continue; }
+      if (!anelloOk || (c.motivo != SYNC_VERSIONE && c.motivo != SYNC_VERSIONE_PRONTO2)) { logRiga("sync: PRONTO ignorato"); continue; }
       if (syncAttivo && c.conn != syncConn && connessioneViva(syncConn)) continue;   // un solo display alla volta
       syncReset();
       syncConn = c.conn; syncAttivo = true; mappaDaInviare = true;
+      syncVer = c.motivo; diagDaInviare = (c.motivo >= SYNC_VERSIONE_PRONTO2);   // la DIAGNOSI solo ai central che la conoscono
       chiusureViste = anello.chiusure;
-      logRiga("sync: pronto (conn %u)", c.conn);
+      logRiga("sync: pronto (conn %u) v%u", c.conn, c.motivo);
       diario(DIA_SYNC, 1, c.conn);
       continue;
     }
@@ -1624,43 +1699,95 @@ static bool syncAvviaTx() {
   uint8_t t4[4];
   if (!anello.crcBlocco(b, crc) || !anello.leggi(b, 4, t4, 4)) { uscErrore(E_FLASH); syncErrore = true; return false; }
   txSeq = s; txBlk = b; txCrc = crc; txMillis = swrLeggi32(t4); txFase = 0; txAttiva = true;
+  BLEConnection *cn = Bluefruit.Connection(syncConn);
+  txFrag = (syncVer >= SYNC_VERSIONE_PRONTO2 && cn && cn->getMtu() >= 247) ? SYNC_FRAMMENTO2 : SYNC_FRAMMENTO;   // ricaduta a 128 se un lato non lo supporta
+  txNFrag = (SYNC_BLOCCO_BYTE + txFrag - 1) / txFrag;
   return true;
 }
 
-// Un messaggio del blocco in corso (BLOCCO, poi 32 FRAMMENTI). false = coda radio piena (si riprova) o errore
+// Un messaggio del blocco in corso (BLOCCO, poi 32 frammenti da 128 o 18 da 238). false = coda radio piena (si riprova) o errore
 static bool syncPasso() {
-  uint8_t m[SYNC_FRAMMENTO + 6];
+  uint8_t m[6 + SYNC_FRAMMENTO2];
   if (txFase == 0) {
-    uint16_t n = syncBlocco(m, txSeq, txBlk, txCrc, txMillis);
+    uint16_t n = (syncVer >= SYNC_VERSIONE_PRONTO2) ? syncBlocco2(m, txSeq, txBlk, txCrc, txMillis, txFrag) : syncBlocco(m, txSeq, txBlk, txCrc, txMillis);
     if (!syncInvia(m, n)) return false;
     txFase = 1;
     return true;
   }
   uint8_t idx = txFase - 1;
+  uint16_t off = (uint16_t)idx * txFrag;
+  uint16_t len = SYNC_BLOCCO_BYTE - off < txFrag ? SYNC_BLOCCO_BYTE - off : txFrag;
   syncFrammentoIntest(m, txSeq, idx);
-  if (!anello.leggi(txBlk, idx * SYNC_FRAMMENTO, m + 6, SYNC_FRAMMENTO)) { uscErrore(E_FLASH); syncErrore = true; txAttiva = false; return false; }
-  if (idx == 1) memset(m + 6 + (SWR_OFF_CONFERMA - SYNC_FRAMMENTO), 0xFF, SWR_LEN_CONFERMA);   // CRC32 con la conferma a 0xFF (byte 252..255 = frammento 1)
-  if (!syncInvia(m, 6 + SYNC_FRAMMENTO)) return false;
-  if (++txFase > SYNC_N_FRAMMENTI) txAttiva = false;
+  if (!anello.leggi(txBlk, off, m + 6, len)) { uscErrore(E_FLASH); syncErrore = true; txAttiva = false; return false; }
+  for (uint16_t q = SWR_OFF_CONFERMA; q < SWR_OFF_CONFERMA + SWR_LEN_CONFERMA; q++)   // CRC32 con la conferma a 0xFF (byte 252..255 del blocco)
+    if (q >= off && q < off + len) m[6 + q - off] = 0xFF;
+  if (!syncInvia(m, 6 + len)) return false;
+  if (++txFase > txNFrag) txAttiva = false;
   return true;
 }
 
-// Chiamata a ogni giro del loop: non blocca mai (al massimo ~10 messaggi, poi torna a registrare)
+// DIAGNOSI: motivo dell'ultimo reset, contesto del guasto, stack libero e ultime righe del diario in flash (gia' scritte: nessuna scrittura qui)
+static void diagCostruisci() {
+  static char testo[244 - SYNC_DIAG_FISSI];
+  uint32_t n = diarioRecord(), da = n > 8 ? n - 8 : 0;
+  RecDiario r; char l[64];
+  uint16_t tot = 0; uint8_t nr = 0;
+  uint32_t i0 = n;                                         // dal piu' recente al piu' vecchio finche' le righe entrano
+  while (i0 > da) {
+    if (!diarioLeggi(i0 - 1, &r)) break;
+    diarioLinea(r, l, sizeof(l));
+    uint16_t k = strlen(l) + 1;
+    if (tot + k > sizeof(testo)) break;
+    tot += k; i0--; nr++;
+  }
+  uint16_t pos = 0;
+  for (uint32_t i = i0; i < n; i++) {
+    if (!diarioLeggi(i, &r)) break;
+    diarioLinea(r, l, sizeof(l));
+    uint16_t k = strlen(l);
+    if (pos + k + 1 > sizeof(testo)) break;
+    memcpy(testo + pos, l, k); pos += k; testo[pos++] = '\n';
+  }
+  diagLen = syncDiagnosi(diagBuf, causaReset, bootGuasto, bootRr, bootCtxValido ? bootCtx.pc : 0, bootCtxValido ? bootCtx.lr : 0,
+                         bootCtxValido ? bootCtx.cfsr : 0, stkLibero[0], stkLibero[1], stkLibero[2], nr, testo, pos);
+  diagPronta = true;
+}
+
+// Chiamata a ogni giro del loop: non blocca mai (si ferma quando la coda radio e' piena o dopo 40 messaggi, poi torna a registrare)
 static void syncServi() {
   if (!bleOk) return;
+  connEventiServi();
+  stackMonitor();
   syncElabora();
   if (!syncAttivo) return;
   BLEConnection *c = Bluefruit.Connection(syncConn);
   if (!c || !c->connected()) { logRiga("sync: collegamento perso"); diario(DIA_SYNC, 3, syncConn); syncReset(); return; }
   if (!carSyncDati.notifyEnabled(syncConn) || c->getMtu() < 138) return;   // MAPPA = 135 byte + 3 di intestazione ATT
   if (anello.chiusure != chiusureViste) { chiusureViste = anello.chiusure; fineInviata = false; }
-  for (uint8_t budget = 10; budget; budget--) {
+  for (uint8_t budget = 40; budget; budget--) {   // 0.6.2: si invia finche' la coda radio accetta (hvx -> RESOURCES), con un tetto di sicurezza
     if (mappaDaInviare) {
       uint8_t m[135], mp[128];
       anello.mappa(mp);
       syncMappa(m, millis(), anello.aperto >= 0 ? (uint16_t)anello.aperto : 0xFFFF, mp);
       if (!syncInvia(m, 135)) return;
       mappaDaInviare = false;
+      continue;
+    }
+    if (diagDaInviare) {
+      if (!diagPronta) diagCostruisci();
+      if (c->getMtu() < diagLen + 3) {   // 0.6.2: la DIAGNOSI non entra nell'MTU del collegamento: si rinuncia, i blocchi proseguono
+        diagDaInviare = false;
+        diario(DIA_NOTA, 14, c->getMtu(), diagLen);
+        logRiga("sync: diagnosi non inviata, MTU %u < %u", c->getMtu(), diagLen + 3);
+        continue;
+      }
+      if (!syncInvia(diagBuf, diagLen)) {
+        // coda piena: normale, si riprova al giro dopo; ma un guasto vero non deve bloccare i blocchi (3 giri falliti, poi si rinuncia)
+        if (++diagTent >= 3) { diagDaInviare = false; diario(DIA_NOTA, 15, diagTent); logRiga("sync: diagnosi rinunciata dopo %u tentativi", diagTent); continue; }
+        return;
+      }
+      diagDaInviare = false;
+      logRiga("sync: diagnosi inviata (%u B)", diagLen);
       continue;
     }
     if (uscC != uscT) {
@@ -1734,14 +1861,21 @@ static void sonnoAnnuncia(bool piena) {
   }
 }
 
+#define HVN_CODA 8   // 0.6.2: 8 notifiche in coda per collegamento (prima 4). Se Bluefruit.begin() fallisse per RAM del SoftDevice: log 'BLE begin KO', tornare a 6 o 4
 // Avvio del BLE (modalita' normale e vasca): 2 collegamenti periferici (display + pagina web), MTU 247, servizi
 static void bleIniz(bool vasca) {
   tagId = NRF_FICR->DEVICEID[0];
-  Bluefruit.configPrphConn(247, 6, 4, 1);   // MTU 247, evento 7,5 ms, 4 notifiche in coda per collegamento
+  Bluefruit.configPrphConn(247, 6, HVN_CODA, 1);   // MTU 247, evento 7,5 ms (6 x 1,25 ms: massimo utile con intervallo 7,5 ms), HVN_CODA notifiche in coda per collegamento
   Bluefruit.configAttrTableSize(0x1400);   // 5 KB: il predefinito del nRF52840 e' 4 KB (0x1000), con 3 KB i servizi non entravano tutti
   Bluefruit.autoConnLed(false);             // mai il lampeggio automatico del BLE: consuma e con il BLE sempre acceso non dice niente
   bleOk = Bluefruit.begin(2, 0);
-  if (!bleOk) { logRiga("BLE begin KO (RAM del SoftDevice?)"); return; }
+  if (!bleOk) {   // ripiego unico (niente loop di riavvii): coda ridotta a 4
+    logRiga("BLE begin KO con coda %u (RAM del SoftDevice?), riprovo con 4", HVN_CODA);
+    diario(DIA_NOTA, 16, HVN_CODA);
+    Bluefruit.configPrphConn(247, 6, 4, 1);
+    bleOk = Bluefruit.begin(2, 0);
+    if (!bleOk) { logRiga("BLE begin KO anche con coda 4"); diario(DIA_NOTA, 16, 4); return; }
+  }
   vcalCarica();
   nomeCarica();
   Bluefruit.setTxPower(4);
@@ -1785,15 +1919,15 @@ static void bleIniz(bool vasca) {
   carControllo.setPermission(SECMODE_NO_ACCESS, SECMODE_ENC_NO_MITM);   // solo collegamento cifrato (bonding Just Works): la CONFERMA autorizza la riscrittura
   carControllo.setMaxLen(16);
   carControllo.setWriteCallback(inControllo);
-  carControllo.begin();
+  if (carControllo.begin() != ERROR_NONE) { logRiga("BLE: carControllo.begin KO"); diario(DIA_NOTA, 17, 0); }
   carSyncDati.setProperties(CHR_PROPS_NOTIFY);
   carSyncDati.setPermission(SECMODE_OPEN, SECMODE_NO_ACCESS);
-  carSyncDati.setMaxLen(135);
-  carSyncDati.begin();
+  carSyncDati.setMaxLen(244);   // 0.6.2: frammenti da 238 + 6 e DIAGNOSI
+  if (carSyncDati.begin() != ERROR_NONE) { logRiga("BLE: carSyncDati.begin KO"); diario(DIA_NOTA, 17, 1); }
   carSyncStato.setProperties(CHR_PROPS_READ | CHR_PROPS_NOTIFY);
   carSyncStato.setPermission(SECMODE_OPEN, SECMODE_NO_ACCESS);
   carSyncStato.setFixedLen(SYNC_LEN_STATO);
-  carSyncStato.begin();
+  if (carSyncStato.begin() != ERROR_NONE) { logRiga("BLE: carSyncStato.begin KO"); diario(DIA_NOTA, 17, 2); }
   uint8_t zero[SYNC_LEN_STATO] = {0};
   carSyncStato.write(zero, SYNC_LEN_STATO);
 

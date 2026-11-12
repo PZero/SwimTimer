@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-11-12 (USB receiver 0.1.6, host, tag 0.6.3, bench results)
+- **Receiver firmware 0.1.6** (`firmware/ricevitore`): XIAO nRF52840 Sense on USB, central for 2 tags, encrypted sync protocol, USB frames with CRC (`PROTOCOLLO-USB.md`), confirmation to the tag only after the host's OK.
+- **Host** `stazione/ricevitore_host.py` (Windows and Raspberry Pi): saves `tag.swr` + `tag.idx` per tag, writes, fsyncs and reads back before the OK, log and KB/s.
+- **Tag firmware 0.6.3** (`firmware/xiao-stream`): 238-byte fragments (READY v2), notification queue, 2M PHY / DLE, DIAGNOSIS message after every connection, 4-aligned flash reads, BLE stack 8 KB.
+- **Bench results:** 1 tag ~16.5 KB/s (287 ms/block), 2 tags ~8.8 KB/s each (~17.6 total), 0 blocks lost; the shared receiver radio is the limit. BLE stack: 606 B free of 8 KB after hours of use, probable cause of the 2026-11-11 crash; 0.6.4 will use 10 KB.
+- **Docs:** `docs/STATO.md`, decisions, open questions and `docs/SINCRONIZZAZIONE.md` updated. README: new receiver/host section with results table, architecture, status, folder structure and roadmap.
+
 ## 2026-11-12 (base station Raspberry Pi 3, final architecture, crash analysis)
 - **Base station** `stazione/rpi/` (LEGGIMI.md, `swim-firstrun.sh`, `user-data.esempio`): headless Raspberry Pi 3 (Raspberry Pi OS Lite 64-bit, trixie) with cloud-init on first boot, fallback `systemd.run=` script, network diagnostics in `/boot/firmware/diag.txt`, Waveshare 4" HDMI settings. Credentials are placeholders only.
 - **Architecture decided:** tag (XIAO nRF52840) -> receiver (XIAO, USB) -> Raspberry Pi 3 -> 15.6" HDMI monitor (HTML page). Tests with 2 tags in raw mode, events only in normal operation.

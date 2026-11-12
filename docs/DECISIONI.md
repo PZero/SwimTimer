@@ -167,3 +167,11 @@
 | 2026-11-12 | Scheda di acquisizione: XIAO nRF52840 collegata via USB al Raspberry Pi (niente ESP32); test con 2 tag in raw | Stessa radio e stesso stack delle tag, nessuna condivisione con il Wi-Fi; scelta dell'utente |
 | 2026-11-12 | Stazione: Raspberry Pi 3 (pagina HTML a schermo intero sul monitor 15,6″) | La schermata dei tempi è leggera; il flusso dati (pochi KB/s) non richiede di più |
 | 2026-11-12 | Pi configurato senza Imager: immagine scritta con `dd`, cloud-init al primo avvio, poi script `systemd.run=` sulla partizione di avvio; display Waveshare 4″ con `hdmi_cvt 480 800` + `hdmi_drive=1` (non `video=` del KMS) | Imager non funziona da riga di comando su Windows; cloud-init non riparte dopo il primo avvio; con `video=` l'immagine era triplicata |
+| 2026-11-12 | La tag considera scaricato un blocco solo dopo che l'host (Pi/PC) lo ha scritto, sincronizzato su disco e riletto | Scelta dell'utente: nessun blocco perso se il Pi o il collegamento cadono |
+| 2026-11-12 | Ricevitore: senza PRESENZA dall'host non si collega a nessuna tag | Evita conferme di blocchi che nessuno salva |
+| 2026-11-12 | Frammenti di sync da 238 B con PRONTO v2 e MTU 247; 128 B con il protocollo v1 | Circa metà delle notifiche per blocco; display-sync resta compatibile |
+| 2026-11-12 | Stack del task BLE della tag a 8 KB (`-DCFG_BLE_TASK_STACKSIZE=(256*8)` in ogni compilazione) | Con 5 KB la DIAGNOSI misurava 29–47 B liberi: probabile causa del crash dell'11/11 |
+| 2026-11-12 | Letture flash della tag sempre allineate a 4 byte | Con frammenti da 238 B le letture non allineate davano E_FLASH |
+| 2026-11-12 | Dopo ogni collegamento la tag invia la DIAGNOSI (reset, guasto, stack, diario) e l'host la registra | La causa di un riavvio non deve più andare persa |
+| 2026-11-12 | Causa del crash dell'11/11 attribuita all'overflow dello stack BLE della tag; nella 0.6.4 lo stack sale a 10 KB | Dopo ore d'uso restano 606 B liberi su 8 KB: servono ~7,4 KB, oltre i 5 KB della versione andata in vasca |
+| 2026-11-12 | Non si ottimizza la conferma della tag: il limite dello scarico è la radio del ricevitore condivisa (~17 KB/s totali) | Prove a banco: con 1 tag 16,5 KB/s, con 2 tag ~8,8 KB/s ciascuna; il periodo per blocco non cambia con la conferma |

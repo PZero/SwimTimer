@@ -61,6 +61,8 @@ Risolte: modulo E73 (Raytac a stock 0), IMU LSM6DSV16X, flash 16 MB, interruttor
 62. Ordini un **T-RGB 2,8″** nuovo (circa 45 €)? E un'antenna 2,4 GHz **U.FL/IPEX-1** dopo aver controllato lo schema?
 63. ~~Raspberry Pi 3~~: scelto come stazione (2026-11-12), configurato.
 64. Diario nella memoria esterna della tag (niente blocchi con il BLE collegato): accetti di riservare uno dei 512 blocchi (cambia la mappa del display)?
-65. **Crash dell'11/11:** in vasca hai riavviato la tag a mano o toccato il reset? La custodia era sigillata (pad USB all'asciutto)? Ricordi un urto forte verso il decimo minuto?
-66. **Conferma dei blocchi:** con la XIAO ricevente (senza SD) la tag riceve la conferma solo dopo che il Pi ha salvato il blocco: confermi?
+65. **Crash dell'11/11:** (quasi spiegato: overflow dello stack BLE, 606 B liberi su 8 KB, ne servono ~7,4 KB) in vasca hai riavviato la tag a mano o toccato il reset? La custodia era sigillata (pad USB all'asciutto)? Ricordi un urto forte verso il decimo minuto?
+66. ~~Conferma dei blocchi~~: deciso il 2026-11-12, la tag riceve la conferma solo dopo che l'host ha salvato il blocco.
 67. Password dell'utente `swim` sul Pi: la imposti tu via SSH (`sudo passwd swim`) o resta solo la chiave?
+68. **Finestra di sync a 3 blocchi** (oggi 2; le prove del 12/11 sera indicano che il limite è la radio, quindi probabilmente inutile): servono modifiche a tag, ricevitore e display (+4 KB di RAM per tag nel ricevitore). Utile solo se la conferma resta lenta: la proviamo dopo la misura dei ~300 ms?
+69. **Tag 0.6.4:** oltre allo stack a 10 KB, la tag in registrazione deve annunciarsi solo con più blocchi pronti (meno ricollegamenti) o restare collegata al ricevitore? (cambia consumo e scarico al muro)

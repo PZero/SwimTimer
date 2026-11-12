@@ -174,12 +174,28 @@ class SwrAnello {
     int16_t m = piuVecchioDaValidare(0, 0);
     return m < 0 ? 0 : seq[m];
   }
+  // 0.6.3: la QSPI dell'nRF52840 legge solo da indirizzi flash multipli di 4, in buffer RAM allineati e per lunghezze multiple di 4.
+  // Il core (Adafruit_FlashTransport_QSPI) ripiega su letture "dispari" quando dest/lunghezza non sono allineati, ma con frammenti da 238 byte
+  // (offset = idx*238) l'indirizzo flash sorgente diventa dispari e la lettura fallisce (E_FLASH). Qui si legge sempre allineato e si copia.
   bool leggi(uint16_t b, uint16_t off, uint8_t *buf, uint16_t n) {
-    return f->readBuffer((uint32_t)b * SWR_BLOCCO_BYTE + off, buf, n) == n;
+    uint32_t base = (uint32_t)b * SWR_BLOCCO_BYTE;
+    uint8_t tmp[SWR_PAGINA] __attribute__((aligned(4)));
+    while (n) {
+      uint32_t a = (base + off) & ~(uint32_t)3;             // indirizzo allineato
+      uint16_t sk = (uint16_t)((base + off) - a);           // byte da saltare (0..3)
+      uint16_t t = n + sk;
+      if (t > SWR_PAGINA) t = SWR_PAGINA;
+      uint16_t t4 = (t + 3) & ~3;                           // lunghezza multipla di 4 (SWR_PAGINA e' multiplo di 4)
+      if (f->readBuffer(a, tmp, t4) != t4) return false;
+      uint16_t c = t - sk;                                  // byte utili
+      memcpy(buf, tmp + sk, c);
+      buf += c; off += c; n -= c;
+    }
+    return true;
   }
   // CRC32 del blocco (4096 byte, campo conferma della pagina 0 a 0xFF)
   bool crcBlocco(uint16_t b, uint32_t &crc) {
-    uint8_t buf[SWR_PAGINA];
+    uint8_t buf[SWR_PAGINA] __attribute__((aligned(4)));
     uint32_t c = 0xFFFFFFFFu;
     for (int p = 0; p < SWR_PAGINE_BLOCCO; p++) {
       if (f->readBuffer((uint32_t)b * SWR_BLOCCO_BYTE + p * SWR_PAGINA, buf, SWR_PAGINA) != SWR_PAGINA) return false;
