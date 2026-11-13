@@ -28,7 +28,8 @@ static volatile bool perse[SYNC_MAX_TAG];
 static volatile bool scoll[SYNC_MAX_TAG];
 
 static void notifica(int s, uint8_t *d, uint16_t n) {
-  if (n == 0 || d[0] == M_MAPPA) return;   // la mappa non serve al ricevitore
+  if (n == 0) return;
+  if (d[0] == M_MAPPA) { tags[s].ultimoMsg = millis(); return; }   // la mappa non serve al ricevitore, ma in streaming (tag 0.6.4) e' il keepalive: la tag e' viva
   if (n > sizeof(ring[0].d)) n = sizeof(ring[0].d);
   uint16_t h = rHead, nh = (h + 1) % RING_N;
   if (nh == rTail) { perse[s] = true; return; }
@@ -85,12 +86,25 @@ bool bleScrivi(int s, const uint8_t *b, uint8_t n) {
 }
 
 enum EsitoScrittura { SC_OK, SC_RIPROVA, SC_ERRORE };
-// Una scrittura con risposta: sd_ble_gattc_write + attesa del WRITE_RSP sul semaforo (non dinamico) del Bluefruit.
-// Non si usa write_resp(): il suo timeout e' 100 ms e il semaforo dinamico puo' perdere la risposta se arriva prima dell'attesa.
+// Una scrittura con risposta: sd_ble_gattc_write + attesa del WRITE_RSP su un semaforo binario nostro (0.1.7: niente piu' accesso ai membri privati
+// del Bluefruit). Non si usa write_resp(): il suo timeout e' 100 ms e il semaforo dinamico puo' perdere la risposta se arriva prima dell'attesa.
+// La risposta arriva a eventoSd() (task BLE, Bluefruit.setEventCallback) che registra lo stato GATT e rilascia il semaforo.
+static SemaphoreHandle_t semScr[SYNC_MAX_TAG];
+static volatile uint16_t scrGatt[SYNC_MAX_TAG];     // stato GATT dell'ultima risposta (0xFFFF = nessuna)
+static void eventoSd(ble_evt_t *e) {
+  if (e->header.evt_id != BLE_GATTC_EVT_WRITE_RSP) return;
+  const ble_gattc_evt_t &g = e->evt.gattc_evt;
+  for (int i = 0; i < SYNC_MAX_TAG; i++)
+    if (tags[i].conn == g.conn_handle && g.params.write_rsp.handle == ctrl[i].valueHandle()) {
+      scrGatt[i] = g.gatt_status;
+      xSemaphoreGive(semScr[i]);
+      return;
+    }
+}
 static EsitoScrittura bleScriviUna(int s, const Cmd &c, uint32_t &er) {
   BLEClientCharacteristic &ch = ctrl[s];
-  while (xSemaphoreTake(ch._adamsg._sem, 0) == pdTRUE) {}   // elimina risposte tardive
-  ch._adamsg.prepare((void *)c.b, c.n);
+  while (xSemaphoreTake(semScr[s], 0) == pdTRUE) {}   // elimina risposte tardive
+  scrGatt[s] = 0xFFFF;
   ble_gattc_write_params_t p = {};
   p.write_op = BLE_GATT_OP_WRITE_REQ;
   p.handle = ch.valueHandle();
@@ -99,7 +113,8 @@ static EsitoScrittura bleScriviUna(int s, const Cmd &c, uint32_t &er) {
   er = sd_ble_gattc_write(tags[s].conn, &p);
   if (er == NRF_ERROR_BUSY || er == NRF_ERROR_RESOURCES) return SC_RIPROVA;
   if (er != NRF_SUCCESS) return SC_ERRORE;
-  if (ch._adamsg.waitUntilComplete(RISPOSTA_SCRITTURA_MS) < 0) { er = 0xFFFF; return SC_ERRORE; }   // nessuna risposta
+  if (xSemaphoreTake(semScr[s], pdMS_TO_TICKS(RISPOSTA_SCRITTURA_MS)) != pdTRUE) { er = 0xFFFF; return SC_ERRORE; }   // nessuna risposta
+  if (scrGatt[s] != BLE_GATT_STATUS_SUCCESS) { er = scrGatt[s]; return SC_ERRORE; }   // la tag ha rifiutato la scrittura: niente conferma
   return SC_OK;
 }
 
@@ -219,6 +234,8 @@ static void evBLE() {   // nel loop: ordine connessione, sicurezza, disconnessio
 }
 
 // ---- intervallo di connessione e stato effettivo del collegamento (0.1.5) ----
+// Parametri di connessione richiesti in connect(): 7,5 ms durante cifratura e scoperta; dopo PRONTO 11,25-15 ms se c'e' un'altra tag (0.1.7: propri, non piu' _conn_param privato)
+static const ble_gap_conn_params_t connParam = {6, 6, BLE_GAP_CONN_SLAVE_LATENCY, BLE_GAP_CONN_SUPERVISION_TIMEOUT_MS / 10};
 static bool altraImpegnata(int s) {
   for (int k = 0; k < SYNC_MAX_TAG; k++) if (k != s && tags[k].fase != F_IDLE) return true;
   return false;
@@ -266,12 +283,12 @@ void bleInit() {
   Bluefruit.Security.setSecuredCallback(securedCb);
   Bluefruit.Central.setConnectCallback(connectCb);
   Bluefruit.Central.setDisconnectCallback(disconnectCb);
-  Bluefruit.Central.setConnInterval(6, 6);             // 7,5 ms durante cifratura e scoperta; dopo PRONTO 11,25-15 ms (due tag insieme)
+  Bluefruit.setEventCallback(eventoSd);
   for (int i = 0; i < SYNC_MAX_TAG; i++) {
     svc[i].begin();
     ctrl[i].begin(&svc[i]);
     dati[i].begin(&svc[i]);
-    ctrl[i]._adamsg.begin(false);   // semaforo statico: la risposta di scrittura non si perde se arriva prima dell'attesa
+    semScr[i] = xSemaphoreCreateBinary();   // la risposta di scrittura non si perde se arriva prima dell'attesa
   }
   Bluefruit.Scanner.setRxCallback(scanCb);
   Bluefruit.Scanner.restartOnDisconnect(true);
@@ -332,7 +349,7 @@ void bleGestisci(uint32_t now) {
           }
           t.tConnect = now;
           // come Central.connect(), ma con il codice d'errore del SoftDevice
-          uint32_t er = sd_ble_gap_connect(&a, Bluefruit.Scanner.getParams(), &Bluefruit.Central._conn_param, CONN_CFG_CENTRAL);
+          uint32_t er = sd_ble_gap_connect(&a, Bluefruit.Scanner.getParams(), &connParam, CONN_CFG_CENTRAL);
           if (er != NRF_SUCCESS) {
             t.fase = F_IDLE;
             t.ultimoTent = now;

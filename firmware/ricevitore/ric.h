@@ -1,10 +1,7 @@
 // Strutture condivise tra BLE (ble_rx.cpp), assemblaggio blocchi (blocchi.cpp) e USB (usb_frame.cpp).
 #pragma once
 #include <Arduino.h>
-// Serve l'accesso a BLEClientCharacteristic::_adamsg (semaforo della risposta di scrittura, privato): vedi bleScriviUna()
-#define private public
 #include <bluefruit.h>
-#undef private
 #include "protocollo.h"
 
 enum Fase : uint8_t { F_IDLE = 0, F_CONNETTE, F_CONN_OK, F_SICUREZZA, F_SICURA, F_ATTIVA, F_CHIUSURA };
@@ -19,7 +16,8 @@ struct TagInfo {
   volatile uint32_t ultimoSeq, vistoMs, primoVistoMs;
   volatile Fase fase;
   volatile uint16_t conn;
-  uint32_t tFase, ultimoTent, msAvv, ultimoMsg;
+  uint32_t tFase, ultimoTent, msAvv;
+  volatile uint32_t ultimoMsg;                          // scritto dalla callback BLE (MAPPA keepalive) e dal loop
   uint32_t pausa;                                       // ms di attesa dopo l'ultimo tentativo (1000 transitorio, 4000 errore vero)
   uint32_t t0, tConn, tSic, tMtu, tDisc;                // tempi di fase (millis): t0 = avvistamento utile (senza la pausa fra tentativi)
   uint32_t tConnect;                                    // millis di connect() (0.1.5)

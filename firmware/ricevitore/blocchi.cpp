@@ -164,14 +164,14 @@ static void messaggio(const RxMsg &m, uint32_t now) {
       break;
     case M_DIAGNOSI: {   // 0.1.6: motivo dell'ultimo reset della tag + ultime righe del suo diario, inoltrati come EVENTO (l'host li scrive nel log)
       if (n < LEN_DIAG_FISSI) break;
-      char tx[120];
+      char tx[200];   // 0.1.7: 200 (con 120 la riga, ~165 caratteri, veniva troncata)
       snprintf(tx, sizeof(tx), "DIAGNOSI tag: reset causa %u RESETREAS 0x%lX guasto %u pc 0x%lX lr 0x%lX cfsr 0x%lX; stack libero B loop/cb/ble %u/%u/%u; diario %u righe",
                d[2], (unsigned long)leggi32(d + 4), d[3], (unsigned long)leggi32(d + 8), (unsigned long)leggi32(d + 12), (unsigned long)leggi32(d + 16),
                leggi16(d + 20), leggi16(d + 22), leggi16(d + 24), d[26]);
       evento(tags[s].id, d[2], tx);
       uint32_t p = LEN_DIAG_FISSI, riga = 0;
       while (p < n) {
-        char l[72] = "diario tag: ";
+        char l[128] = "diario tag: ";
         size_t o = strlen(l);
         while (p < n && d[p] != '\n' && o < sizeof(l) - 1) l[o++] = (char)d[p++];
         l[o] = 0;
@@ -179,6 +179,16 @@ static void messaggio(const RxMsg &m, uint32_t now) {
         p++;
         evento(tags[s].id, ++riga, l);
       }
+      break;
+    }
+    case M_DIAGNOSI2: {   // 0.1.7 (tag 0.6.4+): collegamento, VBUS, disconnessioni, stack BLE; una riga key=value (l'host la legge)
+      if (n < LEN_DIAG2) break;
+      char tx[200];
+      uint32_t iv = leggi16(d + 2) * 125;   // centesimi di ms
+      snprintf(tx, sizeof(tx), "DIAGNOSI2 tag: int=%lu.%02lu mtu=%u dle=%u phy=%u vbus=%u vbus_su=%u vbus_giu=%u vbus_ms=%lu hci3E=%u disc=%u ultdisc=0x%02X stkble=%u tagms=%lu",
+               (unsigned long)(iv / 100), (unsigned long)(iv % 100), leggi16(d + 4), leggi16(d + 6), d[8], d[9], leggi16(d + 10), leggi16(d + 12),
+               (unsigned long)leggi32(d + 14), leggi16(d + 18), leggi16(d + 20), d[22], leggi16(d + 24), (unsigned long)leggi32(d + 26));
+      evento(tags[s].id, leggi16(d + 18), tx);
       break;
     }
   }

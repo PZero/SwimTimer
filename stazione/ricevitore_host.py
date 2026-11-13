@@ -9,6 +9,8 @@ la conferma alla tag. Senza OK la tag tiene il blocco. Funziona uguale su Window
 Uso:  python ricevitore_host.py --porta COM19 --cartella dati/
 """
 import argparse
+import collections
+import json
 import os
 import struct
 import sys
@@ -204,14 +206,19 @@ class Host:
         self.arch = Archivio(self.cartella)
         self.log = open(args.log or os.path.join(self.cartella, "ricevitore.log"), "a", encoding="utf-8", buffering=1)
         self.stat = {}  # id -> ultimo STAT decodificato
+        self.diag = {}  # id -> ultima DIAGNOSI2 della tag (ricevitore 0.1.7, tag 0.6.4): dict chiave -> intero (hex se 0x..)
         self.salvati = {}
         self.ultima_riga = 0
         self.ultimo_sync_idx = 0
+        self.file_stato = getattr(args, "stato", None)  # JSON per il pannello (stazione/rpi/pannello.py)
+        self.ultime = collections.deque(maxlen=40)       # ultime righe del log, per il pannello
+        self.avvio = time.time()
         self.misure = []  # (validazione, scrittura+fsync, rilettura, indice, totale) ms degli ultimi blocchi
 
     def scrivi_log(self, testo, stampa=False):
         riga = time.strftime("%Y-%m-%d %H:%M:%S ") + testo
         self.log.write(riga + "\n")
+        self.ultime.append(riga)
         if stampa:
             print(riga, flush=True)
 
@@ -253,6 +260,19 @@ class Host:
         self.salvati[id_tag] = self.salvati.get(id_tag, 0) + 1
         self.scrivi_log("tag %08x: blocco %d salvato (fisico %d, millis tag %d), OK inviato" % (id_tag, seq, fisico, millis_tag))
 
+    def evento_rx(self, id_tag, num, testo):
+        self.scrivi_log("EVENTO tag %08x num %d: %s" % (id_tag, num, testo), True)
+        if testo.startswith("DIAGNOSI2 tag: "):   # campi nuovi: si ritengono per la riga di stato; la riga EVENTO sopra resta com'e'
+            d = {}
+            for kv in testo[len("DIAGNOSI2 tag: "):].split():
+                k, _, v = kv.partition("=")
+                try:
+                    d[k] = int(v, 0) if v.lower().startswith("0x") else (float(v) if "." in v else int(v))
+                except ValueError:
+                    pass
+            if d:
+                self.diag[id_tag] = d
+
     def stat_rx(self, id_tag, payload):
         if len(payload) < 33:
             return
@@ -270,7 +290,35 @@ class Host:
                 id_tag, LINK.get(s["link"], "?"), STATO.get(s["stato"], "?"), s["rssi"], s["bps"] / 1024.0, s["attesa"], s["ric"],
                 s["conf"], self.salvati.get(id_tag, 0), s["scart"], s["batt"], s["pct"],
                 ("%d ms" % s["msavv"]) if s["msavv"] else "-"))
+            d = self.diag.get(id_tag)
+            if d:   # in coda alla riga solo se la tag ha mandato la DIAGNOSI2
+                parti[-1] += " | diag: int %s ms mtu %s dle %s phy %s vbus su/giu %s/%s hci3E %s stkBLE %s B" % (
+                    d.get("int", "?"), d.get("mtu", "?"), d.get("dle", "?"), d.get("phy", "?"), d.get("vbus_su", "?"), d.get("vbus_giu", "?"),
+                    d.get("hci3E", "?"), d.get("stkble", "?"))
         return " || ".join(parti)
+
+    def scrivi_stato(self, riga):
+        """Scrive il JSON di stato per il pannello: prima un file temporaneo, poi os.replace (mai letto a meta')."""
+        if not self.file_stato:
+            return
+        tag = []
+        for id_tag, s in sorted(self.stat.items()):
+            tag.append(dict(s, id="%08x" % id_tag, link_txt=LINK.get(s["link"], "?"), stato_txt=STATO.get(s["stato"], "?"),
+                            kbs=round(s["bps"] / 1024.0, 1), salvati=self.salvati.get(id_tag, 0), diag=self.diag.get(id_tag)))
+        try:
+            libero = spazio_libero(self.cartella) // (1024 * 1024)
+        except OSError:
+            libero = None
+        dati = dict(ora=time.time(), avvio=self.avvio, ricevitore=getattr(self, "ricevitore", None),
+                    porta_aperta=getattr(self, "porta_aperta", False), libero_mb=libero, riga=riga, tag=tag,
+                    log=list(self.ultime)[-30:])
+        tmp = self.file_stato + ".tmp"
+        try:
+            with open(tmp, "w", encoding="utf-8") as f:
+                json.dump(dati, f, ensure_ascii=False)
+            os.replace(tmp, self.file_stato)
+        except OSError as e:
+            print("stato JSON non scritto: %s" % e, flush=True)
 
     def gira(self, ser):
         p = Parser()
@@ -290,15 +338,17 @@ class Host:
                 elif tipo == FR_STAT:
                     self.stat_rx(id_tag, payload)
                 elif tipo == FR_EVENTO:
-                    self.scrivi_log("EVENTO tag %08x num %d: %s" % (id_tag, num, payload.decode("ascii", "replace")), True)
+                    self.evento_rx(id_tag, num, payload.decode("ascii", "replace"))
                 elif tipo == FR_HELLO:
                     if not getattr(self, "hello", False):
-                        self.scrivi_log("ricevitore: %s" % payload.decode("ascii", "replace"), True)
+                        self.ricevitore = payload.decode("ascii", "replace")
+                        self.scrivi_log("ricevitore: %s" % self.ricevitore, True)
                         self.hello = True
             if ora - self.ultima_riga >= 1.0:
                 self.ultima_riga = ora
                 riga = self.riga_stat() + ("  [frame con CRC errato: %d]" % p.crc_errati if p.crc_errati else "")
                 self.scrivi_log(riga, True)
+                self.scrivi_stato(riga)
 
 
 def main():
@@ -306,17 +356,29 @@ def main():
     ap.add_argument("--porta", required=True, help="porta seriale (COM19, /dev/ttyACM0)")
     ap.add_argument("--cartella", default="dati", help="cartella di destinazione (default: dati/)")
     ap.add_argument("--log", help="file di log (default: <cartella>/ricevitore.log)")
+    ap.add_argument("--stato", help="file JSON di stato per il pannello, riscritto ogni secondo (es. /run/swimtimer/stato.json)")
     args = ap.parse_args()
     host = Host(args)
+    ultimo_err, t_err, ripetuti = None, 0, 0   # errore di porta: nel log solo quando cambia, poi un promemoria ogni 10 min
     while True:
         try:
             with serial.Serial(args.porta, 115200, timeout=0.05, write_timeout=2) as ser:
                 ser.dtr = True
                 host.scrivi_log("porta %s aperta" % args.porta, True)
+                ultimo_err, ripetuti = None, 0
                 host.hello = False
+                host.porta_aperta = True
                 host.gira(ser)
         except (serial.SerialException, OSError) as e:
-            host.scrivi_log("porta seriale: %s; nuovo tentativo fra 2 s" % e, True)
+            host.porta_aperta = False
+            testo, ora = str(e), time.time()
+            if testo != ultimo_err or ora - t_err >= 600:
+                altri = " (ripetuto %d volte)" % ripetuti if ripetuti else ""
+                host.scrivi_log("porta seriale: %s; nuovo tentativo ogni 2 s%s" % (testo, altri), True)
+                ultimo_err, t_err, ripetuti = testo, ora, 0
+            else:
+                ripetuti += 1
+            host.scrivi_stato("ricevitore non collegato")
             time.sleep(2)
         except KeyboardInterrupt:
             host.scrivi_log("interrotto dall'utente", True)

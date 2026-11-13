@@ -1,0 +1,4 @@
+# Nomi delle tag mostrati dal pannello: una riga "<id della tag> <nome>" (max 24 caratteri).
+# Sul Pi: /home/swim/swimtimer-dati/nomi.txt (solo sul Pi: nomi di persone, mai nel repository).
+# Le righe qui sotto sono inventate.
+11111111 Nuotatore Uno

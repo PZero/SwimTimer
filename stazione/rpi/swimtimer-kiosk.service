@@ -1,0 +1,31 @@
+[Unit]
+Description=SwimTimer: browser a schermo intero sul pannello (tty7)
+After=swimtimer-pannello.service systemd-user-sessions.service
+Wants=swimtimer-pannello.service
+Conflicts=getty@tty7.service
+
+[Service]
+User=swim
+# sessione logind sul tty7: da' al browser l'accesso a schermo (DRM) e input senza essere root
+PAMName=login
+TTYPath=/dev/tty7
+TTYReset=yes
+TTYVHangup=yes
+TTYVTDisallocate=yes
+StandardInput=tty-fail
+StandardOutput=journal
+StandardError=journal
+UtmpIdentifier=tty7
+UtmpMode=user
+EnvironmentFile=/etc/default/swimtimer
+# nessuna capability: altrimenti la sandbox di WebKit (bwrap) rifiuta di partire
+# ("bwrap: Unexpected capabilities but not setuid") e cog termina con SIGTRAP
+CapabilityBoundingSet=
+AmbientCapabilities=
+ExecStartPre=+/usr/bin/chvt 7
+ExecStart=/opt/swimtimer/kiosk.sh
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

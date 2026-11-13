@@ -1,5 +1,5 @@
-// Ricevitore SwimTimer 0.1.6 (XIAO nRF52840 Sense, Bluefruit, ruolo central).
-// Scarica i blocchi da 2 tag (firmware 0.6.1 e 0.6.2; con la 0.6.2 frammenti da 238 B e DIAGNOSI) e li inoltra all'host via USB seriale (PROTOCOLLO-USB.md).
+// Ricevitore SwimTimer 0.1.7 (XIAO nRF52840 Sense, Bluefruit, ruolo central).
+// Scarica i blocchi da 2 tag (firmware 0.6.1-0.6.4; dalla 0.6.2 frammenti da 238 B e DIAGNOSI, dalla 0.6.4 DIAGNOSI2 e collegamento mantenuto in registrazione) e li inoltra all'host via USB seriale (PROTOCOLLO-USB.md).
 // Regola: la CONFERMA alla tag parte solo dopo l'OK dell'host (blocco salvato e riletto). Senza host nessun collegamento.
 // Compilazione: arduino-cli compile --fqbn Seeeduino:nrf52:xiaonRF52840Sense firmware/ricevitore
 #include "ric.h"

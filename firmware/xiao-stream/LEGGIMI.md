@@ -2,6 +2,8 @@
 
 Firmware di prova: annuncia "SwimTag", invia l'IMU alla tab XIAO di `tools/index.html`, manda un log, si sospende (comando, fermo prolungato) e si risveglia con 4 tocchi o con l'USB, e si aggiorna via Bluetooth dalla finestra «Firmware del tag».
 
+**0.6.4** (2026-11-12, compilata, NON caricata né provata): stack BLE 10 KB (`-DCFG_BLE_TASK_STACKSIZE=(256*10)`); **in registrazione la tag resta collegata al ricevitore** (central con PRONTO v2) e manda ogni blocco appena completo, senza FINE e senza disconnettersi (keepalive: una MAPPA ogni 5 s senza altro traffico; a fine registrazione, con `annSonno`, torna la FINE); se il collegamento cade ricomincia dagli annunci e riprende dal blocco non confermato piu' vecchio (invariato). Nuova **DIAGNOSI2** (0x08, subito dopo la DIAGNOSI, solo PRONTO v2; formato in `swr_sync.h`): intervallo, MTU, DLE e PHY negoziati, VBUS adesso + eventi «vista»/«persa» con contatori e millis dell'ultimo (letti ogni 20 ms in ogni modo; ogni evento anche nel diario: NOTA 19 = p2 1 vista/0 persa, p3 contatore, p4 millis), disconnessioni con motivo HCI 0x3E e totali, ultimo motivo, minimo storico dello stack BLE libero. Compilazione: sketch 191860 B (23 %), RAM 38344 B (16 %). Attenzione: con il collegamento permanente restano valide le regole 0.6.1 «niente scritture flash con un client BLE collegato» (diario solo con >= 32 eventi in RAM, azzeramento del contatore di ripartenze dopo 10 min stabili solo senza client): vanno rimisurate in vasca.
+
 **0.6.1** (2026-11-11, dopo l'incidente in piscina): regole di modo (a batteria niente modalita' normale), ripresa automatica dopo un riavvio inatteso, watchdog, contesto del guasto, diario persistente, allineamento del FIFO. Vedi la sezione «0.6.1» in fondo e `PROVA-0.6.1.md`. Compilazione: sketch ~182 KB (22 %), RAM globale ~36,6 KB (15 %).
 
 **0.6.0** (2026-11-10, provata a secco su 2 tag: 666 blocchi in 15 min, 0 errori): sincronizzazione con il display (`docs/SINCRONIZZAZIONE.md`), BLE sempre acceso anche in registrazione, memoria ad anello (**formato 3**), nome e colore della tag, **LED spenti a batteria** (accesi solo con l'USB alimentata, anche il lampeggio del BLE), seq mai riusato (`/seq.bin`). Vedi la sezione «Sincronizzazione con il display (0.6.0)» in fondo.
@@ -15,8 +17,8 @@ Indice schede: `https://files.seeedstudio.com/arduino/package_seeeduino_boards_i
 Il toolchain ARM **non accetta percorsi con spazi**: compilare una copia in un percorso senza spazi. Dalla 0.6.0 lo sketch ha piu' file (`swr_formato.h`, `swr_anello.h`, `swr_sync.h`, `flash_qspi.h`): vanno copiati tutti.
 
     mkdir C:\Temp\xs\xiao-stream ; copy xiao-stream.ino,*.h C:\Temp\xs\xiao-stream\
-    arduino-cli compile --fqbn Seeeduino:nrf52:xiaonRF52840Sense --build-property "compiler.cpp.extra_flags=-DCFG_BLE_TASK_STACKSIZE=(256*8)" --build-path C:\Temp\xs\build C:\Temp\xs\xiao-stream
-    (dal 0.6.3 il -D e' obbligatorio: stack del task BLE 8 KB invece di 5 KB, +3 KB di heap; con altri -D, nello stesso valore separati da spazio)
+    arduino-cli compile --fqbn Seeeduino:nrf52:xiaonRF52840Sense --build-property "compiler.cpp.extra_flags=-DCFG_BLE_TASK_STACKSIZE=(256*10)" --build-path C:\Temp\xs\build C:\Temp\xs\xiao-stream
+    (dal 0.6.3 il -D e' obbligatorio, dalla 0.6.4 vale 10 KB: stack del task BLE 10 KB invece di 5 KB, +5 KB di heap; vale anche per le build destinate all'OTA; con altri -D, nello stesso valore separati da spazio)
     arduino-cli upload -p COMxx --fqbn Seeeduino:nrf52:xiaonRF52840Sense --input-dir C:\Temp\xs\build
 
 Dalla 0.6.0 la compilazione dice: sketch ~172 KB (21 %), RAM globale ~34,8 KB (14 %); il limite dell'app per l'OTA e' 356 KB.
@@ -275,7 +277,7 @@ Dopo un riavvio `millis()` riparte da 0: ogni segmento ripreso salva nella pagin
 
 ### 0.6.2 (2026-11-12): crash in sincronizzazione e banda (NON ancora caricata né provata sull'hardware)
 - **Callback BLE leggere**: `inConnessione`/`inDisconnessione` e `inOta` non usano più snprintf né diario; copiano un evento in una coda (`evConn`, 8 posti) e il loop fa log, diario e richieste di PHY 2M / DLE / intervallo 7,5-15 ms (`connEventiServi()`, da `syncServi()`). `inControllo`/`inComando` erano già solo copie.
-- **Stack**: loop 4 KB, task «Callback» 3 KB, «BLE» 5 KB sono costanti del core (`main.cpp`, `bluefruit.cpp`): dallo sketch non si cambiano senza modificare il core. Nuovo `stackMonitor()` (ogni 5 s, `uxTaskGetSystemState`): minimo libero per task nel diario (NOTA 13, sotto 512 B) e nella DIAGNOSI. HardFault (PC/LR/CFSR in RAM non inizializzata) e RESETREAS nel diario c'erano già dalla 0.6.1.
+- **Stack**: loop 4 KB, task «Callback» 3 KB, «BLE» 5 KB (default del core) sono costanti del core (`main.cpp`, `bluefruit.cpp`); dalla 0.6.3 lo stack BLE si porta a 10 KB con `-DCFG_BLE_TASK_STACKSIZE=(256*10)` (in word da 4 byte, obbligatorio: senza il flag lo sketch non compila, `#error`), vedi sopra. Nuovo `stackMonitor()` (ogni 5 s, `uxTaskGetSystemState`): minimo libero per task nel diario (NOTA 13, sotto 512 B) e nella DIAGNOSI. HardFault (PC/LR/CFSR in RAM non inizializzata) e RESETREAS nel diario c'erano già dalla 0.6.1.
 - **DIAGNOSI** (0x07, solo con PRONTO versione 2): motivo dell'ultimo reset + ultime righe del diario, vedi `docs/SINCRONIZZAZIONE.md`.
 - **Banda**: frammenti da 238 B (PRONTO v2 e MTU 247; ricaduta a 128), `HVN_CODA` 8, invio in ciclo finché la coda radio accetta (tetto 40 messaggi per chiamata), annuncio a 100 ms con blocchi in attesa e 200 ms altrimenti, `carSyncDati` maxLen 244. Finestra di conferma invariata (2 blocchi).
 - **Da verificare al primo avvio**: `Bluefruit.begin` con HVN 8 (RAM del SoftDevice; se fallisce: log `BLE begin KO`, riportare `HVN_CODA` a 6 o 4), banda reale, compatibilità con display-sync (PRONTO v1).

@@ -23,7 +23,7 @@ enum : uint8_t { ST_SONNO = 0, ST_PRONTA = 1, ST_REGISTRA = 2, ST_PIENA = 4, ST_
 // Messaggi D->T (CONTROLLO)
 enum : uint8_t { M_PRONTO = 0x10, M_CONFERMA = 0x11, M_RIPETI = 0x12, M_STOP = 0x13, M_SONNO = 0x14 };   // M_SONNO: D->T, 1 byte, valido solo dopo PRONTO
 // Messaggi T->D (DATI)
-enum : uint8_t { M_MAPPA = 0x01, M_BLOCCO = 0x02, M_FRAMMENTO = 0x03, M_CONFERMATO = 0x04, M_FINE = 0x05, M_ERRORE = 0x06, M_DIAGNOSI = 0x07 };   // M_DIAGNOSI: solo se il PRONTO era versione 2
+enum : uint8_t { M_MAPPA = 0x01, M_BLOCCO = 0x02, M_FRAMMENTO = 0x03, M_CONFERMATO = 0x04, M_FINE = 0x05, M_ERRORE = 0x06, M_DIAGNOSI = 0x07, M_DIAGNOSI2 = 0x08 };   // M_DIAGNOSI e M_DIAGNOSI2: solo se il PRONTO era versione 2
 // Codici dell'ERRORE T->D
 enum : uint8_t { E_CRC_CONFERMA = 1, E_SEQ_SCONOSCIUTO = 2, E_FLASH = 3 };
 // Bit di errore dell'annuncio
@@ -89,4 +89,23 @@ static inline uint16_t syncDiagnosi(uint8_t *o, uint8_t causa, uint8_t guasto, u
   o[26] = nRighe;
   memcpy(o + SYNC_DIAG_FISSI, testo, nTesto);
   return SYNC_DIAG_FISSI + nTesto;
+}
+
+// DIAGNOSI2 (T->D, 0x08, dalla tag 0.6.4, subito dopo la DIAGNOSI, solo con PRONTO versione 2; un central che non la conosce la ignora).
+// Lunghezza 30, tutto binario little endian:
+//  1 versione (1) | 2..3 intervallo di connessione negoziato (unita' 1,25 ms) | 4..5 MTU | 6..7 lunghezza dati (DLE) | 8 PHY (1 = 1M, 2 = 2M) |
+//  9 VBUS presente adesso | 10..11 eventi VBUS "vista" (cumulativi, in RAM noinit: sopravvivono ai reset software) | 12..13 eventi VBUS "persa" |
+//  14..17 millis tag dell'ultimo evento VBUS (0 = mai; dell'avvio in cui e' avvenuto) |
+//  18..19 disconnessioni con motivo HCI 0x3E | 20..21 disconnessioni totali | 22 ultimo motivo di disconnessione |
+//  23 bit 0-1 tipo dell'ultimo evento VBUS (0 mai, 1 vista, 2 persa), bit 2 = evento di un avvio precedente, bit 3-7 stack totale del task BLE in KB (0 con il byte a 0 nei vecchi firmware) |
+//  24..25 stack libero minimo del task BLE in byte (0xFFFF = non misurato) | 26..29 millis tag all'invio
+#define SYNC_DIAG2_LEN 30
+static inline uint16_t syncDiagnosi2(uint8_t *o, uint16_t intv, uint16_t mtu, uint16_t dle, uint8_t phy, uint8_t vbus, uint16_t vbusSu, uint16_t vbusGiu,
+                                     uint32_t vbusMs, uint16_t n3E, uint16_t discTot, uint8_t discUlt, uint16_t stkBle, uint32_t ora) {
+  o[0] = M_DIAGNOSI2; o[1] = 1;
+  sw16(o + 2, intv); sw16(o + 4, mtu); sw16(o + 6, dle); o[8] = phy; o[9] = vbus;
+  sw16(o + 10, vbusSu); sw16(o + 12, vbusGiu); sw32(o + 14, vbusMs);
+  sw16(o + 18, n3E); sw16(o + 20, discTot); o[22] = discUlt; o[23] = 0;
+  sw16(o + 24, stkBle); sw32(o + 26, ora);
+  return SYNC_DIAG2_LEN;
 }

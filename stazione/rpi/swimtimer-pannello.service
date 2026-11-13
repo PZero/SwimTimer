@@ -1,0 +1,13 @@
+[Unit]
+Description=SwimTimer: pannello HTML della stazione
+After=network.target
+
+[Service]
+User=swim
+EnvironmentFile=/etc/default/swimtimer
+ExecStart=/usr/bin/python3 -u /opt/swimtimer/pannello.py --stato /run/swimtimer/stato.json --indirizzo ${PANNELLO_INDIRIZZO} --porta ${PANNELLO_PORTA}
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target

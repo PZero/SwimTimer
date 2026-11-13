@@ -11,3 +11,6 @@ struct __attribute__((packed)) RecDiario { uint16_t sec; uint8_t tipo, p1; uint1
 
 // Blocco del tempo di sessione continuo (RAM NOBITS): vedi xiao-stream.ino, tempoAvvio()
 struct CtxTempo { uint32_t magic, nAvvii, scarto, margine, msReset, msVivo, flags, chk; };
+
+// Eventi VBUS in RAM noinit (0.6.4), vedi xiao-stream.ino: ultTipo 0 mai, 1 vista, 2 persa; prec = evento di un avvio precedente
+struct CtxVbus { uint32_t magic; uint16_t su, giu; uint32_t ultMs; uint8_t ultTipo, prec, pad[2]; uint32_t chk; };

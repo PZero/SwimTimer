@@ -61,8 +61,11 @@ Risolte: modulo E73 (Raytac a stock 0), IMU LSM6DSV16X, flash 16 MB, interruttor
 62. Ordini un **T-RGB 2,8″** nuovo (circa 45 €)? E un'antenna 2,4 GHz **U.FL/IPEX-1** dopo aver controllato lo schema?
 63. ~~Raspberry Pi 3~~: scelto come stazione (2026-11-12), configurato.
 64. Diario nella memoria esterna della tag (niente blocchi con il BLE collegato): accetti di riservare uno dei 512 blocchi (cambia la mappa del display)?
-65. **Crash dell'11/11:** (quasi spiegato: overflow dello stack BLE, 606 B liberi su 8 KB, ne servono ~7,4 KB) in vasca hai riavviato la tag a mano o toccato il reset? La custodia era sigillata (pad USB all'asciutto)? Ricordi un urto forte verso il decimo minuto?
+65. ~~Crash dell'11/11~~: risposto il 2026-11-12. Nessun reset a mano, nessun urto; tag in un palloncino, possibili gocce sui pad USB. Causa principale: overflow dello stack BLE; causa secondaria possibile: acqua sui pad USB (falso VBUS/corto). La 0.6.4 deve registrare nella DIAGNOSI anche gli eventi VBUS.
 66. ~~Conferma dei blocchi~~: deciso il 2026-11-12, la tag riceve la conferma solo dopo che l'host ha salvato il blocco.
 67. Password dell'utente `swim` sul Pi: la imposti tu via SSH (`sudo passwd swim`) o resta solo la chiave?
 68. **Finestra di sync a 3 blocchi** (oggi 2; le prove del 12/11 sera indicano che il limite è la radio, quindi probabilmente inutile): servono modifiche a tag, ricevitore e display (+4 KB di RAM per tag nel ricevitore). Utile solo se la conferma resta lenta: la proviamo dopo la misura dei ~300 ms?
 69. ~~Tag 0.6.4 in registrazione~~: deciso il 2026-11-12, resta collegata al ricevitore.
+70. **Alimentazione del Pi 3**: sottotensione costante (`0x50005`) anche con alimentatore diretto e cavo spesso (4,9 V). Quale alimentatore da 5,1 V / 2,5 A usi? Per la vasca serve una batteria che regga 3 A (il PowerPack V1.2 dà ~1,8 A).
+71. ~~Nomi delle tag sul pannello~~: deciso il 2026-11-12, file `nomi.txt` sul Pi; poi lettura dal ricevitore.
+72. **Pulsante «Metti a riposo» sul touch**: ricevitore 0.1.8 con frame USB `0x23 SONNO`, host e pannello. Via libera chiesto, in attesa. Il reset vero non va bene: a batteria la tag riprenderebbe da sola a registrare; si usa SONNO (0x14).

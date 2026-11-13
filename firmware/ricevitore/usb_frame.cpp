@@ -45,7 +45,7 @@ void usbInvia(uint8_t tipo, uint32_t id, uint32_t num, const uint8_t *p1, uint16
 
 void evento(uint32_t id, uint32_t num, const char *txt) {
   size_t n = strlen(txt);
-  if (n > 120) n = 120;
+  if (n > 200) n = 200;   // 0.1.7: era 120 (le righe DIAGNOSI venivano troncate)
   usbInvia(FR_EVENTO, id, num, (const uint8_t *)txt, n);
 }
 

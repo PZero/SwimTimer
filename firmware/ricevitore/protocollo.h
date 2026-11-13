@@ -5,7 +5,7 @@
 #include <stddef.h>
 #include <string.h>
 
-#define RIC_VERSIONE "ricevitore-0.1.6"
+#define RIC_VERSIONE "ricevitore-0.1.7"
 
 #define SYNC_VERSIONE 1
 #define SYNC_MAX_TAG 2
@@ -26,10 +26,11 @@ enum StatoAnnuncio : uint8_t { ST_SONNO = 0, ST_PRONTA = 1, ST_REGISTRA = 2, ST_
 // central -> tag
 enum : uint8_t { M_PRONTO = 0x10, M_CONFERMA = 0x11, M_RIPETI = 0x12, M_STOP = 0x13 };
 // tag -> central
-enum : uint8_t { M_MAPPA = 0x01, M_BLOCCO = 0x02, M_FRAMMENTO = 0x03, M_CONFERMATO = 0x04, M_FINE = 0x05, M_ERRORE = 0x06, M_DIAGNOSI = 0x07 };
+enum : uint8_t { M_MAPPA = 0x01, M_BLOCCO = 0x02, M_FRAMMENTO = 0x03, M_CONFERMATO = 0x04, M_FINE = 0x05, M_ERRORE = 0x06, M_DIAGNOSI = 0x07, M_DIAGNOSI2 = 0x08 };
 #define LEN_BLOCCO (1 + 4 + 2 + 4 + 4)
 #define LEN_FRAMMENTO_INTEST (1 + 4 + 1)   // tipo, seq, indice; poi 128 o 238 byte (la dimensione la dice il BLOCCO, byte 15)
 #define LEN_DIAG_FISSI 27                  // DIAGNOSI: vedi docs/SINCRONIZZAZIONE.md
+#define LEN_DIAG2 30                       // DIAGNOSI2 (tag 0.6.4): vedi firmware/xiao-stream/swr_sync.h
 enum : uint8_t { STOP_SD_PIENA = 1, STOP_ERRORE_SD = 2, STOP_TROPPI_ERRORI = 3 };
 
 // ---- frame USB ----

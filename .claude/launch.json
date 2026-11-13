@@ -6,6 +6,12 @@
       "runtimeExecutable": "python",
       "runtimeArgs": ["-m", "http.server", "8765", "--directory", "tools"],
       "port": 8765
+    },
+    {
+      "name": "pannello-prova",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["stazione/rpi/pannello.py", "--indirizzo", "127.0.0.1", "--porta", "8781", "--stato", "stazione/rpi/stato-prova.json", "--nomi", "stazione/rpi/nomi.esempio.txt"],
+      "port": 8781
     }
   ]
 }

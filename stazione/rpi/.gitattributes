@@ -1,0 +1,6 @@
+# file eseguiti sul Pi (Linux): sempre LF, anche con core.autocrlf=true su Windows
+*.sh text eol=lf
+*.service text eol=lf
+*.default text eol=lf
+*.py text eol=lf
+*.html text eol=lf

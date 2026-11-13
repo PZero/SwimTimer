@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SwimTimer - stazione</title>
+<style>
+  :root { --sf: #0d1117; --sch: #161b22; --bordo: #30363d; --tx: #e6edf3; --tenue: #8b949e;
+          --ok: #3fb950; --att: #d29922; --err: #f85149; --info: #58a6ff; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--sf); color: var(--tx);
+               font-family: "DejaVu Sans", "Segoe UI", sans-serif; overflow: hidden; }
+  body { display: flex; flex-direction: column; padding: 1vh 1.2vw; gap: 1vh; }
+  header { display: flex; align-items: baseline; gap: 2vw; font-size: 2vh; color: var(--tenue); }
+  header h1 { margin: 0; font-size: 3vh; color: var(--tx); }
+  header .dx { margin-left: auto; }
+  #avviso { display: none; padding: .6vh 1vw; border-radius: 6px; background: var(--err); color: #fff;
+            font-size: 2.4vh; font-weight: bold; }
+  #tag { display: flex; gap: 1.2vw; flex: 0 0 auto; }
+  .scheda { flex: 1 1 0; background: var(--sch); border: 2px solid var(--bordo); border-radius: 10px;
+            padding: 1vh 1vw; min-width: 0; }
+  .scheda.attiva { border-color: var(--ok); }
+  .scheda.persa { opacity: .55; }
+  .tit { display: flex; align-items: baseline; gap: 1vw; font-size: 3vh; flex-wrap: wrap; }
+  .tit b { font-family: "DejaVu Sans Mono", monospace; }
+  .tit .nome { font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  .pill.rec { background: var(--err); color: #fff; font-weight: bold; }
+  .tit .idp { font-size: .55em; color: var(--tenue); font-weight: normal; }
+  .pill { font-size: 2vh; padding: .2vh .7vw; border-radius: 99px; background: var(--bordo); }
+  .grandi { display: grid; grid-template-columns: repeat(4, 1fr); gap: .8vw; margin: 1vh 0; }
+  .g { background: var(--sf); border-radius: 8px; padding: .6vh .6vw; }
+  .g .v { font-size: 4.6vh; font-weight: bold; line-height: 1.1; white-space: nowrap; }
+  .g .v small { font-size: 2vh; font-weight: normal; color: var(--tenue); }
+  .g .e { font-size: 1.7vh; color: var(--tenue); }
+  table { width: 100%; border-collapse: collapse; font-size: 2.1vh; }
+  td { padding: .25vh .4vw; border-top: 1px solid var(--bordo); }
+  td:nth-child(odd) { color: var(--tenue); }
+  td:nth-child(even) { font-family: "DejaVu Sans Mono", monospace; text-align: right; }
+  .ok { color: var(--ok); } .att { color: var(--att); } .err { color: var(--err); }
+  #vuoto { font-size: 3vh; color: var(--tenue); padding: 4vh; text-align: center; flex: 1; }
+  #log { flex: 1 1 auto; min-height: 0; overflow: hidden; background: #010409; border: 1px solid var(--bordo);
+         border-radius: 8px; padding: .6vh .6vw; font: 1.55vh/1.35 "DejaVu Sans Mono", monospace; color: var(--tenue);
+         display: flex; flex-direction: column; justify-content: flex-end; }
+  #log div { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #log .evt { color: var(--info); } #log .er { color: var(--err); } #log .av { color: var(--att); }
+  /* display verticale (Waveshare 4" 480x800): tag una sotto l'altra, caratteri in base alla larghezza */
+  @media (orientation: portrait) {
+    body { padding: 1vw; gap: 1vw; }
+    header { font-size: 2.8vw; gap: 2vw; flex-wrap: wrap; }
+    header h1 { font-size: 4.2vw; }
+    #avviso { font-size: 3.6vw; }
+    #tag { flex-direction: column; gap: 1.5vw; }
+    .scheda { padding: 1vw 1.5vw; }
+    .tit { font-size: 4.4vw; gap: 2vw; }
+    .pill { font-size: 3vw; padding: .2vw 1.5vw; }
+    .grandi { gap: 1.2vw; margin: 1vw 0; }
+    .g { padding: .8vw 1vw; }
+    .g .v { font-size: 6vw; }
+    .g .v small { font-size: 2.8vw; }
+    .g .e { font-size: 2.4vw; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    table { font-size: 2.8vw; }
+    td { padding: .3vw .8vw; }
+    #log { font-size: 3vw; line-height: 1.25; }
+    #log div { white-space: normal; overflow-wrap: anywhere; margin-bottom: .6vw; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>SwimTimer · stazione</h1>
+  <span id="ric">ricevitore: -</span>
+  <span id="disco"></span>
+  <span class="dx" id="ora">-</span>
+</header>
+<div id="avviso"></div>
+<div id="tag"></div>
+<div id="vuoto">In attesa delle tag…</div>
+<div id="log"></div>
+
+<script>
+"use strict";
+var VECCHIO_S = 5;   // oltre: avviso "dati non aggiornati"
+// Collegata, la tag 0.6.4 annuncia "sincronizza" anche mentre registra: si deduce la registrazione dalla crescita
+// dell'ultimo blocco annunciato (in registrazione ~1 blocco ogni 2-3 s).
+var REG_S = 15, seqVisti = {};   // id -> {seq, t: ultimo istante in cui seq e' cresciuto}
+function registra(t) {
+  var ora = Date.now() / 1000, v = seqVisti[t.id];
+  if (!v) { v = seqVisti[t.id] = {seq: t.ultseq, t: 0, da: ora}; }
+  else if (t.ultseq > v.seq) { v.seq = t.ultseq; v.t = ora; }
+  else if (t.ultseq < v.seq) { v.seq = t.ultseq; }   // tag riavviata o cancellata
+  if (t.stato === 2 || (v.t && ora - v.t < REG_S)) return true;
+  return (ora - v.da < REG_S) ? null : false;   // null = non ancora osservata abbastanza
+}
+
+function el(id) { return document.getElementById(id); }
+function esc(t) { return String(t).replace(/[&<>"]/g, function (c) { return {"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;"}[c]; }); }
+function cl(v, buono, medio, alto) {   // alto=true: valori alti sono buoni
+  if (v === null || v === undefined || isNaN(v)) return "";
+  if (alto) return v >= buono ? "ok" : (v >= medio ? "att" : "err");
+  return v <= buono ? "ok" : (v <= medio ? "att" : "err");
+}
+function d(o, k) { return (o && o[k] !== undefined) ? o[k] : "–"; }
+function hex(v) { return (typeof v === "number") ? "0x" + v.toString(16) : v; }
+
+function scheda(t) {
+  var dg = t.diag;
+  var phy = dg ? ({1: "1M", 2: "2M", 4: "Coded"}[dg.phy] || dg.phy) : "–";
+  var stk = dg ? dg.stkble : null;
+  var h = '<div class="scheda ' + (t.link === 4 ? "attiva" : (t.link === 0 ? "persa" : "")) + '">' +
+    '<div class="tit">' + (t.nome ? '<span class="nome">' + esc(t.nome) + '</span><b class="idp">' + esc(t.id) + '</b>' : '<b>' + esc(t.id) + '</b>') + (function (r) { return r ? '<span class="pill rec">● REGISTRA</span>'
+        : '<span class="pill">' + (r === null ? "?" : "ferma") + '</span><span class="pill">' + esc(t.stato_txt) + '</span>'; })(registra(t)) +
+    '<span class="pill">' + esc(t.link_txt) + '</span></div>' +
+    '<div class="grandi">' +
+      '<div class="g"><div class="v ' + cl(t.rssi, -60, -80, true) + '">' + t.rssi + ' <small>dBm</small></div><div class="e">RSSI</div></div>' +
+      '<div class="g"><div class="v">' + t.kbs.toFixed(1) + ' <small>KB/s</small></div><div class="e">velocità</div></div>' +
+      '<div class="g"><div class="v ' + cl(t.batt, 3800, 3600, true) + '">' + (t.batt / 1000).toFixed(2) + ' <small>V</small></div><div class="e">batteria</div></div>' +
+      '<div class="g"><div class="v ' + cl(t.pct, 50, 85, false) + '">' + t.pct + ' <small>%</small></div><div class="e">memoria non confermata</div></div>' +
+    '</div><table>' +
+    '<tr><td>blocchi in attesa sulla tag</td><td>' + t.attesa + '</td><td>ultimo seq annunciato</td><td>' + t.ultseq + '</td></tr>' +
+    '<tr><td>ricevuti / confermati</td><td>' + t.ric + ' / ' + t.conf + '</td><td>salvati / <span class="' + (t.scart ? "err" : "") + '">scartati</span></td><td>' + t.salvati + ' / <span class="' + (t.scart ? "err" : "") + '">' + t.scart + '</span></td></tr>' +
+    '<tr><td>avvistamento → collegamento</td><td>' + (t.msavv ? t.msavv + " ms" : "–") + '</td><td>ultimo annuncio</td><td>' + (t.eta >= 65535 ? "> 65 s" : (t.eta / 1000).toFixed(1) + " s") + '</td></tr>' +
+    '<tr><td>bit di errore</td><td class="' + (t.err ? "err" : "") + '">' + hex(t.err) + '</td><td>slot</td><td>' + t.slot + '</td></tr>' +
+    '<tr><td>intervallo connessione</td><td>' + d(dg, "int") + ' ms</td><td>MTU / DLE</td><td>' + d(dg, "mtu") + ' / ' + d(dg, "dle") + '</td></tr>' +
+    '<tr><td>PHY</td><td>' + phy + '</td><td>VBUS su / giù</td><td>' + d(dg, "vbus_su") + ' / ' + d(dg, "vbus_giu") + '</td></tr>' +
+    '<tr><td>HCI 0x3E</td><td class="' + (dg && dg.hci3E ? "att" : "") + '">' + d(dg, "hci3E") + '</td><td>stack BLE libero</td><td class="' + (typeof stk === "number" ? cl(stk, 2048, 1024, true) : "") + '">' + (typeof stk === "number" ? stk + " B" : "–") + '</td></tr>' +
+    '</table></div>';
+  return h;
+}
+
+function mostra(s) {
+  var eta = Date.now() / 1000 - s.ora;
+  var avv = el("avviso");
+  if (eta > VECCHIO_S) { avv.style.display = "block"; avv.textContent = "Dati non aggiornati da " + Math.round(eta) + " s: host fermo?"; }
+  else if (!s.porta_aperta) { avv.style.display = "block"; avv.textContent = "Ricevitore USB non collegato"; }
+  else { avv.style.display = "none"; }
+  el("ric").textContent = "ricevitore: " + (s.ricevitore || "-");
+  el("disco").textContent = s.libero_mb !== null && s.libero_mb !== undefined ? "disco libero " + (s.libero_mb / 1024).toFixed(1) + " GB" : "";
+  el("disco").className = s.libero_mb !== null && s.libero_mb < 500 ? "err" : "";
+  el("ora").textContent = new Date(s.ora * 1000).toLocaleTimeString("it-IT");
+  var tags = s.tag || [];
+  el("tag").innerHTML = tags.map(scheda).join("");
+  el("vuoto").style.display = tags.length ? "none" : "block";
+  // niente righe di stato (gia' nelle schede) ne' "blocco salvato"; data tolta (resta l'ora)
+  var righe = (s.log || []).filter(function (r) { return !/ RSSI -?\d+ dBm|nessuna tag vista|salvato \(fisico/.test(r); });
+  el("log").innerHTML = righe.slice(-12).map(function (r) {
+    var c = /ERR\b|CRC|errat|disco|scartat|non scritto/.test(r) ? "er"
+          : (/scollegat|non trovato|non confermat|porta seriale|WDT|PERSI/.test(r) ? "av"
+          : (/EVENTO/.test(r) ? "evt" : ""));
+    return '<div class="' + c + '">' + esc(r.replace(/^\d{4}-\d\d-\d\d /, "")) + "</div>";
+  }).join("");
+}
+
+function aggiorna() {
+  // ?prova: dati fissi (pannello.py --stato stato-prova.json), l'ora viene rinfrescata per non far scattare l'avviso
+  fetch("stato.json?t=" + Date.now(), {cache: "no-store"})
+    .then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
+    .then(function (s) { if (location.search.indexOf("prova") >= 0) s.ora = Date.now() / 1000; mostra(s); })
+    .catch(function (e) { var a = el("avviso"); a.style.display = "block"; a.textContent = "Pannello senza dati: " + e.message; })
+    .then(function () { setTimeout(aggiorna, 1000); });
+}
+aggiorna();
+</script>
+</body>
+</html>

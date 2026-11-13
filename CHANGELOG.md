@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-11-13 (Raspberry Pi station: status panel, services, kiosk)
+- **Host** `ricevitore_host.py`: new `--stato FILE` option writes an atomic JSON every second (per-tag STAT, saved blocks, DIAGNOSIS2, last 30 log lines); serial-port errors logged only on change.
+- **Panel** `stazione/rpi/pannello.py` (HTTP, standard library only, port 8080) + `pannello.html`: card per tag (name, RSSI, KB/s, battery, memory, blocks received/confirmed/saved/discarded, DIAGNOSIS2, REGISTRA indicator inferred from the last announced block, filtered log); vertical layout for the 4" Waveshare display. Tag names from `nomi.txt` (Pi only; template `nomi.esempio.txt`).
+- **Services** `swimtimer-host`, `swimtimer-pannello`, `swimtimer-kiosk` (cog/WPE on DRM; Chromium + cage as fallback), `installa.sh`, `deploy.sh`, `kiosk.sh`, `/etc/default/swimtimer`.
+- Verified on the Pi 3: automatic start, 2 tags downloaded, 0 blocks discarded. Known problem: undervoltage, a 5.1 V / 2.5 A supply is needed.
+- **Tag 0.6.4** (stays connected to the receiver while recording, DIAGNOSIS2, BLE stack 10 KB) and **receiver 0.1.7** written on 2026-11-12; 60-minute bench run pending.
+
 ## 2026-11-12 (video «Houston, we have a problem»)
 - **Video v4 (3 minutes, on-screen text only, original generated music):** YouTube IT https://youtu.be/85RNvPnFV1E, EN https://youtu.be/mj6OTWkjgwk; first in the landing page and at the top of the README. The 11/11 crash, the black box, the bigger BLE stack, the poolside station with a receipt per block, the stroke-rhythm prediction (in verification). Opens with the author's "My first board – Mars/Houston" clip (kept outside the repository). Animations with made-up data. Sources: `media/video/genera_video_v4.py`, `musica_v4.py`, `testi_v4_en.py`, `STORYBOARD_v4.md`.
 

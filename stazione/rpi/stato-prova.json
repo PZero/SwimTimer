@@ -1,0 +1,80 @@
+{
+ "ora": 1794495482.2720954,
+ "avvio": 1794495482.2581315,
+ "ricevitore": "ricevitore SwimTimer 0.1.7 (prova)",
+ "porta_aperta": true,
+ "libero_mb": 12000,
+ "riga": "11111111 attiva sincronizza RSSI -47 dBm 4.0 KB/s | in memoria 2 ric 155 conf 154 salvati 155 scart 0 | batt 4100 mV mem 3% | avv->coll 812 ms | diag: int 7.5 ms mtu 247 dle 251 phy 2 vbus su/giu 0/0 hci3E 0 stkBLE 9900 B || 22222222 vista registra RSSI -83 dBm 0.0 KB/s | in memoria 9 ric 40 conf 38 salvati 38 scart 2 | batt 3680 mV mem 62% | avv->coll - | diag: int 15 ms mtu 247 dle 251 phy 1 vbus su/giu 1/1 hci3E 6 stkBLE 1500 B",
+ "tag": [
+  {
+   "slot": 0,
+   "link": 4,
+   "rssi": -47,
+   "stato": 6,
+   "batt": 4100,
+   "pct": 3,
+   "err": 0,
+   "attesa": 2,
+   "bps": 4096,
+   "ric": 155,
+   "conf": 154,
+   "scart": 0,
+   "msavv": 812,
+   "ultseq": 160,
+   "eta": 120,
+   "id": "11111111",
+   "link_txt": "attiva",
+   "stato_txt": "sincronizza",
+   "kbs": 4.0,
+   "salvati": 155,
+   "diag": {
+    "int": 7.5,
+    "mtu": 247,
+    "dle": 251,
+    "phy": 2,
+    "vbus_su": 0,
+    "vbus_giu": 0,
+    "hci3E": 0,
+    "stkble": 9900
+   }
+  },
+  {
+   "slot": 1,
+   "link": 1,
+   "rssi": -83,
+   "stato": 2,
+   "batt": 3680,
+   "pct": 62,
+   "err": 4,
+   "attesa": 9,
+   "bps": 0,
+   "ric": 40,
+   "conf": 38,
+   "scart": 2,
+   "msavv": 0,
+   "ultseq": 52,
+   "eta": 7400,
+   "id": "22222222",
+   "link_txt": "vista",
+   "stato_txt": "registra",
+   "kbs": 0.0,
+   "salvati": 38,
+   "diag": {
+    "int": 15,
+    "mtu": 247,
+    "dle": 251,
+    "phy": 1,
+    "vbus_su": 1,
+    "vbus_giu": 1,
+    "hci3E": 6,
+    "stkble": 1500
+   }
+  }
+ ],
+ "log": [
+  "2026-11-12 15:58:02 EVENTO tag 11111111 num 3: DIAGNOSI2 tag: int=7.5 mtu=247 dle=251 phy=2 vbus_su=0 vbus_giu=0 hci3E=0 stkble=9900",
+  "2026-11-12 15:58:02 EVENTO tag 22222222 num 5: DIAGNOSI2 tag: int=15 mtu=247 dle=251 phy=1 vbus_su=1 vbus_giu=1 hci3E=6 stkble=1500",
+  "2026-11-12 15:58:02 tag 11111111: blocco 155 salvato (fisico 155, millis tag 123456), OK inviato",
+  "2026-11-12 15:58:02 tag 22222222 seq 39: CRC32 del blocco errato, nessun OK"
+ ]
+}

@@ -1,0 +1,9 @@
+# /etc/default/swimtimer - configurazione della stazione (installa.sh non la sovrascrive se esiste)
+PORTA=/dev/ttyACM0
+# dati di nuoto: fuori dal repository, solo sul Pi
+CARTELLA=/home/swim/swimtimer-dati
+# 0.0.0.0 = pannello visibile anche dal telefono in rete locale; 127.0.0.1 = solo sul monitor
+PANNELLO_INDIRIZZO=0.0.0.0
+PANNELLO_PORTA=8080
+# cog (leggero) oppure chromium (riserva: installa.sh aggiunge cage e chromium)
+BROWSER=cog

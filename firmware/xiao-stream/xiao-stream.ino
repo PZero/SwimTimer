@@ -15,10 +15,15 @@
 #include "swr_sync.h"          // costanti e messaggi del protocollo di sincronizzazione (identici a display-sync/protocollo.h)
 #include <flash/flash_nrf5x.h>   // scrittura flash compatibile con il SoftDevice (sd_flash_*)
 
-#ifndef PROVE_GUASTI
-#define PROVE_GUASTI 0          // predefinito 0 (rilascio). Per la prova a secco: compilare con -DPROVE_GUASTI=1 (versione "0.6.1-prove")
+// Stack del task BLE (in word da 4 byte: 256*10 = 10 KB). Il default del core (256*5 = 5 KB) non basta: lo stack libero era sceso troppo. Obbligatorio.
+#if !defined(CFG_BLE_TASK_STACKSIZE) || CFG_BLE_TASK_STACKSIZE < 2560
+#error "compilare con -DCFG_BLE_TASK_STACKSIZE=(256*10)"
 #endif
-#define VER_NUM "0.6.3"
+
+#ifndef PROVE_GUASTI
+#define PROVE_GUASTI 0         // predefinito 0 (rilascio). Per la prova a secco: compilare con -DPROVE_GUASTI=1 (versione "0.6.1-prove")
+#endif
+#define VER_NUM "0.6.4"
 #if PROVE_GUASTI
 #define VER_SUF "-prove"        // la build di prova si riconosce da VERSIONE, dal diario (AVV ... PROVE) e dalla pagina di segmento ("0.6.1p")
 #define VER_SEG "p"
@@ -65,7 +70,10 @@ __attribute__((used)) static const char marcatoreScheda[] = FIRMA_SCHEDA;
 // Modalita' vasca (0.5.0): 4 tocchi senza USB = sveglia e registra su flash, BLE spento.
 #define VBUS_ATTESA_AVVIO_MS 1000  // avvio causato dall'USB: attesa massima perche' VBUSDETECT si assesti
 #define VBUS_ASSENZA_N 20          // USB staccata = 20 letture consecutive senza VBUS, una ogni 100 ms (2 s)
-#define QUIETE_REG_S 180         // la registrazione si chiude dopo tanti secondi "abbastanza fermo" (soglie QUIETE_*)
+#ifndef QUIETE_REG_S             // prove a banco: -DQUIETE_REG_S=3900 (65 min) per registrare con la tag ferma
+#define QUIETE_REG_S 180
+#endif
+                                 // QUIETE_REG_S: la registrazione si chiude dopo tanti secondi "abbastanza fermo" (soglie QUIETE_*)
 #define BAT_MIN_AVVIO_MV 3400    // sotto questa tensione al risveglio non si registra
 #define BAT_STOP_MV 3300         // sotto questa tensione (3 letture di fila, ogni 5 s) la registrazione si chiude
 // (Correzione 0.6.1: RESETREAS lo azzera il core in init(), non il bootloader; la copia e' in readResetReason(), vedi setup().)
@@ -195,6 +203,18 @@ static void wdtAvvia() {
 static CtxGuasto ctxRam __attribute__((section(".noinit,\"aw\",%nobits@")));
 static uint32_t faseRam __attribute__((section(".noinit,\"aw\",%nobits@")));      // ultima "fase" del programma (0x5A5A5A00 | n): dove si trovava prima del guasto
 #define FASE(n) (faseRam = 0x5A5A5A00UL | (uint32_t)(n))
+// 0.6.4: eventi VBUS in RAM noinit (come il contesto del guasto): sopravvivono a un reset software/watchdog, cosi' il diario (che in flash e'
+// rimandato col BLE collegato) puo' spiegare un reset causato da un disturbo su VBUS. Contatori cumulativi fino al prossimo spegnimento.
+// ultTipo: 0 mai, 1 vista, 2 persa. Valido solo con magic e checksum; letto al boot e riversato nel diario (NOTA 20) e nella DIAGNOSI2.
+#define VBUS_MAGIC 0x56425531UL
+// (struct CtxVbus: in swr_tipi.h)
+static CtxVbus vbusRam __attribute__((section(".noinit,\"aw\",%nobits@")));
+static uint32_t vbusChk(const CtxVbus &c) { return c.magic ^ c.su ^ ((uint32_t)c.giu << 16) ^ c.ultMs ^ c.ultTipo ^ ((uint32_t)c.prec << 8) ^ 0x3C3C5A5AUL; }
+// Azzeramento del contatore riprese dopo 10 min stabili: vale subito in RAM; il file /reg.bin si aggiorna dopo (regScrivi dura ~1,2 s).
+// Se un reset arriva prima della scrittura, il vecchio valore in flash e' superato: vale questo (soft reset con firma valida).
+#define RIPAZZ_MAGIC 0x52495A31UL
+static uint32_t ripAzzRam __attribute__((section(".noinit,\"aw\",%nobits@")));
+static bool bootRipAzz = false;
 static uint32_t ctxChk(const CtxGuasto &c) { return c.magic ^ c.tipo ^ c.pc ^ c.lr ^ c.cfsr ^ c.hfsr ^ c.fase ^ 0xA5A5A5A5UL; }
 static void ctxSalva(uint32_t tipo, uint32_t pc, uint32_t lr) {
   ctxRam.tipo = tipo; ctxRam.pc = pc; ctxRam.lr = lr;
@@ -478,12 +498,13 @@ static void regStato(uint8_t &attiva, uint8_t &riprese) {
 static void regScrivi(uint8_t attiva, uint8_t riprese) {
   uint8_t a, r;
   regStato(a, r);
-  if (a == attiva && r == riprese) return;                // niente scritture inutili
+  if (a == attiva && r == riprese) { ripAzzRam = 0; return; }   // niente scritture inutili (il file e' gia' quello giusto)
   uint32_t tIni = millis();
   uint8_t b[3] = {attiva, riprese, regCk(attiva, riprese)};
   InternalFS.remove(REG_TMP);
   { Adafruit_LittleFS_Namespace::File f(InternalFS); if (f.open(REG_TMP, Adafruit_LittleFS_Namespace::FILE_O_WRITE)) { f.write(b, 3); f.close(); } }
   InternalFS.rename(REG_TMP, REG_FILE);
+  ripAzzRam = 0;                                          // il file ora e' autorevole: l'azzeramento in RAM non serve piu'
   uint32_t dt = millis() - tIni;
   if (dt > statRegMs) statRegMs = dt > 65535 ? 65535 : (uint16_t)dt;
 }
@@ -1357,7 +1378,10 @@ static void inConnessione(uint16_t h) {
   if (!inVasca) { ledScrivi(LED_BLUE, HIGH); ledScrivi(LED_GREEN, LOW); }   // verde fisso
   evConnAccoda(h, 1, 0);
 }
+static volatile uint16_t discTot = 0, disc3E = 0;   // 0.6.4: disconnessioni totali e con motivo HCI 0x3E (connessione non stabilita), dall'avvio
+static volatile uint8_t discUlt = 0;
 static void inDisconnessione(uint16_t h, uint8_t motivo) {
+  discTot = discTot + 1; discUlt = motivo; if (motivo == 0x3E) disc3E = disc3E + 1;
   if (h == connHdl) { connHdl = BLE_CONN_HANDLE_INVALID; risposteAttive = false; }
   if (!inVasca) ledScrivi(LED_GREEN, HIGH);
   evConnAccoda(h, 0, motivo);
@@ -1463,8 +1487,8 @@ static uint8_t diagTent = 0;   // tentativi falliti di invio della DIAGNOSI
 static uint8_t diagBuf[244];
 static uint16_t diagLen = 0;
 
-// 0.6.2: stack libero minimo (byte) dei task, da FreeRTOS (uxTaskGetSystemState): loop (4 KB), Callback (3 KB), BLE (5 KB). Le dimensioni
-// sono costanti del core (main.cpp, bluefruit.cpp) e non si cambiano dallo sketch. Sotto 512 B liberi si scrive una NOTA 13 nel diario
+// 0.6.2: stack libero minimo (byte) dei task, da FreeRTOS (uxTaskGetSystemState): loop (4 KB), Callback (3 KB), BLE (10 KB con la compilazione
+// obbligatoria -DCFG_BLE_TASK_STACKSIZE=(256*10), in word da 4 byte; 5 KB e' il default del core, troppo poco: vedi #error in cima). Sotto 512 B liberi si scrive una NOTA 13 nel diario
 // (task, byte liberi): e' il segnale che lo stack e' vicino al limite, prima di un eventuale HardFault.
 static uint16_t stkLibero[3] = {0xFFFF, 0xFFFF, 0xFFFF};
 static void stackMonitor() {
@@ -1487,6 +1511,38 @@ static void stackMonitor() {
     }
   }
 }
+
+// 0.6.4: eventi VBUS (USB vista/persa) a lettura grezza ogni 20 ms, in ogni modo (anche in registrazione): contatori e istante dell'ultimo evento,
+// nella DIAGNOSI2 (RAM noinit: sopravvivono ai reset) e nel diario. Limite di frequenza: al massimo una NOTA 19 ogni 10 s (p2 = 1 vista / 0 persa,
+// p3 = contatore di quel tipo, p4 = millis), la prima di una raffica; poi una NOTA 21 di riepilogo (p1 = eventi non scritti, p2 = su totali,
+// p3 = giu totali). Tutti gli eventi sono comunque contati.
+static bool vbusOra();
+static int8_t vbusPrec = -1;
+static void vbusTraccia() {
+  static uint32_t t = 0, tNota = 0;
+  static uint16_t soppressi = 0;
+  uint32_t ora = millis();
+  if (ora - t < 20) return;
+  t = ora;
+  if (soppressi && ora - tNota >= 10000UL) {   // fine raffica: riepilogo col conteggio
+    diario(DIA_NOTA, 21, soppressi, vbusRam.su, vbusRam.giu);
+    soppressi = 0; tNota = ora;
+  }
+  int8_t v = vbusOra() ? 1 : 0;
+  if (vbusPrec < 0) { vbusPrec = v; return; }   // la prima lettura e' la base, non un evento
+  if (v == vbusPrec) return;
+  vbusPrec = v;
+  if (v) vbusRam.su++; else vbusRam.giu++;
+  vbusRam.ultMs = ora ? ora : 1; vbusRam.ultTipo = v ? 1 : 2; vbusRam.prec = 0;
+  vbusRam.magic = VBUS_MAGIC; vbusRam.chk = vbusChk(vbusRam);
+  if (tNota == 0 || ora - tNota >= 10000UL) {
+    tNota = ora ? ora : 1; soppressi = 0;
+    diario(DIA_NOTA, 19, v, v ? vbusRam.su : vbusRam.giu, ora);
+  } else soppressi++;
+}
+static bool diag2DaInviare = false;
+static uint32_t diag2Ms = 0;       // millis dell'ultimo invio della DIAGNOSI2 (0 = non ancora inviata in questo collegamento): si reinvia ogni 5 min
+static uint32_t keepaliveMs = 0;   // ultimo messaggio inviato in streaming (MAPPA come keepalive)
 
 struct CmdSync { uint16_t conn; uint8_t tipo, motivo; uint32_t seq, crc; };
 static CmdSync cmdSy[16];
@@ -1590,7 +1646,7 @@ static void inControllo(uint16_t h, BLECharacteristic *, uint8_t *d, uint16_t le
 }
 
 static void syncReset() {
-  syncAttivo = false; syncErrore = false; mappaDaInviare = false; fineInviata = false; diagDaInviare = false; diagPronta = false; diagTent = 0; syncVer = 1;
+  syncAttivo = false; syncErrore = false; mappaDaInviare = false; fineInviata = false; diagDaInviare = false; diag2DaInviare = false; diag2Ms = 0; diagPronta = false; diagTent = 0; syncVer = 1;
   syncConn = BLE_CONN_HANDLE_INVALID;
   finN = 0; ripN = 0; txAttiva = false; uscT = uscC = 0;
 }
@@ -1649,7 +1705,7 @@ static void syncElabora() {
       if (syncAttivo && c.conn != syncConn && connessioneViva(syncConn)) continue;   // un solo display alla volta
       syncReset();
       syncConn = c.conn; syncAttivo = true; mappaDaInviare = true;
-      syncVer = c.motivo; diagDaInviare = (c.motivo >= SYNC_VERSIONE_PRONTO2);   // la DIAGNOSI solo ai central che la conoscono
+      syncVer = c.motivo; diagDaInviare = diag2DaInviare = (c.motivo >= SYNC_VERSIONE_PRONTO2);   // la DIAGNOSI solo ai central che la conoscono
       chiusureViste = anello.chiusure;
       logRiga("sync: pronto (conn %u) v%u", c.conn, c.motivo);
       diario(DIA_SYNC, 1, c.conn);
@@ -1755,6 +1811,7 @@ static void diagCostruisci() {
 
 // Chiamata a ogni giro del loop: non blocca mai (si ferma quando la coda radio e' piena o dopo 40 messaggi, poi torna a registrare)
 static void syncServi() {
+  vbusTraccia();                      // anche senza BLE
   if (!bleOk) return;
   connEventiServi();
   stackMonitor();
@@ -1790,12 +1847,37 @@ static void syncServi() {
       logRiga("sync: diagnosi inviata (%u B)", diagLen);
       continue;
     }
+    if (!diag2DaInviare && diag2Ms && syncVer >= SYNC_VERSIONE_PRONTO2 && millis() - diag2Ms >= 300000UL) diag2DaInviare = true;   // 0.6.4: ogni 5 min a collegamento aperto
+    if (diag2DaInviare) {   // 0.6.4: collegamento, VBUS, disconnessioni, stack BLE (formato in swr_sync.h)
+      uint8_t m[SYNC_DIAG2_LEN];
+      uint16_t n = syncDiagnosi2(m, c->getConnectionInterval(), c->getMtu(), c->getDataLength(), c->getPHY(), vbusPrec > 0 ? 1 : 0, vbusRam.su, vbusRam.giu, vbusRam.ultMs,
+                                 disc3E, discTot, discUlt, stkLibero[2], millis());
+      m[23] = (vbusRam.ultTipo & 3) | (vbusRam.prec ? 4 : 0) | ((((CFG_BLE_TASK_STACKSIZE) * 4 / 1024) & 0x1F) << 3);   // bit 0-1 ultimo evento VBUS (0 mai, 1 vista, 2 persa), bit 2 = di un avvio precedente (millis di quell'avvio), bit 3-7 stack totale del task BLE in KB
+      if (c->getMtu() < n + 3) { diag2DaInviare = false; continue; }
+      if (!syncInvia(m, n)) return;   // coda piena: si riprova al giro dopo (la DIAGNOSI e' gia' partita: un guasto vero non blocca i blocchi, vedi diagTent)
+      diag2DaInviare = false;
+      diag2Ms = millis();
+      logRiga("sync: diagnosi2 inviata: int %u mtu %u dle %u phy %u vbus %u/%u 3E %u", c->getConnectionInterval(), c->getMtu(), c->getDataLength(), c->getPHY(), vbusRam.su, vbusRam.giu, disc3E);
+      continue;
+    }
     if (uscC != uscT) {
       if (!syncInvia(uscBuf[uscC & 7], uscLen[uscC & 7])) return;
       uscC = uscC + 1;
       continue;
     }
     if (!txAttiva && !syncAvviaTx()) {
+      // 0.6.4: in registrazione (inVasca) con un central versione 2 il collegamento resta aperto: niente FINE, i blocchi si inviano appena completi.
+      // Ogni 5 s senza altro traffico una MAPPA fa da keepalive (il ricevitore chiude dopo 15 s di silenzio). Con annSonno (fine registrazione) si torna alla FINE.
+      bool streaming = inVasca && syncVer >= SYNC_VERSIONE_PRONTO2 && !annSonno;
+      if (streaming) {
+        if (!syncErrore && finN == 0 && ripN == 0 && millis() - keepaliveMs >= 5000UL) {
+          uint8_t m[135], mp[128];
+          anello.mappa(mp);
+          syncMappa(m, millis(), anello.aperto >= 0 ? (uint16_t)anello.aperto : 0xFFFF, mp);
+          if (syncInvia(m, 135)) keepaliveMs = millis();
+        }
+        return;
+      }
       if (!syncErrore && !fineInviata && finN == 0 && ripN == 0 && anello.nDaValidare == 0) {   // niente da confermare: FINE
         uint8_t m[5]; m[0] = M_FINE; sw32(m + 1, anello.maxSeq);
         uscAccoda(m, 5);
@@ -1806,6 +1888,7 @@ static void syncServi() {
       return;
     }
     if (!syncPasso()) return;
+    keepaliveMs = millis();
   }
 }
 
@@ -2282,6 +2365,7 @@ static void modalitaVasca(uint8_t origine) {
   if (origine != 0) {
     uint8_t att = 0, rip = 0;
     regStato(att, rip);
+    if (bootRipAzz) rip = 0;                                 // azzeramento (10 min stabili) non ancora scritto in /reg.bin: vale lo zero in RAM, non il vecchio valore in flash
     uint8_t dalMarca = ((bootMarca & 0xF0) == MARCA_REGISTRA) ? (bootMarca & 0x0F) : 0;     // il conteggio sta anche nella marca: vale il maggiore dei due
     riprese = (rip > dalMarca ? rip : dalMarca) + 1;                                         // (con /reg.bin cancellato o corrotto la tag si ferma comunque)
   }
@@ -2379,7 +2463,8 @@ static void modalitaVasca(uint8_t origine) {
   ledTocchi = false;                                     // fine della gestione dei tocchi: da qui LED di nuovo spenti a batteria
 
   uint32_t tBat = millis(), tLed = millis(), tFifo = 0, tDia = millis(), tVivo = millis(), campPrec = 0;
-  bool resetRip = (riprese == 0);                       // il contatore delle riprese si azzera anche dopo 10 min di registrazione stabile
+  bool ripFilePend = false;                             // azzeramento riprese fatto in RAM, /reg.bin ancora da scrivere
+  bool resetRip = (riprese == 0);                    // il contatore delle riprese si azzera anche dopo 10 min di registrazione stabile
   uint8_t sotto = 0;
   while (!vMotivo) {
     FASE(10);
@@ -2392,13 +2477,17 @@ static void modalitaVasca(uint8_t origine) {
         diario(DIA_NOTA, 6, 0, 0, vCampioni);
         diarioFlush();
       }
-      if (!resetRip && !wdtSospeso && o2 - vInizioMs >= 600000UL && Bluefruit.Periph.connected() == 0) {   // 10 min stabili: catena finita (solo senza client BLE: regScrivi puo' durare 2 s)
-        resetRip = true;
+      if (!resetRip && !wdtSospeso && o2 - vInizioMs >= 600000UL) {   // 10 min stabili: catena finita, anche con un client BLE collegato
+        resetRip = true; ripFilePend = true;
+        gpregretImposta(MARCA_REGISTRA);                 // subito (istantaneo): la copia in RAM. Con un reset prima del file, ripAzzRam fa valere lo zero
+        ripAzzRam = RIPAZZ_MAGIC;
+        diario(DIA_NOTA, 5, riprese);
+      }
+      if (ripFilePend && Bluefruit.Periph.connected() == 0) {   // il file solo a collegamento chiuso (regScrivi puo' durare 2 s); altrimenti alla chiusura, che scrive regScrivi(0, 0)
+        ripFilePend = false;
         vServi();                                        // regScrivi dura fino a ~1,2 s (misurato): FIFO svuotato prima; succede al massimo una volta per catena
         regScrivi(1, 0);
         fifo.ultAcc = 0;
-        gpregretImposta(MARCA_REGISTRA);
-        diario(DIA_NOTA, 5, riprese);
         tVivo = millis(); campPrec = vCampioni;          // stallo pianificato
       }
     }
@@ -2592,6 +2681,14 @@ void setup() {
   bootCtxValido = ctxRam.magic == CTX_MAGIC && ctxRam.chk == ctxChk(ctxRam) && (rr & (POWER_RESETREAS_DOG_Msk | POWER_RESETREAS_SREQ_Msk | POWER_RESETREAS_LOCKUP_Msk));
   if (bootCtxValido) bootCtx = ctxRam; else memset(&bootCtx, 0, sizeof(bootCtx));
   ctxRam.magic = 0;
+  {                                                        // eventi VBUS e azzeramento riprese pendente (RAM noinit): letti prima di riscriverli
+    bool soft = rr & (POWER_RESETREAS_DOG_Msk | POWER_RESETREAS_SREQ_Msk | POWER_RESETREAS_LOCKUP_Msk);
+    bootRipAzz = soft && ripAzzRam == RIPAZZ_MAGIC;
+    ripAzzRam = 0;
+    if (!(vbusRam.magic == VBUS_MAGIC && vbusRam.chk == vbusChk(vbusRam))) memset(&vbusRam, 0, sizeof(vbusRam));
+    else if (vbusRam.ultTipo) vbusRam.prec = 1;            // l'ultimo evento e' di un avvio precedente
+    vbusRam.magic = VBUS_MAGIC; vbusRam.chk = vbusChk(vbusRam);
+  }
   bootFase = ((faseRam & 0xFFFFFF00UL) == 0x5A5A5A00UL && (rr & (POWER_RESETREAS_DOG_Msk | POWER_RESETREAS_SREQ_Msk | POWER_RESETREAS_LOCKUP_Msk))) ? (faseRam & 0xFF) : 0;
   tempoAvvio(rr);                                          // prima di wdtAvvia(): cane() sovrascrive "ultimo vivo"
   wdtAvvia();
@@ -2642,6 +2739,9 @@ void setup() {
       diario(DIA_GUASTO, bootGuasto, bootFase, 0, bootCtx.pc);
       diario(DIA_GUASTO2, 0, (uint16_t)(bootCtx.cfsr & 0xFFFF), (uint16_t)(bootCtx.cfsr >> 16), bootCtx.lr);
     }
+    if (vbusRam.su || vbusRam.giu)                           // NOTA 20 <vista> <persa> <millis dell'ultimo evento | tipo (1 vista, 2 persa) << 30>: contatori cumulativi dai reset
+      diario(DIA_NOTA, 20, vbusRam.su, vbusRam.giu, (vbusRam.ultMs & 0x3FFFFFFFUL) | ((uint32_t)vbusRam.ultTipo << 30));
+    if (bootRipAzz) diario(DIA_NOTA, 22, 0);                 // NOTA 22: reset prima della scrittura di /reg.bin dopo l'azzeramento riprese: vale lo zero in RAM
     if (bootWdtGiaAttivo) diario(DIA_WDT, 1);
     if (attesaVbus) diario(DIA_NOTA, 12, vbusAvvio, attesaVbus);   // NOTA 12 <vbus visto 0/1> <ms attesi> (NOTA 10 = tempo di sessione)
   }

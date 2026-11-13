@@ -1,0 +1,19 @@
+[Unit]
+Description=SwimTimer: host del ricevitore USB (scarico delle tag)
+After=local-fs.target
+
+[Service]
+User=swim
+SupplementaryGroups=dialout
+EnvironmentFile=/etc/default/swimtimer
+RuntimeDirectory=swimtimer
+RuntimeDirectoryPreserve=yes
+ExecStart=/usr/bin/python3 -u /opt/swimtimer/ricevitore_host.py --porta ${PORTA} --cartella ${CARTELLA} --stato /run/swimtimer/stato.json
+Restart=always
+RestartSec=2
+# la riga di stato va gia' nel log su disco: in journal solo errori e avvii
+StandardOutput=null
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
