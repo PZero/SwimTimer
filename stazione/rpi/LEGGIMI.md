@@ -20,6 +20,13 @@ hdmi_drive=1
 ```
 Con `video=HDMI-A-1:...` del KMS il pannello mostrava l'immagine triplicata o illeggibile. Per il monitor 15,6″ togliere le righe `hdmi_*`.
 
+### Rotazione dello schermo (dal 2026-11-17: 180°)
+Non si tocca `config.txt` (con `vc4-kms-v3d` le righe `display_rotate`/`display_hdmi_rotate` sono ignorate). Si imposta `ROTAZIONE` in `/etc/default/swimtimer`: passi di 90° in senso antiorario, `2` = 180° (default nel file di esempio).
+- **Schermo**: `kiosk.sh` avvia `cog --platform=drm -O renderer=gles,rotation=$ROTAZIONE` (cog 0.18).
+- **Touch XPT2046**: cog non ruota i touchscreen, quindi con `ROTAZIONE=2` `installa.sh` scrive `/etc/udev/rules.d/99-swimtimer-touch.rules` con `LIBINPUT_CALIBRATION_MATRIX="-1 0 1 0 -1 1"` sull'`ADS7846 Touchscreen`; con altri valori la regola viene tolta (90/270 non ruotano il touch).
+- Per cambiarla: modificare `ROTAZIONE`, poi `sudo bash ~/swimtimer-install/installa.sh` (o `deploy.sh`). **Niente riavvio**: basta il riavvio del servizio `swimtimer-kiosk`, che l'installazione già fa. La console di testo (tty1) e la schermata di avvio restano non ruotate.
+- Con `BROWSER=chromium` (cage) la rotazione non è applicata.
+
 ## Riconfigurare senza rete
 cloud-init gira **solo al primo avvio**. Se il Wi-Fi è sbagliato: copiare `swim-firstrun.sh` nella partizione di avvio e aggiungere a `cmdline.txt` (stessa riga)
 `systemd.run=/boot/firmware/swim-firstrun.sh systemd.run_success_action=reboot systemd.unit=kernel-command-line.target`.

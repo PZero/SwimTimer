@@ -4,7 +4,7 @@ Automatic lap times in the pool: a tag under the swim cap and a poolside display
 
 ![Status](https://img.shields.io/badge/status-XIAO%20test%20tags%20in%20bench%20tests-yellow) ![Board](https://img.shields.io/badge/nRF52840%20tag-v0.6%20Rev0%20ready%20for%20preview-green) ![Repository](https://img.shields.io/badge/repository-public-blue) ![License](https://img.shields.io/badge/license-to%20be%20defined-lightgrey)
 
-Updated on **2026-11-12**. Single public repository `PZero/SwimTimer`: XIAO test tags and their firmware, tools page (GitHub Pages: https://pzero.github.io/SwimTimer/), online collaboration app (Firebase, Italian and English: https://swimtimer-pzero.web.app, with contact form and poolside display demo), ESP32 prototype, nRF52840 tag (KiCad, Gerber, JLCPCB and NextPCB files), programmer HAT, technical wallpapers and three videos (first pool test, progress update and first presentation).
+Updated on **2026-11-17**. Single public repository `PZero/SwimTimer`: XIAO test tags and their firmware, tools page (GitHub Pages: https://pzero.github.io/SwimTimer/), online collaboration app (Firebase, Italian and English: https://swimtimer-pzero.web.app, with contact form and poolside display demo), ESP32 prototype, nRF52840 tag (KiCad, Gerber, JLCPCB and NextPCB files), programmer HAT, technical wallpapers and three videos (first pool test, progress update and first presentation).
 
 > **Language.** This README is in English. Internal working documents in [`docs/`](docs/) (state, decisions, requirements, design) are written in Italian.
 
@@ -84,7 +84,7 @@ English: **https://youtu.be/EVrdSybpnE4**. Italian: https://youtu.be/_2UzpOqblVI
 | nRF52840 tag **v0.6 "Rev0"** (new) | 4 layers 0.8 mm, 21.59 x 28.5 mm, no BGA (NextPCB Rev0 rejects pitch below 0.45 mm). Files generated; JLC rotations of the new SOT-23 parts still to verify in a JLC preview |
 | XIAO nRF52840 Sense test tags | One board in use on the bench ([`hardware/xiao/README.md`](hardware/xiao/README.md)). Firmware 0.5.2 (no automatic sleep on USB power), 0.5.3 (USB during a recording closes it and restarts in normal mode) and 0.5.4 (charge current 100 mA) flashed and checked on the bench; test cell 1000 mAh; pool recording download and recorded data not yet checked; not yet used in the pool |
 | XIAO firmware **0.6.1** (`firmware/xiao-stream`, test build on both tags) | Automatic resume after a crash or watchdog reset (max 3 in a row), 8 s watchdog, fault context and persistent diary, IMU FIFO realignment with content check, continuous session time (start-up 500 ms), no idle without USB, USB rules, standby command from the display. Standby from the page, rest stop and idle on the charger **not yet verified**. The published OTA release is still 0.5.4 |
-| Tag firmware **0.6.3** (`firmware/xiao-stream`) | 238-byte fragments (READY v2), notification queue, 2M PHY / DLE, DIAGNOSIS message after every connection, 4-aligned flash reads, BLE stack 8 KB. **0.6.4** (stack 10 KB, stays connected while recording, DIAGNOSIS2; written 2026-11-12, 60-minute bench run pending) |
+| Tag firmware **0.6.3** (`firmware/xiao-stream`) | 238-byte fragments (READY v2), notification queue, 2M PHY / DLE, DIAGNOSIS message after every connection, 4-aligned flash reads, BLE stack 8 KB. **0.6.4** (stack 10 KB, stays connected while recording, DIAGNOSIS2). **0.6.5** (loaded on both tags, **not yet verified in the field**): PC always on; on the charger only: suspend, wake on 4 taps, sleep after 3 min still. Bench build flag `-DQUIETE_REG_S=3900` |
 | Receiver firmware **0.1.6** (`firmware/ricevitore`) + host `stazione/ricevitore_host.py` | XIAO nRF52840 Sense on USB, central for 2 tags; the host saves, fsyncs and re-reads each block before the OK. Bench: 1 tag ~16.5 KB/s, 2 tags ~17.6 KB/s total, 0 blocks lost. Receiver **0.1.7** written (DIAGNOSIS2 relay). Runs as a service on the Raspberry Pi 3 (2 tags downloaded, 0 blocks discarded); not yet tested in the pool |
 | Display firmware `firmware/display-sync` | LilyGO T-RGB without a working screen: receives the blocks from up to 3 tags, verifies, writes to microSD and confirms. Creates the Wi-Fi network «SwimTimer» with a status page for iPhone (`http://192.168.4.1`), which also shows warnings, the recording button and the standby button for the tags. Dry run (0.6.0): 2 tags x 15 min, 666 blocks saved and confirmed, 0 CRC errors, 0 anomalies. Signal strength still to be tuned |
 | Display enclosure `hardware/display-involucro/` | Parametric OpenSCAD design: PLA vase, silicone cap, fork with a 15° detent swivel; STL files and renders. Fit on the real board still to be checked |
@@ -538,6 +538,16 @@ The receiver replaces the display as the BLE central: a second XIAO nRF52840 Sen
 - The DIAGNOSIS text is sometimes truncated at ~119 characters.
 - With USB attached the tag does not record: for data, the 4 taps are needed on battery; with the host closed the receiver does not connect.
 
+### Bench run 12-13 Nov 2026 (2.5 h, tag 0.6.4, receiver 0.1.7)
+
+2 tags always connected to the receiver for 2.5 hours (data not in the repository).
+
+- **About 7100 blocks received, 0 discarded.** BLE stack on the tag: at least 8112 bytes free of 10 KB.
+- **Samples lost when the link dropped:** 41 s and 54 s (about 0.6 % of the run). To be fixed in tag 0.6.6.
+- The quiet stop (rest stop) **did not trigger** in this run.
+- One LiPo was discharged down to 1.3 V and was scrapped: a safe low-battery stop is needed.
+- **Tag memory:** 512 blocks hold about **21 minutes** (one block every ~2.5 s), not one hour. Downloads during pauses are needed to keep the ring from filling with unconfirmed blocks.
+
 ## Base station (Raspberry Pi 3)
 
 The Raspberry Pi 3 runs the host (`ricevitore_host.py`) on the USB receiver and serves a status panel to the HDMI monitor. It is configured headless: cloud-init on first boot (template `user-data.esempio`, no credentials in the repository), a fallback `systemd.run=` script, network diagnostics in `/boot/firmware/diag.txt`, and settings for the Waveshare 4" HDMI display (`hdmi_cvt` 480x800, `hdmi_drive=1`).
@@ -554,7 +564,13 @@ The Raspberry Pi 3 runs the host (`ricevitore_host.py`) on the USB receiver and 
 
 **Install** from a PC: `bash stazione/rpi/deploy.sh [user@host]` copies the files and runs [`installa.sh`](stazione/rpi/installa.sh) (packages, `/opt/swimtimer/`, services, `consoleblank=0`); it can be re-run for updates. Panel test on a PC: `python stazione/rpi/pannello.py --indirizzo 127.0.0.1 --porta 8781 --stato stazione/rpi/stato-prova.json` (invented data in [`stato-prova.json`](stazione/rpi/stato-prova.json)).
 
-**Verified on the Pi 3 (2026-11-12):** automatic start, 2 tags downloaded with 0 blocks discarded. **Known problem:** undervoltage (`get_throttled` = `0x50005`) with the power bank and a plain supply; use a 5.1 V / 2.5 A supply with a short cable.
+**Verified on the Pi 3 (2026-11-12):** automatic start, 2 tags downloaded with 0 blocks discarded. **Panel rotated 180 degrees** to match the mounting in the enclosure. **Known problem:** undervoltage (`get_throttled` = `0x50005`) with the power bank and a plain supply; use a 5.1 V / 2.5 A supply with a short cable.
+
+**Station enclosure** ([`hardware/stazione-involucro/`](hardware/stazione-involucro/), OpenSCAD [`stazione.scad`](hardware/stazione-involucro/stazione.scad); instructions in Italian: [`LEGGIMI.md`](hardware/stazione-involucro/LEGGIMI.md)). STL in `stl/`: [`corpo_stampa.stl`](hardware/stazione-involucro/stl/corpo_stampa.stl) (body), [`coperchio.stl`](hardware/stazione-involucro/stl/coperchio.stl) (lid), [`prolunga.stl`](hardware/stazione-involucro/stl/prolunga.stl) (switch extension).
+- **164 x 106 x 54 mm**, holds the Raspberry Pi 3, the Waveshare 4" display and the PowerPack V1.2.
+- Lanyard rings with a 45-degree gusset; splash-resistant (not waterproof).
+- Bay for the XIAO receiver placed away from the Pi; 3.6 cm cable clearance.
+- Print on a Bambu Lab A1 mini. **Measurements are still estimated**: check them against the real parts before printing.
 
 Instructions (Italian): [`stazione/rpi/LEGGIMI.md`](stazione/rpi/LEGGIMI.md). Files: [`swim-firstrun.sh`](stazione/rpi/swim-firstrun.sh), [`user-data.esempio`](stazione/rpi/user-data.esempio), [`deploy.sh`](stazione/rpi/deploy.sh).
 
@@ -818,7 +834,9 @@ The v0.5 board is verified (DRC/ERC, `verifica_v05.py`). **Do not order** before
 - Publish firmware 0.6.1 as the OTA release only after the pool tests.
 
 **USB receiver, host and Raspberry Pi**
-1. Tag 0.6.4: BLE stack 10 KB, fewer reconnections while recording, find the 287 ms against 150 ms with one tag, untruncated DIAGNOSIS, HCI 0x3E; then a 60-minute bench run with 2 tags.
+1. Tag 0.6.6: no lost samples on link drops, quiet stop verified, safe low-battery stop. Verify 0.6.5 (charger suspend, 4-tap wake) in the field.
+1b. Receiver 0.1.8 with a SLEEP button.
+1c. Station power supply (5.1 V / 2.5 A) and the enclosure fit check; open: the 287 ms against 150 ms with one tag, HCI 0x3E.
 2. Raspberry Pi: service, panel and kiosk are done; next a proper 5.1 V / 2.5 A supply, the 15.6" monitor (remove the `hdmi_*` lines) and a pool test.
 3. Range tests at 1, 3 and 5 m and under the cap; then a pool session.
 4. Replace `#define private public` in the receiver; add diary notes 14-18 to the decoder; update the receiver `LEGGIMI.md` to 0.1.7.

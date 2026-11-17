@@ -1,5 +1,12 @@
 # Changelog
 
+## 2026-11-17 (bench run, tag 0.6.5, station enclosure)
+- **Bench run 12-13 Nov (2.5 h, 2 tags always connected):** ~7100 blocks, 0 discarded, BLE stack >= 8112 B free of 10 KB. Problems: 41 s and 54 s of samples lost when the link dropped (~0.6 %), quiet stop did not trigger, one LiPo discharged to 1.3 V and scrapped. Correction: 512 blocks hold ~21 min (one block every ~2.5 s), not one hour; downloads during pauses are needed.
+- **Tag 0.6.5** (loaded on both tags, not yet verified in the field): PC always on; charger only: suspend, wake on 4 taps, sleep after 3 min still. Bench flag `-DQUIETE_REG_S=3900`.
+- **Station enclosure** `hardware/stazione-involucro/` (OpenSCAD + STL: body, lid, switch extension): 164x106x54 mm, Raspberry Pi 3 + Waveshare 4" + PowerPack V1.2, lanyard rings with 45-degree gusset, splash-resistant, receiver bay away from the Pi, 3.6 cm cable clearance, Bambu Lab A1 mini; measurements still estimated.
+- Pi panel rotated 180 degrees.
+- Next: tag 0.6.6 (no lost samples on link drops, quiet stop verified, safe low-battery stop), receiver 0.1.8 with SLEEP button, station power supply.
+
 ## 2026-11-13 (Raspberry Pi station: status panel, services, kiosk)
 - **Host** `ricevitore_host.py`: new `--stato FILE` option writes an atomic JSON every second (per-tag STAT, saved blocks, DIAGNOSIS2, last 30 log lines); serial-port errors logged only on change.
 - **Panel** `stazione/rpi/pannello.py` (HTTP, standard library only, port 8080) + `pannello.html`: card per tag (name, RSSI, KB/s, battery, memory, blocks received/confirmed/saved/discarded, DIAGNOSIS2, REGISTRA indicator inferred from the last announced block, filtered log); vertical layout for the 4" Waveshare display. Tag names from `nomi.txt` (Pi only; template `nomi.esempio.txt`).

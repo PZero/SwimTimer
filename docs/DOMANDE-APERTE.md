@@ -69,3 +69,6 @@ Risolte: modulo E73 (Raytac a stock 0), IMU LSM6DSV16X, flash 16 MB, interruttor
 70. **Alimentazione del Pi 3**: sottotensione costante (`0x50005`) anche con alimentatore diretto e cavo spesso (4,9 V). Quale alimentatore da 5,1 V / 2,5 A usi? Per la vasca serve una batteria che regga 3 A (il PowerPack V1.2 dà ~1,8 A).
 71. ~~Nomi delle tag sul pannello~~: deciso il 2026-11-12, file `nomi.txt` sul Pi; poi lettura dal ricevitore.
 72. **Pulsante «Metti a riposo» sul touch**: ricevitore 0.1.8 con frame USB `0x23 SONNO`, host e pannello. Via libera chiesto, in attesa. Il reset vero non va bene: a batteria la tag riprenderebbe da sola a registrare; si usa SONNO (0x14).
+73. **Distanziali PowerPack–Pi:** la scatola prevede 11 mm; hai quelli da 22 mm. Compri M2.5 da 10–12 mm o faccio una cornice di 11 mm fra corpo e coperchio (viti M3 da 20 mm)?
+74. **Scatola:** misuri col calibro la spina USB-A del PowerPack, la levetta dell'interruttore (larghezza, sporgenza, corsa) e lo spessore della cella, e provi per prima la prolunga stampata?
+75. **Celle di test:** la 18350 è «protected»? Se no, per le prove lunghe serve lo stop a batteria bassa della 0.6.6 prima di lasciarla accesa incustodita.

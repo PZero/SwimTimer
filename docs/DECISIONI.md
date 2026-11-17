@@ -186,3 +186,8 @@
 | 2026-11-12 | Nomi delle tag da `nomi.txt` sul Pi, non nel repository; modello `nomi.esempio.txt` | Sono nomi di persone (dati personali); il ricevitore 0.1.x non legge il nome dall'annuncio |
 | 2026-11-12 | Il pannello deduce «REGISTRA» dalla crescita dell'ultimo blocco annunciato (15 s) | Da collegata la tag annuncia «sincronizza» anche se registra; soluzione definitiva: modifica al firmware |
 | 2026-11-12 | Per mettere a riposo una tag si usa SONNO (0x14), non un reset | Un reset a batteria fa riprendere la registrazione; SONNO esiste già nella tag |
+| 2026-11-13 | La tag 0.6.4 resta collegata durante la registrazione; per la 0.6.6 si chiudono: campioni persi alle cadute, chiusura per quiete, stop sicuro a batteria bassa | Prova a banco di 2,5 h: 0 scarti su ~7100 blocchi, ma 41–54 s di campioni persi alle cadute, quiete non scattata, una cella scesa a 1,3 V |
+| 2026-11-13 | Con una tag la memoria da 512 blocchi dura ~21 min (un blocco ogni ~2,5 s): gli scarichi nelle pause sono necessari | Misurato nel log; la stima precedente di «un'ora» era sbagliata |
+| 2026-11-14 | Scatola di prova della stazione: PLA, 164×106×54, cavi 3,6 cm, Pi appeso al display, anelli per il cordino con mensola a 45°, niente apertura di ricarica (si apre a casa), prolunga stampata per l'interruttore | Bambu Studio segnalava sbalzi flottanti su anelli e gocciolatoio; la ricarica si fa a casa |
+| 2026-11-14 | Cavo USB-A → micro-USB dritto del PowerPack (non ad angolo retto) | Scelta dell'utente: la scatola resta larga 106 mm |
+| 2026-11-17 | Cella a 1,3 V scartata; 18350 senza protezione solo per il banco, mai sotto la cuffia | Scarica profonda: rischio di perdite interne e calore vicino alla testa |

@@ -19,6 +19,15 @@ install -m 755 kiosk.sh /opt/swimtimer/
 install -d -o swim -g "$(id -gn swim)" -m 700 "$CARTELLA"
 usermod -aG dialout,video,render,input swim
 
+# touch XPT2046 (ADS7846) ruotato come lo schermo: matrice di calibrazione di libinput (cog non ruota i touchscreen)
+REGOLA=/etc/udev/rules.d/99-swimtimer-touch.rules
+if [ "${ROTAZIONE:-0}" = 2 ]; then
+  echo 'ATTRS{name}=="ADS7846 Touchscreen", ENV{LIBINPUT_CALIBRATION_MATRIX}="-1 0 1 0 -1 1"' > "$REGOLA"
+else
+  rm -f "$REGOLA"
+fi
+udevadm control --reload && udevadm trigger --subsystem-match=input || true
+
 install -m 644 swimtimer-host.service swimtimer-pannello.service swimtimer-kiosk.service /etc/systemd/system/
 systemctl daemon-reload
 systemctl enable swimtimer-host swimtimer-pannello swimtimer-kiosk

@@ -13,5 +13,6 @@ case "${BROWSER:-cog}" in
       --disable-features=Translate --check-for-update-interval=31536000 --password-store=basic "$URL" ;;
   *)
     # WPE WebKit direttamente su DRM/KMS: niente X, niente compositore
-    exec cog --platform=drm "$URL" ;;
+    # ROTAZIONE: passi di 90 gradi in senso antiorario (2 = 180); il touch lo ruota la regola udev di installa.sh
+    exec cog --platform=drm -O "renderer=gles,rotation=${ROTAZIONE:-0}" "$URL" ;;
 esac

@@ -23,7 +23,7 @@
 #ifndef PROVE_GUASTI
 #define PROVE_GUASTI 0         // predefinito 0 (rilascio). Per la prova a secco: compilare con -DPROVE_GUASTI=1 (versione "0.6.1-prove")
 #endif
-#define VER_NUM "0.6.4"
+#define VER_NUM "0.6.5"
 #if PROVE_GUASTI
 #define VER_SUF "-prove"        // la build di prova si riconosce da VERSIONE, dal diario (AVV ... PROVE) e dalla pagina di segmento ("0.6.1p")
 #define VER_SEG "p"
@@ -295,7 +295,11 @@ static void tempoNuovaCatena() {
   t.chk = tempoChk(t);
 }
 static bool bootWdtGiaAttivo = false;       // il WDT risultava gia' avviato al boot (sopravvissuto al reset?)
-static uint8_t sonnoMotivo = 0;             // perche' si va in sonno (diario): 1 comando, 2 quiete, 3 batteria, 4 USB staccata
+static uint8_t usbClasse = 0;               // 0.6.5: 0 non ancora classificata, 1 PC (USB enumerata/seriale), 2 solo caricatore (VBUS senza enumerazione)
+static bool avvioDaTap = false;             // 0.6.5: accesa coi 4 tap con VBUS presente (o PC poi staccato): vale la quiete da 180 s, non il sonno immediato
+static bool avvioVbus = false;              // VBUS presente al boot
+#define INATTIVITA_CARICA_S 180             // 0.6.5: caricatore e tag ferma: sonno dopo tanti secondi di quiete
+static uint8_t sonnoMotivo = 0;           // perche' si va in sonno (diario): 1 comando, 2 quiete, 3 batteria, 4 USB staccata
 
 // ---------------- Log circolare ----------------
 static char logBuf[LOG_RIGHE][LOG_LEN];
@@ -878,7 +882,7 @@ static bool risveglioQuattroTap() {
   diario(DIA_FALSO, tocchiExtra, bootMarca);                        // per contare i falsi risvegli (borsa scossa): una scrittura flash, solo in fase di prova
   diarioFlush();
 #endif
-  if (NRF_POWER->USBREGSTATUS & POWER_USBREGSTATUS_VBUSDETECT_Msk) { NRF_POWER->GPREGRET2 = 0; NVIC_SystemReset(); }   // USB arrivata nel frattempo: niente sonno
+  if (!avvioVbus && (NRF_POWER->USBREGSTATUS & POWER_USBREGSTATUS_VBUSDETECT_Msk)) { NRF_POWER->GPREGRET2 = 0; NVIC_SystemReset(); }   // USB arrivata nel frattempo: niente sonno (0.6.5: se c'era gia' al risveglio e' il caricatore: si dorme, niente ciclo di riavvii)
   NRF_POWER->GPREGRET2 = MARCA_FALSO | (tocchiExtra & 0x0F);   // falso risveglio: la marca vale come sleep e mostra i tocchi visti
   NRF_POWER->SYSTEMOFF = POWER_SYSTEMOFF_SYSTEMOFF_Enter;
   while (true) __WFE();
@@ -2066,7 +2070,10 @@ static void gpregretImposta(uint8_t v) {
 static void sistemaOff(uint8_t marca) {
   // Con la tensione USB presente il System OFF non si risveglierebbe piu' (il risveglio da USB e' sul fronte di VBUS):
   // invece di dormire si riavvia, e con l'USB l'avvio va in modalita' normale. Diario NOTA 11.
-  if (vbusOra()) {
+  // 0.6.5: con il SOLO caricatore (VBUS senza enumerazione, usbClasse 2) il System OFF si fa lo stesso: la tag si sveglia
+  // coi 4 tap (GPIO dell'IMU) e, se poi si collega un PC, il VBUS fa un fronte (stacco/riattacco) e sveglia. Un host che
+  // si e' enumerato nel frattempo (mounted) annulla il sonno come prima.
+  if (vbusOra() && (usbClasse != 2 || TinyUSBDevice.mounted())) {
     logRiga("sonno annullato: USB presente");
     diario(DIA_NOTA, 11, marca);
     diarioFlush();
@@ -2667,8 +2674,25 @@ static void controlloUsb() {
     return;
   }
   assente = 0;
-  int8_t tipo = TinyUSBDevice.mounted() ? 1 : 2;
-  if (tipo != tipoPrec) { tipoPrec = tipo; diario(DIA_USB, tipo, ultimaMv); }
+  // 0.6.5: PC = enumerata (mounted) o seriale aperta; caricatore = VBUS senza enumerazione dopo almeno 10 s dall'avvio.
+  // Da PC a "non enumerata" serve 10 s continui (isteresi, es. host in sospensione); passando a caricatore vale la quiete da 180 s.
+  static uint32_t tNoPc = 0;
+  int8_t tipo;
+  if (TinyUSBDevice.mounted() || Serial) { tNoPc = 0; tipo = 1; }
+  else if (usbClasse == 1) { if (!tNoPc) tNoPc = ora ? ora : 1; if (ora - tNoPc < 10000UL) return; tipo = 2; }
+  else { if (ora < 10000UL) return; tipo = 2; }                 // 10 s: dopo OTA/reset Windows puo' enumerare in ritardo
+  if (tipo != tipoPrec) {
+    if (tipo == 2 && usbClasse == 1) avvioDaTap = true;      // era PC (acceso): niente sonno immediato, solo la quiete
+    tipoPrec = tipo; usbClasse = tipo; tNoPc = 0;
+    diario(DIA_USB, tipo, ultimaMv);
+    if (tipo == 1) logRiga("USB: PC (sempre accesa)");
+    else logRiga("USB: caricatore%s", avvioDaTap ? " (accesa: sonno dopo quiete)" : "");
+  }
+  if (usbClasse == 2 && !avvioDaTap && !otaAttivo && !Bluefruit.connected()) {   // niente sonno con OTA o con display/pagina collegati via BLE
+    logRiga("USB: caricatore, sospensione per la carica");
+    sonnoMotivo = 6;
+    vaInSospensione();                                       // con usbClasse 2 sistemaOff dorme davvero (se nel frattempo si enumera: riavvio)
+  }
 }
 
 void setup() {
@@ -2722,7 +2746,9 @@ void setup() {
   if (dormiva && !vbusAvvio && causaReset != 7) causaReset = 1;   // risveglio da doppio tap (la marca resta come conferma)
 
   bool quattroTap = false;
+  avvioVbus = vbusAvvio;
   if (causaReset == 1) quattroTap = risveglioQuattroTap();   // se non arrivano 4 tap non ritorna: torna a dormire
+  avvioDaTap = quattroTap && vbusAvvio;                      // 0.6.5: svegliata coi 4 tap sul caricatore: non rimandarla a dormire subito (vale la quiete da 180 s)
   cane();
 
   // Diario: avvio con causa, marca e contesto del guasto (in RAM; in flash al primo diarioFlush)
@@ -2820,7 +2846,8 @@ static void controllaInattivita(uint32_t ora) {
     if (!avvisato) { avvisato = true; logRiga("seriale aperta: niente sospensione"); }
     sg = 0; n = 0; secFermo = 0; rifOk = false; return;
   }
-  if (vbusPresente()) {                                  // alimentata dall'USB (PC o caricatore): niente sospensione automatica
+  const int limite = vbusPresente() ? INATTIVITA_CARICA_S : INATTIVITA_S;
+  if (vbusPresente() && usbClasse != 2) {                // PC (o non ancora classificata): niente sospensione automatica. Solo caricatore: vale limite 180 s
     static bool avvisatoUsb = false;
     if (!avvisatoUsb) { avvisatoUsb = true; logRiga("USB collegata: niente sospensione"); }
     sg = 0; n = 0; secFermo = 0; rifOk = false; return;
@@ -2851,8 +2878,8 @@ static void controllaInattivita(uint32_t ora) {
   }
   if (secFermo > 0 && secFermo % 10 == 0)
     logRiga("quiete %ds rot%.1f ang%.1f", secFermo, gMax, angMax);
-  if (secFermo >= INATTIVITA_S) {
-    logRiga("fermo da %d s: sospensione", INATTIVITA_S);
+  if (secFermo >= limite) {
+    logRiga("fermo da %d s: sospensione%s", limite, limite == INATTIVITA_CARICA_S ? " (caricatore)" : "");
     sonnoMotivo = 2;
     vaInSospensione();
   }

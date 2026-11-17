@@ -7,3 +7,5 @@ PANNELLO_INDIRIZZO=0.0.0.0
 PANNELLO_PORTA=8080
 # cog (leggero) oppure chromium (riserva: installa.sh aggiunge cage e chromium)
 BROWSER=cog
+# rotazione dello schermo (solo cog): 0 normale, 2 = 180 gradi (anche il touch XPT2046), 1/3 = 90/270 (touch non ruotato)
+ROTAZIONE=2
